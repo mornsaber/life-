@@ -4,6 +4,8 @@
 import { esc, money, button, card, kv, empty } from '../Components.js';
 import { propertyLedger, staffOf, rolesOpen, staffName, STAFF, staffWages } from '../../modules/life/Property.js';
 import { yearNow } from '../../modules/world/Eras.js';
+import { estateOf, greatHouse, villasNow, collectablesNow, COLLECTABLES, LOT } from '../../modules/life/Estate.js';
+import { priceLevel } from '../../modules/world/Countries.js';
 
 function ledgerCard(state) {
   const rows = propertyLedger(state);
@@ -26,6 +28,33 @@ function staffCard(state) {
     <p class="fine">${esc(era)} A butler needs a household of three below him; footmen go with a butler.</p>`, { icon: '🤵', summary: staff.length ? `${staff.length} · ${money(staffWages(state))}/yr` : '' });
 }
 
+function estateCard(state) {
+  const house = greatHouse(state);
+  if (!house) return '';
+  const e = estateOf(state);
+  return card('The Estate', `<p class="muted">Your ${esc(house.typeName ?? 'great house')} comes with its tenant farms. The rents keep the roof on, for now.</p>
+    ${kv([['Land agent', e.agent ? 'Yes' : 'You deal with the tenants yourself'], ['Open to the public', e.opened ? `Since ${e.opened}` : 'No']])}
+    ${button(e.agent ? 'Let the land agent go' : '📒 Take on a land agent', 'estate.agent', { variant: 'small ghost' })}`, { icon: '🏰' });
+}
+
+function villaCard(state) {
+  if (state.character.age < 21) return '';
+  const e = estateOf(state);
+  const mine = e.villas.map((v) => `<li class="region-row"><span>🏡 <b>${esc(v.place)}</b> <small>since ${v.since}</small></span><small>worth ${money(v.value)}</small>${button('Sell', 'estate.sellVilla', { arg: v.id, variant: 'tiny ghost' })}</li>`).join('');
+  const open = villasNow(state).filter((v) => !e.villas.some((x) => x.id === v.id));
+  if (!mine && !open.some((v) => state.finances.cash >= v.cost)) return '';
+  return card('A House Abroad', `${mine ? `<ul class="history">${mine}</ul>` : ''}<div class="action-grid">${open.map((v) => button(`${v.icon} ${v.place[0].toUpperCase()}${v.place.slice(1)}`, 'estate.villa', { arg: v.id, variant: 'small', hint: money(v.cost), disabled: state.finances.cash < v.cost })).join('')}</div>`, { icon: '🌴', open: Boolean(mine) });
+}
+
+function collectionCard(state) {
+  if (state.character.age < 18) return '';
+  const e = estateOf(state);
+  const kinds = collectablesNow(state);
+  const groups = kinds.map((c) => { const lots = e.collection.filter((x) => x.kind === c.id); return lots.length ? `<li class="region-row"><span>${c.icon} <b>${esc(c.label)}</b> <small>${lots.length} lot${lots.length === 1 ? '' : 's'}</small></span><small>worth ${money(lots.reduce((s, x) => s + x.value, 0))}</small>${button('Sell at auction', 'estate.sellCollection', { arg: c.id, variant: 'tiny ghost' })}</li>` : ''; }).join('');
+  const cost = Math.round(LOT * priceLevel(state));
+  return card('Collections', `${groups ? `<ul class="history">${groups}</ul>` : ''}<div class="action-grid">${kinds.map((c) => button(`${c.icon} ${c.label}`, 'estate.collect', { arg: c.id, variant: 'small', hint: money(cost), disabled: state.finances.cash < cost })).join('')}</div><p class="fine">Markets rise and fall by decade; some lots turn out to be fakes. The auctioneer takes a fifth when you sell.</p>`, { icon: '🖼️', open: Boolean(groups) });
+}
+
 export function propertyView(state) {
-  return ledgerCard(state) + staffCard(state);
+  return ledgerCard(state) + estateCard(state) + staffCard(state) + villaCard(state) + collectionCard(state);
 }

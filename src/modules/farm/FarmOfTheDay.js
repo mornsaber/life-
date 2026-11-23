@@ -17,6 +17,11 @@
  *               from about 1920, Europe after 1945, Asia later); the farm's children did the work
  *               of hands before schooling was compulsory.
  *
+ *   The farming year  the show (the county show or the state fair, from the 1840s), where your best
+ *               beast may take a rosette; a co-operative (the Grange from 1867, the creameries from
+ *               the 1880s) for better prices; enclosure of the commons in England (to 1845), which
+ *               took the small farmer's grazing; and in the Famine, the ship out of Ireland.
+ *
  * state.farmDay = { tenure, collective, seen: { [eventId]: year }, tractor, lastShock }
  */
 import { Random } from '../../core/Random.js';
@@ -124,6 +129,10 @@ export function farmDayTick(ctx) {
     ctx.stat('health', state.finances.cash > 2000 ? -3 : -10);
     if (farming(state) && f.lastYear?.revenue) ctx.spend(Math.round(f.lastYear.revenue * (1 - fam[4])), 'The failed harvest', { allowDebt: true });
     if (fam[0] === 'blight' && first) ctx.log('A million will die and a million more will leave. The emigrant ships sail from every port in Ireland.', '🚢', 'bad');
+    if (fam[0] === 'blight' && !fd.seen.ship && state.character.age >= 16 && !state.prompts.some((p) => p.type === 'farmDay.ship')) {
+      fd.seen.ship = y;
+      ctx.prompt({ type: 'farmDay.ship', icon: '🚢', title: 'The Ship', text: 'Half the townland has gone. There are ships at Cork for Liverpool, Quebec and New York, if you can find the fare.', options: [{ id: 'go', label: '🚢 Take ship for America' }, { id: 'stay', label: '🏚️ Stay and hold on' }], data: {} });
+    }
   }
   if (!farming(state)) return;
   // The Dust Bowl.
@@ -159,6 +168,29 @@ export function farmDayTick(ctx) {
     ctx.earn(Math.round(1500 * priceLevel(state) * kids.length * rng.float(0.8, 1.2)), 'The children\'s work on the farm', { informal: true });
     if (!fd.seen.kids) { fd.seen.kids = y; ctx.log(`${kids.map((k) => k.firstName).join(' and ')} ${kids.length > 1 ? 'are' : 'is'} out in the fields with you now: stone-picking, minding the cows, bringing in the harvest. School can wait until winter.`, '👧', 'info'); }
   }
+  // The co-operative: better prices, less the dues.
+  if (fd.coop && f.lastYear?.revenue) ctx.earn(Math.max(0, Math.round(f.lastYear.revenue * 0.04) - Math.round(300 * priceLevel(state))), 'Co-operative dividend');
+  // Enclosure: the commons fenced off by Act of Parliament.
+  if (cc(state) === 'GB' && y < 1845 && !fd.seen.enclosure && rng.chance(0.25)) {
+    fd.seen.enclosure = y;
+    if ((f.acres ?? 0) >= 50) { f.acres += 8; ctx.log('An Enclosure Act fenced the parish commons. As a landowner you were allotted eight acres of it.', '🚧', 'good'); }
+    else { if (f.lastYear?.revenue) ctx.spend(Math.round(f.lastYear.revenue * 0.15), 'Lost grazing on the commons', { allowDebt: true }); ctx.stat('happiness', -4); ctx.log('The commons were enclosed by Act of Parliament. The grazing your cow and geese lived on is behind a hedge now, and belongs to the squire.', '🚧', 'bad'); }
+  }
+  // The show.
+  const showFrom = cc(state) === 'US' ? 1841 : 1840;
+  if (y >= showFrom && (f.herd?.head ?? 0) > 0 && rng.chance(0.3) && !state.prompts.some((p) => p.type === 'farmDay.show')) {
+    ctx.prompt({
+      type: 'farmDay.show', icon: '🎀', title: cc(state) === 'US' ? 'The County Fair' : 'The Show',
+      text: `The ${cc(state) === 'US' ? 'county fair' : 'agricultural show'} is next week. Will you enter your best ${f.herd.kind === 'sheep' ? 'ram' : f.herd.kind === 'dairy' ? 'cow' : 'bullock'}?`,
+      options: [{ id: 'enter', label: '🎀 Enter it', hint: 'A day out, and maybe a rosette' }, { id: 'watch', label: '👀 Just go and look' }],
+      data: { herd: f.herd.head },
+    });
+  }
+  // The co-operative comes to the district.
+  if (!fd.coop && !fd.seen.coopOffer && y >= (cc(state) === 'US' ? 1867 : 1885) && rng.chance(0.1) && !state.prompts.some((p) => p.type === 'farmDay.coop')) {
+    fd.seen.coopOffer = y;
+    ctx.prompt({ type: 'farmDay.coop', icon: '🤝', title: cc(state) === 'US' ? 'The Grange' : 'The Co-operative', text: cc(state) === 'US' ? 'The Grange is organising in the county: buy together, sell together, stand up to the railroad.' : 'The farmers of the district are starting a co-operative: a creamery, a store, one price for all.', options: [{ id: 'join', label: '✍️ Join' }, { id: 'no', label: '🙅 Go it alone' }], data: {} });
+  }
   // The tractor comes.
   const tf = tractorFrom(cc(state));
   if (!f.machinery && !fd.tractor && y >= tf && y < tf + 25 && rng.chance(0.25) && !state.prompts.some((p) => p.type === 'farmDay.tractor')) {
@@ -175,6 +207,11 @@ export const FarmOfTheDayModule = {
   id: 'farmDay',
   order: 47.5,
   setup(engine) {
+    engine.bus.on('farmDay:ship', ({ ctx }) => {
+      const a = engine.actions.get('migration.emigrate');
+      if (a) a(ctx, 'US:passage');
+      if ((ctx.state.character.countryId ?? 'US') !== 'US') ctx.log('You couldn\'t get a passage. The ships sailed without you.', '🚢', 'warn');
+    });
     engine.bus.on('farmDay:tractor', ({ ctx }) => {
       const a = engine.actions.get('farm.build');
       const before = ctx.state.farm?.machinery;
@@ -186,6 +223,26 @@ export const FarmOfTheDayModule = {
     if (ctx.state.character.age >= 16) farmDayTick(ctx);
   },
   resolvers: {
+    show(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      if (optionId === 'watch') return ctx.log('A day at the show: the beasts in their pens, the band, and pie in a tent.', '🎪', 'good');
+      if (rng.chance(Math.min(0.45, 0.12 + data.herd / 200))) {
+        ctx.earn(Math.round(250 * priceLevel(state)), 'Prize money at the show');
+        ctx.stat('happiness', 6);
+        return ctx.log('First prize! A red rosette, a silver cup, and your name in the paper.', '🏆', 'milestone');
+      }
+      ctx.stat('happiness', 2);
+      ctx.log('Highly commended: a green card and a handshake from the judge.', '🎀', 'info');
+    },
+    coop(ctx, _data, optionId) {
+      const fd = (ctx.state.farmDay ??= { seen: {} });
+      if (optionId === 'join') { fd.coop = yearNow(ctx.state); return ctx.log('You joined the co-operative: shared machinery, a fair price for the milk, and a meeting every month.', '🤝', 'good'); }
+      ctx.log('You kept your own counsel and sold your own produce.', '🙅', 'muted');
+    },
+    ship(ctx, _data, optionId) {
+      if (optionId === 'stay') return ctx.log('You stayed, and held on through the hungry years.', '🏚️', 'warn');
+      ctx.emit('farmDay:ship', {});
+    },
     collective(ctx, data, optionId) {
       const { state, rng } = ctx;
       const f = state.farm;

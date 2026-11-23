@@ -95,7 +95,23 @@ export function estateBalance(state) {
 import { successionLaw } from '../world/SuccessionLaw.js';
 const lawName = (state) => { const l = successionLaw(state); return l.family === 'common' ? null : l.name; };
 
+/** Death duties of their day, against today's rates: none in the US before 1916, light in Britain before Harcourt's estate duty (1894), punishing after 1919 and worst from 1946 to the 1980s. */
+export function deathDutyFactor(state) {
+  const y = currentYear(state);
+  const cc = state.character.countryId ?? 'US';
+  if (cc === 'US') return y < 1916 ? 0 : y < 1932 ? 0.3 : y < 1977 ? 1.5 : y < 2001 ? 1.2 : 1;
+  if (cc === 'GB') return y < 1894 ? 0.15 : y < 1919 ? 0.4 : y < 1946 ? 1.1 : y < 1986 ? 1.6 : 1;
+  return y < 1900 ? 0.3 : y < 1946 ? 0.7 : y < 1980 ? 1.2 : 1;
+}
+
 export function estateTax(state, taxable) {
+  const t = estateTaxNow(state, taxable);
+  const k = deathDutyFactor(state);
+  if (k === 1) return t;
+  return { ...t, federal: Math.round(t.federal * k), state: Math.round(t.state * k), total: Math.round(t.total * k) };
+}
+
+function estateTaxNow(state, taxable) {
   // Outside the US: the country's inheritance tax on what passes to anyone but a spouse.
   const cc = state.character.countryId;
   if (cc) {

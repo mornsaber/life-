@@ -9,6 +9,10 @@
  *             a bodyguard. Wages follow the era: service was cheap before 1914 and dear after.
  *   Moments   a maid who steals the spoons, a nanny the children love more than you, the
  *             footman called up in 1914, a butler who knows too much, a chef poached by a rival.
+ *   Their lives   staff are people: they age, marry (and before 1960 a maid who married left
+ *                 service), emigrate, get on (a footman becomes the butler; a cook opens a tea shop),
+ *                 and after a working life in your house retire, with a pension and a cottage or
+ *                 without. The nanny comes to your child's wedding.
  *   The ledger homes (equity), vehicles by kind, staff and their wages, art and horses: the
  *             year's running costs beside what it is all worth.
  *
@@ -62,9 +66,14 @@ const sideRng = (state, salt) => new Random(((state.world?.seed ?? 1) * 33391 + 
 export function propertyTick(ctx) {
   const { state } = ctx;
   const p = state.property;
-  if (!p?.staff?.length) return;
+  if (!p?.staff?.length && !p?.pensions?.length) return;
   const y = yearNow(state);
   const rng = sideRng(state, 0x57a);
+  // Pensions for those who served.
+  for (const pn of [...(p.pensions ?? [])]) {
+    if (state.character.age > pn.until) { p.pensions = p.pensions.filter((x) => x !== pn); ctx.log(`${pn.name}, who served your house so long, has died. You paid for the funeral.`, '🕯️', 'info'); continue; }
+    ctx.spend(pn.amount, `Pension: ${pn.name}`, { allowDebt: true });
+  }
   // Wages for the year; staff you can't pay leave.
   for (const s of [...p.staff]) {
     s.wage = wageFor(state, s.role, y);
@@ -91,6 +100,24 @@ export function propertyTick(ctx) {
       ctx.log(`${men.map((s) => s.name.split(' ')[0]).join(', ')} went to the war. The house felt empty without ${men.length > 1 ? 'them' : (men[0].female ? 'her' : 'him')}.`, '🪖', 'warn');
     }
   }
+  // Their own lives.
+  const left = (s, text, icon = '👋') => { p.staff = p.staff.filter((x) => x !== s); (p.former ??= []).push({ name: s.name, role: s.role, until: y, years: state.character.age - s.since }); if (p.former.length > 12) p.former.shift(); ctx.log(text, icon, 'info'); };
+  for (const s of [...p.staff]) {
+    s.age = (s.age ?? 30) + 1;
+    const years = state.character.age - s.since;
+    const role = staffName(s.role, y).toLowerCase();
+    if (s.age >= 65 || years >= 40) {
+      if (!state.prompts.some((x) => x.type === 'property.retire')) ctx.prompt({ type: 'property.retire', icon: '🕰️', title: `${s.name} Is Retiring`, text: `After ${years} years as your ${role}, ${s.name} is ${s.age} and ready to stop.`, data: { id: s.id }, options: [
+        { id: 'pension', label: '💷 A pension and a cottage', hint: `≈${Math.round(s.wage / 3).toLocaleString()} a year` }, { id: 'gift', label: '🎁 A clock and a handshake' },
+      ] });
+      continue;
+    }
+    const r = rng.float(0, 1);
+    if (s.female && s.age < 35 && y < 1960 && r < 0.06) left(s, `${s.name}, your ${role}, is getting married, and married women don't stay in service. She left with your blessing and a set of spoons.`, '💍');
+    else if (s.age < 35 && y < 1930 && r > 0.97) left(s, `${s.name}, your ${role}, has saved the fare and sailed for ${rng.pick(['America', 'Canada', 'Australia', 'New Zealand'])}. A postcard came from the other side.`, '🚢');
+    else if (s.role === 'cook' && years >= 8 && r > 0.94) left(s, `${s.name}, your ${role} of ${years} years, left to open a tea shop of her own. You were invited to the opening.`, '☕');
+    else if (s.role === 'footman' && years >= 5 && !p.staff.some((x) => x.role === 'butler') && r > 0.85) { s.role = 'butler'; s.wage = wageFor(state, 'butler', y); ctx.log(`${s.name}, your footman, stepped up to be the butler.`, '🤵', 'good'); }
+  }
   if (!p.staff.length || !rng.chance(0.25) || state.prompts.some((x) => x.type === 'property.staff')) return;
   const s = rng.pick(p.staff);
   const kind = rng.pick(['steal', 'notice', 'loved', 'poached', 'gossip']);
@@ -115,6 +142,16 @@ export const PropertyModule = {
   id: 'property',
   order: 89.5,
   init(state) { state.property ??= { staff: [] }; },
+  setup(engine) {
+    // The nanny (or governess) at the wedding of a child she brought up.
+    engine.bus.on('people:married', ({ ctx, personId }) => {
+      const { state } = ctx;
+      const p = state.property;
+      const kid = state.people?.list?.find((x) => x.id === personId && x.relation === 'child');
+      const nanny = [...(p?.staff ?? []), ...(p?.former ?? [])].find((s) => ['nanny', 'governess'].includes(s.role));
+      if (kid && nanny) ctx.log(`${nanny.name}, who had been ${kid.firstName}'s ${staffName(nanny.role, yearNow(state)).toLowerCase()}, sat in the third pew and cried more than anyone.`, '💐', 'good');
+    });
+  },
   onAgeUp: propertyTick,
   actions: {
     hire(ctx, role) {
@@ -132,7 +169,7 @@ export const PropertyModule = {
       if (y >= 1919 && y < 1960 && rng.chance(0.3)) return ctx.log(`You advertised for a ${r.name.toLowerCase()}. Nobody suitable answered: girls go to the factories and the shops now.`, '📰', 'warn');
       const female = r.female || (['maid', 'cook', 'housekeeper', 'nanny', 'governess', 'auPair', 'ladysMaid'].includes(role) ? rng.chance(0.92) : ['butler', 'footman', 'valet', 'coachman', 'chauffeur', 'gardener', 'bodyguard'].includes(role) ? rng.chance(y < 1970 ? 0.02 : 0.15) : rng.chance(0.5));
       const nm = randomName(rng, female ? 'female' : 'male');
-      p.staff.push({ id: `staff_${state.character.age}_${p.staff.length}`, role, name: `${nm.firstName} ${nm.lastName}`, since: state.character.age, wage: r.wage, female });
+      p.staff.push({ id: `staff_${state.character.age}_${p.staff.length}`, role, name: `${nm.firstName} ${nm.lastName}`, since: state.character.age, wage: r.wage, female, age: role === 'auPair' ? rng.int(18, 24) : ['butler', 'housekeeper', 'governess'].includes(role) ? rng.int(30, 50) : rng.int(16, 40) });
       ctx.log(`You took on ${nm.firstName} ${nm.lastName} as your ${r.name.toLowerCase()}.`, r.icon, 'good');
     },
     dismiss(ctx, id) {
@@ -144,6 +181,16 @@ export const PropertyModule = {
     },
   },
   resolvers: {
+    retire(ctx, data, optionId) {
+      const { state } = ctx;
+      const p = state.property;
+      const s = p?.staff?.find((x) => x.id === data.id);
+      if (!s) return;
+      p.staff = p.staff.filter((x) => x !== s);
+      (p.former ??= []).push({ name: s.name, role: s.role, until: yearNow(state), years: state.character.age - s.since });
+      if (optionId === 'pension') { (p.pensions ??= []).push({ name: s.name, amount: Math.round(s.wage / 3), until: state.character.age + 15 }); ctx.stat('happiness', 2); return ctx.log(`${s.name} retired to a cottage at the end of the lane, on a pension from you. Every Christmas, a cake.`, '🏡', 'good'); }
+      ctx.log(`${s.name} retired with a carriage clock and your thanks.`, '🕰️', 'info');
+    },
     staff(ctx, data, optionId) {
       const { state, rng } = ctx;
       const p = state.property;
@@ -184,6 +231,9 @@ export function propertyLedger(state) {
     const l = LUXURIES[k === 'horses' ? 'horse' : k];
     if (n > 0 && l) rows.push({ kind: k, icon: l.icon, label, count: n, value: Math.round(n * l.price * priceLevel(state)), yearly: Math.round(n * l.price * l.upkeep * priceLevel(state)) });
   }
+  const es = state.estate;
+  if (es?.villas?.length) rows.push({ kind: 'villas', icon: '🌴', label: 'Houses abroad', count: es.villas.length, value: es.villas.reduce((s, v) => s + v.value, 0), yearly: es.villas.reduce((s, v) => s + Math.round(v.value * 0.02), 0) });
+  if (es?.collection?.length) rows.push({ kind: 'collection', icon: '🏺', label: 'Collections', count: es.collection.length, value: es.collection.reduce((s, x) => s + x.value, 0), yearly: 0 });
   if (state.farm?.acres) rows.push({ kind: 'farm', icon: '🌾', label: 'Farmland', count: state.farm.acres, value: Math.round(state.farm.acres * (state.farm.valuePerAcre ?? 0) - (state.farm.loan?.balance ?? 0)), yearly: 0 });
   return rows;
 }

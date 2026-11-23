@@ -3,6 +3,9 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { t as tr } from './i18n.js';
+import { epilogueOf } from '../modules/people/Epilogue.js';
+import { fandomOf, sportHere } from '../modules/life/Fandom.js';
 import { courtView, successionView, householdView, estatesView, hasCourt } from './views/CrownCard.js';
 import { courtTitle } from '../modules/legal/Judiciary.js';
 import { ceremonialPosts } from '../modules/world/Ceremonial.js';
@@ -60,6 +63,18 @@ const scenarioCard = (state) => { const c = CHALLENGES[state.challenge?.id]; if 
 import { societyView } from './views/SocietyView.js';
 import { inSociety } from '../modules/life/HighSociety.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
+const fandomCard = (state) => {
+  const f = fandomOf(state);
+  const s = sportHere(state);
+  if (!f) return s && state.character.age >= 6 ? card('Your Club', `<p class="muted">Pick a ${esc(s.sport)} club and follow it for life.</p>${button('🏟️ Follow the local club', 'fandom.follow', { variant: 'small' })}`, { icon: '🏟️' }) : '';
+  const rows = f.seasons.slice(-6).reverse().map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(x.text)}</li>`).join('');
+  return card(`Your Club: ${esc(f.club)}`, `${kv([['Following since', String(f.since)], ['Division', f.division === 1 ? 'First division' : `Division ${f.division}`], ['Titles in your time', String(f.titles)], ['Cups', String(f.cups)]])}${rows ? `<ul class="history">${rows}</ul>` : ''}${state.character.age >= 16 ? button(f.ticket ? 'Give up the season ticket' : '🎟️ Buy a season ticket', 'fandom.ticket', { variant: 'small ghost' }) : ''}`, { icon: '🏟️', summary: `${f.titles} titles · ${f.cups} cups` });
+};
+const epilogueCard = (state) => {
+  const e = epilogueOf(state);
+  if (!e?.lines?.length) return '';
+  return card('After You', `<p class="muted">The ${e.to - e.from} years after ${e.from}.</p><ul class="history">${e.lines.map((l) => `<li><b>${l.year}</b> ${l.icon} ${esc(l.text)}</li>`).join('')}</ul>`, { icon: '🕰️' });
+};
 const leisureCard = (state) => { const ls = leisureNow(state).filter((l) => state.character.age >= l.minAge); return ls.length ? card('Going Out', `<p class="muted">What people did for fun in ${state.era ? 'this day' : 'our day'}. Once a year each.</p><div class="action-grid">${ls.map((l) => button(`${l.icon} ${l.label}`, 'leisure.go', { arg: l.id, variant: 'small', disabled: Boolean(state.yearly[`leisure.${l.id}`]), hint: state.yearly[`leisure.${l.id}`] ? 'Done this year' : leisureCost(state, l) ? `$${leisureCost(state, l).toLocaleString()}` : 'Free' })).join('')}</div>`, { icon: '🎟️' }) : ''; };
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
@@ -315,7 +330,7 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${activityLabel(state, a)}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${featsCard(state)}${leisureCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${featsCard(state)}${leisureCard(state) + fandomCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {
@@ -466,7 +481,7 @@ export class Renderer {
       return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}${newsThreadCard(state, { all: true })}<div class="row-end share-life">${button('📤 Share this life story', 'ui.share', { variant: 'small', hint: 'Copy or send a short account of this life' })}</div><div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}${epilogueCard(state)}${newsThreadCard(state, { all: true })}<div class="row-end share-life">${button('📤 Share this life story', 'ui.share', { variant: 'small', hint: 'Copy or send a short account of this life' })}</div><div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
     const menu = this.ui.menu;
@@ -508,16 +523,16 @@ export class Renderer {
     const rows = shown.map((i, n) => {
       let sub = '';
       try { sub = i.sub?.(state) ?? ''; } catch { sub = ''; }
-      const head = new Set(shown.map((x) => x.head)).size > 1 && i.head && i.head !== shown[n - 1]?.head ? `<li class="menu-head">${esc(i.head)}</li>` : '';
-      return `${head}<li><button class="menu-row" data-action="ui.tab" data-arg="${i.tab}"><span class="menu-icon" aria-hidden="true">${i.icon}</span><span class="menu-text"><b>${esc(i.label)}</b><small>${esc(sub)}</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
+      const head = new Set(shown.map((x) => x.head)).size > 1 && i.head && i.head !== shown[n - 1]?.head ? `<li class="menu-head">${esc(tr(i.head))}</li>` : '';
+      return `${head}<li><button class="menu-row" data-action="ui.tab" data-arg="${i.tab}"><span class="menu-icon" aria-hidden="true">${i.icon}</span><span class="menu-text"><b>${esc(tr(i.label))}</b><small>${esc(sub)}</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
     }).join('');
     // Relationships lists the people themselves, as well as the screens.
     const close = g.people ? closestPeople(state) : [];
-    const peopleRows = close.length ? `<li class="menu-head">Closest to you</li>${close.map((p) => {
+    const peopleRows = close.length ? `<li class="menu-head">${esc(tr('Closest to you'))}</li>${close.map((p) => {
       const rel = Math.round(p.relationship ?? 0);
       return `<li><button class="menu-row" data-action="ui.go" data-arg="people|person=${esc(p.id)}"><span class="menu-icon" aria-hidden="true">${PERSON_ICON[p.relation] ?? '🙂'}</span><span class="menu-text"><b>${esc(`${p.firstName} ${p.lastName}`)}</b><small>${esc(RELATION_LABEL[p.relation] ?? 'Friend')} · age ${state.character.age + (p.ageOffset ?? 0)} · ${rel >= 70 ? '❤️' : rel >= 40 ? '🙂' : '😐'} ${rel}%</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
     }).join('')}` : '';
-    return `<div class="sheet" id="tabpanel" tabindex="-1"><div class="sheet-head"><button class="btn ghost small" data-action="ui.home" aria-label="Close">✕</button><h2>${g.icon} ${esc(g.label(state))}</h2></div><ul class="menu-list">${rows}${peopleRows}</ul></div>`;
+    return `<div class="sheet" id="tabpanel" tabindex="-1"><div class="sheet-head"><button class="btn ghost small" data-action="ui.home" aria-label="Close">✕</button><h2>${g.icon} ${esc(tr(g.label(state)))}</h2></div><ul class="menu-list">${rows}${peopleRows}</ul></div>`;
   }
 
   /** A screen opened from a menu: a back button, the section's tabs if it has several, the view. */
@@ -527,9 +542,9 @@ export class Renderer {
     const item = GROUPS[groupId]?.items.find((i) => i.tab === this.tab || sectionOf(i.tab).id === section.id);
     const title = item?.label ?? section.tabs.find((t) => t.id === this.tab)?.label ?? section.label;
     const subs = section.tabs.length > 1 && section.id !== 'life'
-      ? `<nav class="subtabs" role="tablist" aria-label="${section.label}">${section.tabs.map((t) => `<button role="tab" id="tab-${t.id}" class="subtab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel"><span aria-hidden="true">${t.icon}</span> ${t.label}</button>`).join('')}</nav>`
+      ? `<nav class="subtabs" role="tablist" aria-label="${section.label}">${section.tabs.map((t) => `<button role="tab" id="tab-${t.id}" class="subtab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel"><span aria-hidden="true">${t.icon}</span> ${tr(t.label)}</button>`).join('')}</nav>`
       : '';
-    return `<div class="page-head"><button class="btn ghost small" data-action="${groupId ? 'ui.menu' : 'ui.home'}" data-arg="${groupId ?? ''}" aria-label="Back">‹ ${esc(groupId ? GROUPS[groupId].label(state) : 'Story')}</button><h2>${item?.icon ?? section.icon} ${esc(title)}</h2></div>${subs}
+    return `<div class="page-head"><button class="btn ghost small" data-action="${groupId ? 'ui.menu' : 'ui.home'}" data-arg="${groupId ?? ''}" aria-label="Back">‹ ${esc(tr(groupId ? GROUPS[groupId].label(state) : 'Story'))}</button><h2>${item?.icon ?? section.icon} ${esc(tr(title))}</h2></div>${subs}
       <div class="tab-panel" id="tabpanel" role="tabpanel" tabindex="-1">${periodText(VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips }))}</div>`;
   }
 
@@ -540,15 +555,15 @@ export class Renderer {
       const v = Math.round(state.stats[k] ?? 0);
       const good = meta.inverse ? 100 - v : v;
       const tone = good >= 70 ? 'good' : good >= 40 ? 'mid' : 'bad';
-      return `<div class="stat-bar ${tone}" title="${meta.label} ${v}%"><span class="stat-name"><span aria-hidden="true">${meta.icon}</span> ${meta.label}</span><span class="stat-track"><span style="width:${v}%"></span></span><b>${v}%</b></div>`;
+      return `<div class="stat-bar ${tone}" title="${meta.label} ${v}%"><span class="stat-name"><span aria-hidden="true">${meta.icon}</span> ${tr(meta.label)}</span><span class="stat-track"><span style="width:${v}%"></span></span><b>${v}%</b></div>`;
     }).join('')}</div>`;
   }
 
   /** The dock: four menus and the Age button in the middle. */
   dock(state, prompt) {
-    const item = (id) => { const g = GROUPS[id]; const on = this.ui.menu === id || (!this.ui.menu && this.tab !== 'life' && groupOf(this.tab) === id); return `<button class="dock-btn ${on ? 'on' : ''}" data-action="ui.menu" data-arg="${id}" aria-pressed="${on}"><span aria-hidden="true">${g.icon}</span><small>${esc(g.label(state))}</small></button>`; };
+    const item = (id) => { const g = GROUPS[id]; const on = this.ui.menu === id || (!this.ui.menu && this.tab !== 'life' && groupOf(this.tab) === id); return `<button class="dock-btn ${on ? 'on' : ''}" data-action="ui.menu" data-arg="${id}" aria-pressed="${on}"><span aria-hidden="true">${g.icon}</span><small>${esc(tr(g.label(state)))}</small></button>`; };
     return `<nav class="dock" aria-label="Menus">${item('occupation')}${item('assets')}
-      <button class="age-orb" data-action="engine.ageUp" aria-keyshortcuts="Space" aria-label="Age up to ${state.character.age + 1}"${this.engine.canAgeUp() ? '' : ' disabled'}><b>Age</b><small>${prompt ? 'Decide' : '+1'}</small></button>
+      <button class="age-orb" data-action="engine.ageUp" aria-keyshortcuts="Space" aria-label="Age up to ${state.character.age + 1}"${this.engine.canAgeUp() ? '' : ' disabled'}><b>${tr('Age')}</b><small>${prompt ? tr('Decide') : '+1'}</small></button>
       ${item('relationships')}${item('activities')}</nav>`;
   }
 

@@ -19,6 +19,14 @@ import { sharesAt } from '../src/modules/life/Household.js';
 import { rolesOpen, staffName, propertyLedger, serviceCost } from '../src/modules/life/Property.js';
 import { tenureOf, famineAt, collectiveAt, machineryWord } from '../src/modules/farm/FarmOfTheDay.js';
 import { VEHICLE_TYPES, vehicleInEra } from '../src/modules/vehicles/Vehicles.js';
+import { arrivesAt, gadgetsWithin } from '../src/modules/life/HomeGadgets.js';
+import { sportHere } from '../src/modules/life/Fandom.js';
+import { writeEpilogue } from '../src/modules/people/Epilogue.js';
+import { villasNow, collectablesNow } from '../src/modules/life/Estate.js';
+import { deathDutyFactor } from '../src/modules/people/Legacy.js';
+import { scenarioOptions } from '../src/modules/life/Scenarios.js';
+import { t, setLanguage } from '../src/ui/i18n.js';
+import { lifeMap } from '../src/ui/views/MapView.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const grown = (cc, year, age = 30, { gender = 'male', seed = 3, regionId } = {}) => {
@@ -124,6 +132,44 @@ const tests = {
     answer(engine, state, 'farmDay.collective', 'join');
     assert.equal(state.farm.acres, 0, 'the farm went into the collective');
     assert.equal(tenureOf(state).id, 'collective');
+  },
+  'the house fills up with gadgets on its country\'s clock'() {
+    const gb = grown('GB', 1950, 30).state;
+    const ind = grown('IN', 1950, 30).state;
+    assert.ok(arrivesAt(gb, 'television').common < arrivesAt(ind, 'television').common, 'Britain before India');
+    assert.ok(!gadgetsWithin(grown('GB', 1890, 30).state).some((g) => g.id === 'television'), 'no television in 1890');
+  },
+  'a club for life, holidays and outings of their day'() {
+    assert.equal(sportHere(grown('GB', 1950).state).sport, 'football');
+    assert.equal(sportHere(grown('US', 1950).state).sport, 'baseball');
+    assert.equal(sportHere(grown('GB', 1850).state), null, 'no Football League before 1888');
+    const { engine, state } = grown('GB', 1950, 30);
+    engine.dispatch('fandom.follow');
+    assert.ok(state.fandom?.club);
+  },
+  'historical scenarios start in their place and year'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(1), modules: MODULES });
+    const s = engine.newLife({ ...scenarioOptions('hungryYears'), challenge: 'hungryYears' });
+    assert.equal(s.character.regionId, 'skibbereen');
+    assert.equal(s.character.birthYear, 1830);
+  },
+  'the map, the epilogue and the interface in French'() {
+    const { state } = grown('IN', 1930, 30);
+    assert.match(lifeMap(state), /<svg class="life-map"/);
+    const e = writeEpilogue(state);
+    assert.ok(e.lines.some((l) => /Second World War/.test(l.text)), 'the war comes after a life ending in 1930');
+    setLanguage('fr', null);
+    assert.equal(t('Money'), 'Argent');
+    assert.equal(t('Your Club: Glasgow City'), 'Votre club : Glasgow City'.replace(' :', ':'));
+    assert.equal(t('Something unknown'), 'Something unknown');
+    setLanguage('en', null);
+  },
+  'villas, collections and death duties of their day'() {
+    const old = grown('GB', 1880, 40).state;
+    assert.ok(villasNow(old).some((v) => v.id === 'riviera') && !villasNow(old).some((v) => v.id === 'tuscany'));
+    assert.ok(!collectablesNow(old).some((c) => c.id === 'comics'));
+    assert.equal(deathDutyFactor(grown('US', 1900, 40).state), 0, 'no federal estate tax before 1916');
+    assert.ok(deathDutyFactor(grown('GB', 1960, 40).state) > 1, 'post-war Britain taxed estates hardest');
   },
 };
 

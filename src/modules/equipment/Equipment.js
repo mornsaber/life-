@@ -732,7 +732,10 @@ function autoReplace(c, d, share) {
   const overdue = Object.entries(d.units).flatMap(([cid, units]) => (all[cid]?.facility ? [] : units.filter((u) => !u.leased).map((u) => ({ cid, u, over: u.age / (all[cid]?.models[u.model]?.life ?? 10) }))))
     .filter((x) => x.over >= 1).sort((a, b) => b.over - a.over);
   for (const { cid, u } of overdue) {
-    const m = all[cid].models[u.model];
+    // A model the catalogue no longer lists (its era passed): replaced with what's made now.
+    const m = all[cid]?.models[u.model] ?? Object.values(all[cid]?.models ?? {})[0];
+    if (!m) continue;
+    if (!all[cid].models[u.model]) u.model = Object.keys(all[cid].models)[0];
     // Replace if affordable; otherwise refurbish what can be refurbished.
     const refurb = isIssued(c) || (m.cost > money && m.refurb);
     const price = refurb ? refurbCost(c, m) : m.cost;

@@ -3,6 +3,7 @@
  * none of them touch the DOM or mutate state. Interactive elements carry
  * `data-action` / `data-arg` attributes that index.js routes to the engine.
  */
+import { t } from './i18n.js';
 import { STAT_META, STAT_KEYS, tidyText, crownsIn } from '../core/State.js';
 import { CHALLENGES } from '../modules/life/Achievements.js';
 import { ROYAL_LEVELS } from '../modules/world/Crown.js';
@@ -73,7 +74,7 @@ export function a11yLabel(label) {
 /** `collect: true` builds the arg from the <select data-part> fields in the nearest [data-collect-root]. */
 export function button(label, action, { arg, variant = '', disabled = false, hint = '', title = '', collect = false } = {}) {
   return `<button class="btn ${variant}" data-action="${esc(action)}"${arg !== undefined ? ` data-arg="${esc(arg)}"` : ''}${collect ? ' data-collect' : ''}${disabled ? ' disabled' : ''}${title ? ` title="${esc(title)}"` : ''}>
-    <span class="btn-label">${a11yLabel(label)}</span>${hint ? `<span class="btn-hint">${esc(hint)}</span>` : ''}
+    <span class="btn-label">${a11yLabel(t(label))}</span>${hint ? `<span class="btn-hint">${esc(hint)}</span>` : ''}
   </button>`;
 }
 
@@ -94,7 +95,7 @@ const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses fo
   'Organization', 'Your Work Gear', 'Job Market', 'Former Employers']);
 
 export function card(title, body, { icon = '', accent = '', extra = '', className = '', open = !FOLDED_BY_DEFAULT.has(String(title).replace(/^Labor in .+/, 'Labor in Texas')), summary = '', fold = true } = {}) {
-  const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${flagEmojiToImg(icon)}</span>` : ''}${flagEmojiToImg(title)}</h3>${summary ? `<span class="card-sum">${flagEmojiToImg(summary)}</span>` : ''}${extra}`;
+  const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${flagEmojiToImg(icon)}</span>` : ''}${flagEmojiToImg(t(title))}</h3>${summary ? `<span class="card-sum">${flagEmojiToImg(summary)}</span>` : ''}${extra}`;
   if (!title || !fold) {
     return `<section class="card ${accent ? `accent-${accent}` : ''} ${className}">
     ${title ? `<header class="card-head">${heading}</header>` : ''}

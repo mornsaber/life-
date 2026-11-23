@@ -9,6 +9,7 @@
  *   /              → Search the story  S     → Saves     ?  → Shortcuts
  *   Esc            → Close a panel     Tab   → Stays inside open dialogs
  */
+import { setLanguage } from './ui/i18n.js';
 import { Engine } from './core/Engine.js';
 import { Store } from './core/State.js';
 import { Random } from './core/Random.js';
@@ -37,6 +38,7 @@ let settings = loadSettings();
 function applySettings() {
   applyTheme(settings.theme);
   applyLook(settings.look);
+  setLanguage(settings.lang ?? 'en');
   engine.autoResolver = settings.autoResolve ? routineChoice : null;
   engine.promptBudget = (DECISION_LEVELS[settings.decisions] ?? DECISION_LEVELS.focused).budget;
   renderer.settings = settings;

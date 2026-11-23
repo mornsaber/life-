@@ -12,6 +12,12 @@
  *                1845); the fairground.
  *   Holidays     the holiday camp (Britain, Butlin's 1936–1985); a package holiday in the sun
  *                (from 1955, for northern Europeans); a road trip (America, from 1925).
+ *                The Grand Tour (a young gentleman's year in Paris, Rome and Florence, to 1845);
+ *                taking the waters at a spa (to 1914); the hill station in the hot weather (India
+ *                under the Raj); a cruise (from 1900, for most people from 1975); skiing in the Alps
+ *                (from 1905).
+ *   Music        a concert of its day (a symphony, a big band, a rock concert, a festival) and
+ *                the record shop (from 1950).
  *
  * Once a year each. Each has a cost and an effect; a few have a risk.
  */
@@ -39,12 +45,19 @@ export const LEISURE = {
   seaside: { label: 'A day at the seaside', icon: '🏖️', from: 1845, until: 9999, minAge: 4, cost: 40, stats: { happiness: 6, stress: -4 }, text: (y) => (y < 1950 ? 'A railway excursion to the sea: donkeys, a pier, fish and chips in paper.' : 'A day at the beach.') },
   holidayCamp: { label: 'A week at a holiday camp', icon: '🎡', from: 1936, until: 1985, where: (s) => cc(s) === 'GB', minAge: 4, cost: 300, stats: { happiness: 8, stress: -6 }, text: 'A chalet, the Redcoats, knobbly-knees contests and a talent show.' },
   package: { label: 'A package holiday in the sun', icon: '✈️', from: 1955, until: 9999, where: (s) => NORTH_EUROPE.includes(cc(s)), minAge: 2, cost: 900, stats: { happiness: 9, stress: -8 }, text: (y) => (y < 1975 ? 'A fortnight on the Costa Brava: sunburn, sangria, and a plane trip like a film star.' : 'A week of sun, a pool and a paperback.') },
+  grandTour: { label: 'The Grand Tour', icon: '🏛️', from: 1800, until: 1845, minAge: 18, maxAge: 28, cost: 40000, stats: { smarts: 6, happiness: 8 }, text: 'A year abroad with a tutor and a trunk: the salons of Paris, the ruins of Rome, a Florentine painting you could not afford and bought anyway.' },
+  spa: { label: 'Taking the waters at a spa', icon: '♨️', from: 1800, until: 1914, minAge: 30, cost: 2500, stats: { health: 3, stress: -6 }, text: (y, s) => `${['DE', 'AT', 'CZ'].includes(cc(s)) ? 'Baden-Baden' : cc(s) === 'FR' ? 'Vichy' : cc(s) === 'US' ? 'Saratoga Springs' : 'Bath'}: a glass of the foul-tasting water at the pump room, a promenade, and the gossip of the season.` },
+  hillStation: { label: 'The hot weather in the hills', icon: '⛰️', from: 1850, until: 1947, where: (s) => cc(s) === 'IN', minAge: 4, cost: 1500, stats: { health: 3, happiness: 5 }, text: 'Up to Simla for the hot weather: cool air, amateur theatricals, and the Viceroy\'s ball.' },
+  cruise: { label: 'A cruise', icon: '🛳️', from: 1900, until: 9999, minAge: 6, cost: 4000, stats: { happiness: 8, stress: -7 }, text: (y) => (y < 1940 ? 'A first-class passage on a liner: dressing for dinner, deck quoits, and a band every night.' : y < 1975 ? 'A Mediterranean cruise: a cabin with a porthole, and a different port each morning.' : 'A cruise ship the size of a town: a buffet, a show, and a port a day.') },
+  ski: { label: 'Skiing in the mountains', icon: '⛷️', from: 1905, until: 9999, minAge: 8, cost: 2000, stats: { happiness: 8, fitness: 2 }, text: (y) => (y < 1950 ? 'The Alps by sleeper train: wooden skis, a mountain hut, and climbing up before every run down.' : 'A week on the slopes, and après-ski.') , risk: [0.04, 'You came down a slope faster than intended. The leg was in plaster for six weeks.', { health: -8 }] },
+  concert: { label: 'A concert', icon: '🎶', from: 1800, until: 9999, minAge: 10, cost: 60, stats: { happiness: 6 }, text: (y) => (y < 1900 ? 'A symphony concert: the new piece was thought very modern.' : y < 1955 ? 'A big band at the town hall, everyone in their best.' : y < 1990 ? 'A rock concert: you couldn\'t hear for two days afterwards.' : 'A festival field, a wristband, and the band you came for.') },
+  records: { label: 'The record shop', icon: '💿', from: 1950, until: 9999, minAge: 10, cost: 25, stats: { happiness: 4 }, text: (y) => (y < 1985 ? 'An hour in the listening booth, and a single you played until it wore out.' : y < 2005 ? 'A CD in its cracked case, and the sleeve notes read on the bus home.' : 'Vinyl again: a record shop, and a sleeve worth framing.') },
   roadTrip: { label: 'A road trip', icon: '🛣️', from: 1925, until: 9999, where: (s) => ['US', 'CA', 'AU'].includes(cc(s)), minAge: 4, cost: 600, stats: { happiness: 8, stress: -6 }, text: (y) => (y < 1960 ? 'Route 66 in the family car: motor courts and diners.' : 'A road trip: motels, diners and a lot of sky.') },
 };
 
 export function leisureNow(state) {
   const y = yearNow(state);
-  return Object.entries(LEISURE).filter(([, l]) => y >= l.from && y < l.until && (!l.where || l.where(state))).map(([id, l]) => ({ id, ...l }));
+  return Object.entries(LEISURE).filter(([, l]) => y >= l.from && y < l.until && (!l.where || l.where(state)) && !(l.maxAge < state.character.age)).map(([id, l]) => ({ id, ...l }));
 }
 export const leisureCost = (state, l) => Math.round(l.cost * priceLevel(state));
 
@@ -55,7 +68,7 @@ function go(ctx, id) {
   if (state.character.age < l.minAge) return ctx.toast(`Age ${l.minAge}+`, 'warn');
   if (state.yearly[`leisure.${id}`]) return ctx.toast('Once a year', 'warn');
   state.yearly[`leisure.${id}`] = 1;
-  if (l.cost) ctx.spend(leisureCost(state, l), l.label, { allowDebt: false });
+  if (l.cost && !ctx.spend(leisureCost(state, l), l.label, { allowDebt: l.cost <= 100 })) { delete state.yearly[`leisure.${id}`]; return ctx.toast(`It costs ${leisureCost(state, l).toLocaleString()}`, 'warn'); }
   for (const [k, v] of Object.entries(l.stats)) ctx.stat(k, v);
   ctx.log(typeof l.text === 'function' ? l.text(yearNow(state), state) : l.text, l.icon, 'good');
   if (l.risk && rng.chance(l.risk[0])) { for (const [k, v] of Object.entries(l.risk[2] ?? {})) ctx.stat(k, v); ctx.log(l.risk[1], '🚓', 'warn'); }

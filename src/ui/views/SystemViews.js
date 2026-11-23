@@ -4,6 +4,7 @@
  * Rendered as dialogs over the game; the slot list also appears on the
  * New Life screen.
  */
+import { t, LANGUAGES } from '../i18n.js';
 import { esc, button } from '../Components.js';
 import { STATE_VERSION } from '../../core/State.js';
 import { ROUTINE, DECISION_LEVELS } from '../../core/Routine.js';
@@ -48,7 +49,8 @@ export function savesPanel(store, state, { inline = false } = {}) {
 export function settingsPanel(settings, { canUndo = false } = {}) {
   const radio = (value, label) => `<label><input type="radio" name="theme" value="${value}" data-setting="theme"${settings.theme === value ? ' checked' : ''}> ${label}</label>`;
   return dialog('settings', '⚙️ Settings', `
-    <fieldset class="setting"><legend>Theme</legend>${radio('auto', 'Match my device')}${radio('dark', 'Dark arcade')}${radio('light', 'Light')}</fieldset>
+    <fieldset class="setting"><legend>${t('Language')}</legend>${Object.entries(LANGUAGES).map(([id, name]) => `<label><input type="radio" name="lang" value="${id}" data-setting="lang"${(settings.lang ?? 'en') === id ? ' checked' : ''}> ${name}</label>`).join('')}<p class="fine">Menus, tabs, headings and buttons; the story itself is still told in English.</p></fieldset>
+    <fieldset class="setting"><legend>${t('Theme')}</legend>${radio('auto', 'Match my device')}${radio('dark', 'Dark arcade')}${radio('light', 'Light')}</fieldset>
     <fieldset class="setting"><legend>Look</legend><label><input type="radio" name="look" value="modern" data-setting="look"${(settings.look ?? 'modern') === 'modern' ? ' checked' : ''}> Cards and a dock (today's look)</label><label><input type="radio" name="look" value="classic" data-setting="look"${settings.look === 'classic' ? ' checked' : ''}> Classic: compact lists, more on screen</label></fieldset>
     <fieldset class="setting"><legend>Decisions per year</legend>
       ${Object.entries(DECISION_LEVELS).map(([id, d]) => `<label><input type="radio" name="decisions" value="${id}" data-setting="decisions"${(settings.decisions ?? 'focused') === id ? ' checked' : ''}> ${esc(d.label)}</label>`).join('')}

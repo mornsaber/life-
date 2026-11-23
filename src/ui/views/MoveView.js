@@ -3,6 +3,7 @@
  * pay, state income tax, laws, disaster risk, which of your licenses would
  * need transferring, and what happens to your job and pension.
  */
+import { lifeMap } from './MapView.js';
 import { servicePassports, PASSPORT_LABEL, ISSUERS, PASSPORT_ICON } from '../../modules/world/Passports.js';
 import { esc, money, button, card, chip, disclosure } from '../Components.js';
 import { REGIONS, MOVE_COST, regionOf, residencyYears } from '../../modules/life/Regions.js';
@@ -76,7 +77,7 @@ export function moveView(state, ui = {}) {
   const quick = `<div class="btn-row">${cheaper.map((r) => button(`${r.icon} ${r.name}`, 'ui.set', { arg: `moveRegion=${r.id}`, variant: 'tiny ghost', hint: 'Good value' })).join('')}</div>`;
   const body = `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>
     <ul class="move-list">${row(here)}${pick ? row(pick) : ''}</ul>${picker}${pick ? '' : `<p class="fine">Good value for what you'd earn:</p>${quick}`}`;
-  return regimeCard(state) + passportCard(state) + card(`Move within ${esc(COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the country')}`, body, { icon: '🗺️', accent: 'cyan', summary: pick ? `vs ${esc(pick.name)}` : '' }) + cityCard(state) + expatLifeCard(state) + worldCard(state, ui) + gapYearCard(state);
+  return regimeCard(state) + passportCard(state) + card(`Move within ${esc(COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the country')}`, body, { icon: '🗺️', accent: 'cyan', summary: pick ? `vs ${esc(pick.name)}` : '' }) + cityCard(state) + lifeMap(state) + expatLifeCard(state) + worldCard(state, ui) + gapYearCard(state);
 }
 
 

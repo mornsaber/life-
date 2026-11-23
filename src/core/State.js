@@ -600,7 +600,7 @@ export function vehicleEquity(state) {
 export function businessEquity(state) {
   const bs = [state.business?.current, ...(state.business?.holdings ?? [])].filter(Boolean);
   const stakes = bs.reduce((s, b) => s + Math.max(0, (b.valuation ?? 0) * b.ownerPct), 0);
-  return Math.round(stakes + Math.max(0, state.business?.conglomerate?.treasury ?? 0) + Math.max(0, state.club?.value ?? 0) + (state.society?.art ?? []).reduce((t, a) => t + (a.value ?? 0), 0));
+  return Math.round(stakes + Math.max(0, state.business?.conglomerate?.treasury ?? 0) + Math.max(0, state.club?.value ?? 0) + (state.society?.art ?? []).reduce((t, a) => t + (a.value ?? 0), 0) + (state.estate?.villas ?? []).reduce((t, v) => t + (v.value ?? 0), 0) + (state.estate?.collection ?? []).reduce((t, x) => t + (x.value ?? 0), 0));
 }
 
 /** Brokerage holdings, speculative positions and IRAs. */

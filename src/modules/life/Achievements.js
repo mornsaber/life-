@@ -122,6 +122,23 @@ export const CHALLENGES = {
     won: (s) => s.character.birthYear <= 1900 && currentYear(s) >= 1950, lost: () => null },
   americanDream: { name: 'The American Dream', icon: '🗽', desc: 'Born poor in Naples in 1890: by 50, live in America in a home or business of your own.', scenario: { countryId: 'IT', startYear: 1890, regionId: 'naples', poor: true, worldSeed: 1890 },
     won: (s) => (s.character.countryId === 'US') && ((s.housing?.properties ?? []).some((p) => p.use === 'primary') || Boolean(s.business?.current)), lost: (s) => (s.character.age > 50 ? 'Turned 51 without it' : null) },
+  // Historical starts: a moment in history, and a goal to carry through it.
+  hungryYears: { name: 'The Hungry Years', icon: '🥔', desc: 'Born poor in Skibbereen in 1830: live through the Great Famine and see 1860.', scenario: { countryId: 'IE', startYear: 1830, regionId: 'skibbereen', poor: true, worldSeed: 1845 },
+    won: (s) => s.character.birthYear <= 1840 && currentYear(s) >= 1860, lost: () => null },
+  goldRush: { name: 'Seeing the Elephant', icon: '⛏️', desc: 'Born in New York in 1826: get to California in the gold rush and be worth $250,000 (today\'s money) by 1870.', scenario: { countryId: 'US', startYear: 1826, regionId: 'nyc', worldSeed: 1849 },
+    won: (s) => s.character.birthYear <= 1840 && ['sf', 'losangeles', 'sandiego'].includes(s.character.regionId) && netWorth(s) / Math.max(0.01, priceLevel(s)) >= 250000, lost: (s) => (currentYear(s) > 1870 ? 'The rush was long over' : null) },
+  queenstown: { name: 'Last Stop, Queenstown', icon: '🚢', desc: 'Born poor in Cork in 1890, the year the liners called at Queenstown: make a life in America by 30.', scenario: { countryId: 'IE', startYear: 1890, regionId: 'cork', poor: true, worldSeed: 1912 },
+    won: (s) => s.character.birthYear <= 1900 && s.character.countryId === 'US' && s.character.age <= 30, lost: (s) => (s.character.age > 30 ? 'Thirty, and still this side of the Atlantic' : null) },
+  petrograd: { name: 'Red Petrograd', icon: '🚩', desc: 'Born in St Petersburg in 1895: live through the Revolution, the civil war, the purges and the siege, and see 1950.', scenario: { countryId: 'RU', startYear: 1895, regionId: 'stpetersburg', worldSeed: 1917 },
+    won: (s) => s.character.birthYear <= 1905 && currentYear(s) >= 1950, lost: () => null },
+  dustBowl: { name: 'Next Year Country', icon: '🌪️', desc: 'Born on the Texas Panhandle in 1900: still own a farm there when the dust settles in 1940.', scenario: { countryId: 'US', startYear: 1900, regionId: 'amarillo', worldSeed: 1931 },
+    won: (s) => s.character.birthYear <= 1915 && currentYear(s) >= 1940 && (s.farm?.acres ?? 0) > 0, lost: (s) => (currentYear(s) > 1945 ? 'The farm is gone' : null) },
+  partition: { name: 'The Line Through Punjab', icon: '🚂', desc: 'Born in Lahore in 1925: live through Partition and reach 60.', scenario: { countryId: 'IN', startYear: 1925, regionId: 'lahore', worldSeed: 1947 },
+    won: (s) => s.character.birthYear <= 1940 && s.character.age >= 60, lost: () => null },
+  wall: { name: 'Both Sides of the Wall', icon: '🧱', desc: 'Born in Berlin in 1940: see the Wall go up, and live to see it come down.', scenario: { countryId: 'DE', startYear: 1940, regionId: 'berlin', worldSeed: 1961 },
+    won: (s) => s.character.birthYear <= 1955 && currentYear(s) >= 1990, lost: () => null },
+  miracle: { name: 'Miracle on the Han', icon: '🏙️', desc: 'Born poor in Seoul in 1945: be a millionaire (today\'s money) by 2000.', scenario: { countryId: 'KR', startYear: 1945, regionId: 'seoul', poor: true, worldSeed: 1953 },
+    won: (s) => s.character.birthYear <= 1960 && netWorth(s) / Math.max(0.01, priceLevel(s)) >= 1e6, lost: (s) => (currentYear(s) > 2000 ? 'The century turned' : null) },
 };
 
 /* ------------------------------------------------------------------ */
