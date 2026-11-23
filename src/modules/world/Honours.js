@@ -16,6 +16,7 @@
  *
  * state.character.style = { prefix: 'Sir' | 'Dame' | 'Lord' | 'Baroness' | ..., peerage: 'Baron Smith, of Leeds' }
  */
+import { withTitle } from './Titles.js';
 import { addHonor, netWorth, hasFelony } from '../../core/State.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -464,9 +465,11 @@ export function styledName(state) {
   // The ordained are addressed by their orders ("Fr.", "The Revd", "Rabbi"); a knight who is a priest keeps "Sir" off.
   const clerical = clericalPrefix(state);
   if (clerical && (!s?.prefix || /^(Sir|Dame)$/.test(s.prefix))) return withOfficialStyle(state, `${clerical} ${c.firstName} ${c.lastName}`);
-  const base = !s?.prefix ? `${c.firstName} ${c.lastName}`
+  const knight = /^(Sir|Dame)$/.test(s?.prefix ?? '');
+  const base = !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
-      : `${s.prefix} ${c.firstName} ${c.lastName}`;
+      : knight ? withTitle(state, `${s.prefix} ${c.firstName} ${c.lastName}`, { knight: true })
+        : `${s.prefix} ${c.firstName} ${c.lastName}`;
   // Styles that come with office: the Rt Hon., the Hon., His/Her Excellency (Styles.js).
   return withOfficialStyle(state, base);
 }

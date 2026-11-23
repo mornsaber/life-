@@ -351,7 +351,8 @@ const tests = {
     assert.equal(state.royal, null);
     assert.ok(state.character.formerRoyal);
     assert.ok(!state.character.style?.prefix);
-    assert.equal(styledName(state), `${state.character.firstName} ${state.character.lastName}`);
+    // No royal style left; a serving officer still goes by rank (world/Titles.js).
+    assert.match(styledName(state), new RegExp(`^(${state.military.service ? '[A-Z][\\w -]+ ' : ''})${state.character.firstName} ${state.character.lastName}$`));
     year(engine, state, 2);
     assert.equal(state.royal, null, 'stays renounced');
     const m = life({ difficulty: 'royal', royalLevel: 'heir' }, 22);

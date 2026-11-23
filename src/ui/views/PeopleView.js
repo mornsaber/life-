@@ -2,6 +2,8 @@
  * People tab: family, partner, children, friends and exes, dating, and the
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
+import { professionalTitle, addressOf } from '../../modules/world/Titles.js';
+import { styledName } from '../../modules/world/Honours.js';
 import { lettersOf } from '../../modules/people/Letters.js';
 import { militaryInsignia } from '../Insignia.js';
 import { rivalsCard, familyCard } from './CirclesView.js';
@@ -557,8 +559,13 @@ function lettersCard(state) {
 function nameCard(state) {
   const c = state.character;
   if (c.age < 18 && !c.formerNames?.length) return '';
+  const title = professionalTitle(state);
+  const spoken = addressOf(state);
   return card('Your Name', `${kv([
     ['Name', esc(`${c.firstName} ${c.lastName}`)],
+    styledName(state) !== `${c.firstName} ${c.lastName}` ? ['Written', esc(styledName(state))] : null,
+    spoken ? ['Spoken to as', esc(spoken)] : null,
+    title?.why ? ['Title from', esc(title.why)] : null,
     c.birthName ? ['Born', esc(`${c.birthName.firstName} ${c.birthName.lastName}`)] : null,
     c.formerNames?.length ? ['Former names', esc(c.formerNames.join(' · '))] : null,
   ].filter(Boolean))}
