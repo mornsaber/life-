@@ -415,7 +415,8 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     if (age < lo || age > top) return { ok: false, reason: `Officers: age ${lo}–${top}` };
     // Before 1900 a commission came by nomination or patronage: no degree and no selection board.
     const noDegrees = degreesOptional(state);
-    if (!noDegrees && !meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
+    const need = officerEducation(state, abroad);
+    if (need.level && !meetsEducation(state, { level: need.level })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : `Officers need ${need.label}` };
     // Without a degree, a school-leaver cadet has to get through the officer selection board.
     if (!noDegrees && maxOfficerAge <= 39 && !meetsEducation(state, { level: 'bachelor' })) {
       if (age > CADET_MAX_AGE) return { ok: false, reason: `School-leaver officer cadets: age ${lo}–${CADET_MAX_AGE} (older candidates need a degree)` };
@@ -437,6 +438,22 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
 /** The oldest school-leaver officer cadet (graduates are taken older). */
 export const CADET_MAX_AGE = 25;
 /** An officer candidate without a degree: selection board, then a year at the academy. */
+/**
+ * What it took to become an officer, by year. America: no degree before 1900 (nomination,
+ * patronage, a battlefield commission); then schooling, and only from about 1960 a bachelor's as
+ * the rule (OCS, from 1941, took men from the ranks with a high-school education). Abroad: a
+ * school-leaver cadet through selection. Returns { level: null|'highschool'|'bachelor', label }.
+ */
+export function officerEducation(state, abroad = isAbroad(state)) {
+  const y = yearNow(state);
+  if (degreesOptional(state)) return { level: null, label: 'no degree needed: nomination or patronage' };
+  if (abroad) return diplomaExpected(state) ? { level: 'highschool', label: 'school-leaving qualifications' } : { level: null, label: 'a good character and a nomination' };
+  if (y >= 1960) return { level: 'bachelor', label: "a bachelor's degree" };
+  return y >= 1945 ? { level: 'highschool', label: 'a high-school diploma' } : { level: null, label: 'a good record and the examination' };
+}
+/** From the ranks: before Officer Candidate School (1941), an examination for a commission. */
+export const ocsName = (state) => (yearNow(state) >= 1941 || isAbroad(state) ? 'OCS' : 'a commission from the ranks');
+
 export const needsOfficerAcademy = (state, track, direct) => track === 'officer' && direct == null && !degreesOptional(state) && !meetsEducation(state, { level: 'bachelor' });
 /** Odds of passing the officer selection board (two days of tests, interviews and command tasks). */
 export const officerBoardOdds = (state) => clamp(0.35 + (state.stats.smarts - 60) / 100 + (state.stats.fitness - 50) / 200, 0.15, 0.8);

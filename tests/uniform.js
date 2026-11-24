@@ -9,7 +9,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { rankOf, branchOf, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
+import { rankOf, branchOf, enlistmentEligibility, officerEducation, ocsName } from '../src/modules/military/MilitaryEngine.js';
 import { womenMayServe } from '../src/modules/military/WomensServices.js';
 import { uniformSvg, uniformCard, insigniaHistoryCard, qualBadges } from '../src/ui/Uniform.js';
 import { militaryInsignia, jobInsignia } from '../src/ui/Insignia.js';
@@ -43,6 +43,16 @@ const tests = {
       assert.equal(rankOf({ nation: 'GB', branch: 'army', track: 'officer', grade: 2, female: true }).title, 'Junior Commander');
     });
     at(2000, () => assert.equal(rankOf({ nation: 'GB', branch: 'army', track: 'officer', grade: 2, female: true }).title, 'Captain'));
+  },
+  'becoming an officer asks what its day asked: no degree in the 1800s, a bachelor\'s from 1960'() {
+    const at1850 = life('US', 1850, 22, 'male');
+    assert.equal(officerEducation(at1850).level, null);
+    assert.equal(ocsName(at1850), 'a commission from the ranks');
+    assert.doesNotMatch(enlistmentEligibility(at1850, 'army', 'officer', 'active').reason ?? '', /bachelor/);
+    assert.equal(officerEducation(life('US', 1943, 22, 'male')).level, null);
+    assert.equal(ocsName(life('US', 1943, 22, 'male')), 'OCS');
+    assert.equal(officerEducation(life('US', 1950, 22, 'male')).level, 'highschool');
+    assert.equal(officerEducation(life('US', 1990, 22, 'male')).level, 'bachelor');
   },
   'period titles wear their own badges'() {
     at(1850, () => assert.equal(militaryInsignia('E-1', null, { branch: 'navy', title: 'Landsman' }), ''));

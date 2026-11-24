@@ -25,7 +25,7 @@ import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRac
 import { unitChart } from '../../modules/org/OrgChart.js';
 import { meetsEducation } from '../../core/State.js';
 import {
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, FLAG_LOOKS, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS, retirementYearsFor,
+  BRANCHES, SPECIALTIES, officerEducation, ocsName, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, FLAG_LOOKS, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS, retirementYearsFor,
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
 import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT, retirementOutlook } from '../../modules/military/Separation.js';
@@ -89,7 +89,7 @@ function recruitingOffice(state) {
   }).join('');
   const how = abroad
     ? `Other ranks OR-1 → OR-9; officers OF-1 → OF-10 — most forces take officer cadets straight from school through selection and the military academy. Each service has its own trades; professionals (doctors, lawyers, nurses, engineers, clergy) can join as specialist officers. <b>Regular</b> service is your full-time job. <b>Reservists</b> train part-time alongside a civilian career, are paid for the days they serve, and can be mobilised; the law protects their civilian job while they're away. Pensions follow ${esc(countryOf(state).name)}'s armed-forces scheme.`
-    : 'Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor\'s required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans\' preference on civil-service exams, and a pension at 20 years.';
+    : `Enlisted E-1 → E-9; officers O-1 → O-10 (${officerEducation(state, false).label}).` + ' Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans\' preference on civil-service exams, and a pension at 20 years.';
   return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">${how}</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? flagImg(countryOf(state).id) : '🇺🇸', accent: 'green' });
 }
 
@@ -312,7 +312,8 @@ export function militaryView(state) {
   const outlook = promotionOutlook(svc);
   // The ladder in the titles of the day (period ranks, a women's corps).
   const titles = branch[svc.track].map((_, i) => rankOf({ ...svc, grade: i, acting: false, fiveStar: false }).title);
-  const hasBachelor = meetsEducation(state, { level: 'bachelor' });
+  const ocsNeed = officerEducation(state, Boolean(svc.nation));
+  const canOcs = !ocsNeed.level || meetsEducation(state, { level: ocsNeed.level });
   return `${kingmakerCard(state)}${card(branch.name, `
     <div class="job-head">
       ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null, { branch: svc.branch, title: rank.title }) })}
@@ -343,7 +344,7 @@ export function militaryView(state) {
       ${button('🏃 Extra PT', 'military.pt', { hint: '+Fitness, +Eval' })}
       ${button('🫡 Volunteer for Duty', 'military.extraDuty', { hint: 'Once/yr, +Eval' })}
       ${button(svc.deploymentRequested ? '✋ Withdraw Request' : '✈️ Request Deployment', 'military.requestDeployment', { hint: svc.component === 'reserve' ? 'Volunteer for mobilization' : 'Higher deploy odds' })}
-      ${svc.track === 'enlisted' ? button('🎓 Apply to OCS', 'military.applyOCS', { hint: hasBachelor ? 'Become an officer' : "Needs bachelor's", disabled: !hasBachelor }) : ''}
+      ${svc.track === 'enlisted' ? button(ocsName(state) === 'OCS' ? '🎓 Apply to OCS' : '🎓 Seek a commission', 'military.applyOCS', { hint: canOcs ? 'Become an officer' : `Needs ${ocsNeed.label}`, disabled: !canOcs }) : ''}
       ${button(svc.component === 'active' ? '🏡 Transfer to Reserves' : '🪖 Go Active Duty', 'military.switchComponent', { hint: svc.yearsOfService < 2 ? 'After 2 yrs' : 'Resets contract', disabled: svc.yearsOfService < 2 })}
       ${((g) => button('🎓 Transfer GI Bill', 'military.transferGiBill', { hint: g.ok ? 'To your children · +4 yrs' : g.reason, disabled: !g.ok }))(giBillTransferEligibility(state))}
       ${button('🎖️ Retire', 'military.retire', { hint: `${retirementYearsFor(svc)}+ yrs · ×${pensionMultiplier(state).toFixed(2)} pension`, disabled: svc.yearsOfService < retirementYearsFor(svc) })}

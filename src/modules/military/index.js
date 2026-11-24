@@ -10,12 +10,13 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
-  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge, reserveName } from './MilitaryEngine.js';
+  enlistmentEligibility, enlist, discharge, commission, officerEducation, ocsName, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge, reserveName } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds, noteRank } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
+import { meetsEducation } from '../../core/State.js';
 import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, directCredit, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS, DIRECT_MAX_AGE } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService, stopLoss } from './Separation.js';
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
@@ -253,13 +254,14 @@ export const MilitaryModule = {
       if (!svc) return;
       if (svc.track === 'officer') return ctx.toast('Already an officer.', 'warn');
       if (svc.assignment || svc.commissioning || svc.topPost) return ctx.toast('Not during a special assignment.', 'warn');
-      if (!state.education.degrees.some((d) => ['bachelor', 'mba', 'jd', 'md'].includes(d.type))) return ctx.toast("OCS requires a bachelor's degree.", 'warn');
+      const need = officerEducation(state, Boolean(svc.nation));
+      if (need.level && !meetsEducation(state, { level: need.level })) return ctx.toast(`${ocsName(state) === 'OCS' ? 'OCS' : 'A commission from the ranks'} needs ${need.label}.`, 'warn');
       if (yearlyCount(state, 'military.ocs')) return ctx.toast('You already applied this year.', 'warn');
       bumpYearly(state, 'military.ocs');
       const chance = clamp(0.25 + (svc.eval - 50) / 80 + (state.stats.smarts - 50) / 200, 0.05, 0.9);
       if (rng.chance(chance)) commission(ctx, svc);
       else {
-        ctx.log('The OCS selection board did not pick up your packet this year.', '📭', 'warn');
+        ctx.log(ocsName(state) === 'OCS' ? 'The OCS selection board did not pick up your packet this year.' : 'Your colonel did not recommend you for a commission this year.', '📭', 'warn');
         ctx.toast('OCS packet not selected', 'bad');
       }
     },
