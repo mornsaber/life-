@@ -100,7 +100,7 @@ import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
-import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText, hasTech } from '../modules/world/Eras.js';
+import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText, periodTitle, hasTech } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
 import { RELATION_LABEL } from '../modules/people/People.js';
 import { avatarHtml } from './Avatar.js';
@@ -504,7 +504,7 @@ export class Renderer {
   appBar(state) {
     const c = state.character;
     const year = c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age}` : '';
-    const role = this.statusLine(state).replace(/<\/li><li>/g, ' · ').replace(/<\/?li>/g, '').split(' · ')[0];
+    const role = periodText(periodTitle(this.statusLine(state).replace(/<\/li><li>/g, ' · ').replace(/<\/?li>/g, '').split(' · ')[0]));
     return `<header class="appbar">
       <button class="appbar-who" data-action="ui.home" aria-label="Back to your story">${avatarHtml(state)}<span class="appbar-text"><b>${esc(styledName(state))}</b><small>Age ${c.age}${year} · ${role}</small></span></button>
       <span class="appbar-cash ${state.finances.cash < 0 ? 'neg' : 'pos'}">${this.hereFlag(state)}${compactMoney(state.finances.cash)}</span>

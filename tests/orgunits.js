@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { periodText, setEraYear } from '../src/modules/world/Eras.js';
 import { cityName } from '../src/modules/career/Employers.js';
+import { ORG_TYPE_FROM } from '../src/modules/org/Organizations.js';
 
 const at = (year, text) => { setEraYear(year); try { return periodText(text); } finally { setEraYear(null); } };
 
@@ -40,6 +41,14 @@ const tests = {
     assert.equal(at(1930, 'Seoul Water Department'), 'Keijō Water Department');
     assert.equal(at(1925, 'Yangon Central Library'), 'Rangoon Central Library');
     assert.equal(at(2000, 'Chennai Public Library'), 'Chennai Public Library');
+  },
+  'renames reach rendered HTML, where & is escaped'() {
+    assert.equal(at(1853, '<b>Billing &amp; Revenue Cycle</b>'), '<b>Counting House</b>');
+    assert.equal(at(1853, '<i>Answers to</i> The private-equity owners'), '<i>Answers to</i> The proprietors');
+    assert.equal(at(1853, 'Smith &amp; Co. — Finance &amp; Controllership'), 'Smith &amp; Co. — Counting House');
+  },
+  'no employer before its kind existed'() {
+    assert.ok(ORG_TYPE_FROM.ambulanceCompany >= 1950 && ORG_TYPE_FROM.techCompany >= 1950);
   },
   'city services are named for the city, not the metro area'() {
     assert.equal(cityName('sf'), 'San Francisco');

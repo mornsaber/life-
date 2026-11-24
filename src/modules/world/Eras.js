@@ -1433,6 +1433,12 @@ const RENAMES = [
   [/\bHuman Resources\b/g, 1975, (y) => (y >= 1915 ? 'Personnel Department' : 'Staff Office')],
   [/\bInformation Technology\b/g, 1980, (y) => (y >= 1955 ? 'Data Processing' : y >= 1900 ? 'Tabulating Department' : 'Records Office')],
   [/\b(FBI )?Cyber Division\b/g, 1995, (_y, ...m) => `${m[0] ?? ''}Technical Services Division`],
+  [/\bTechnology & Cybersecurity\b/g, 1980, (y) => (y >= 1955 ? 'Data Processing' : y >= 1900 ? 'Tabulating Department' : 'Clerks\' Office')],
+  [/\bChief Information Security Officer\b/g, 1995, (y) => (y >= 1955 ? 'Data Security Manager' : 'Chief Clerk')],
+  [/\bChief Financial Officer\b/g, 1970, (y) => (y >= 1900 ? 'Treasurer' : 'Chief Cashier')],
+  [/\bChief Executive Officer\b/g, 1975, (y) => (y >= 1900 ? 'Managing Director' : 'Senior Partner')],
+  [/\bForensic Accountant\b/g, 1980, () => 'Investigating Accountant'],
+  [/\bInvestment Banking\b/g, 1930, () => 'Merchant Banking'],
   [/\bCybersecurity Directorate\b/g, 1995, (y) => (y >= 1952 ? 'Communications Security Directorate' : 'Cipher Security Section')],
   [/\bCybersecurity\b/g, 1995, (y) => (y >= 1952 ? 'Communications Security' : 'Cipher Security')],
   [/\bCompliance Section\b/g, 1985, () => 'Inspection Branch'],
@@ -1544,6 +1550,12 @@ const RENAMES = [
   [/\bDNA Unit\b/g, 1986, (y) => (y >= 1900 ? 'Serology Section' : 'Identification Section')],
   [/\b(Area|Approach) Control Center\b/g, 1936, () => 'Airfield'],
   [/\bSocial Security & VA Claims\b/g, 1946, (y) => (y >= 1935 ? 'Social Security & Veterans Claims' : 'Pension Claims')],
+  // A company's top and its departments before management-speak (the org chart).
+  [/\b([Tt])he private-equity owners\b/g, 1980, (_y, t) => `${t}he proprietors`],
+  [/\bChief Operating Officer\b/g, 1975, (y) => (y >= 1900 ? 'General Manager' : 'Manager')],
+  [/\bCommunications Center\b/g, 1968, (y) => (y >= 1920 ? 'Telephone Room' : 'Despatch Office')],
+  [/\bCommunications Manager\b/g, 1968, () => 'Chief Despatcher'],
+  [/\bRevenue Cycle Director\b/g, 1990, () => 'Chief Clerk'],
   // Uniformed services under their names of the day.
   [/AeroGuard ARFF Contractors/g, 1945, () => 'Underwriters\' Fire Patrol'],
   [/\bARFF Crash Truck Driver\/Operator\b/g, 1965, () => 'Crash Tender Driver'], [/\bARFF\b/g, 1965, () => 'Crash Crew'],
@@ -1626,11 +1638,18 @@ export function usCabinetTitle(id, y) {
   };
   return T[id] === undefined ? null : T[id];
 }
+const AMP = '\u0001';
+const t0 = (text) => text.includes('&amp;');
+/** Each rule, plus a version that also matches an escaped ampersand (see periodText). */
+let RENAMES_HTML_CACHE = null;
+const renamesHtml = () => (RENAMES_HTML_CACHE ??= RENAMES.map(([re, from, to]) => [re, from, to, re.source.includes('&') ? new RegExp(re.source.replace(/&/g, '(?:&|\u0001)'), re.flags) : null]));
 export function periodText(text) {
   if (ERA_YEAR >= PRESENT || typeof text !== 'string') return text;
-  let t = text;
-  for (const [re, from, to] of RENAMES) if (ERA_YEAR < from) t = t.replace(re, (_m, ...g) => to(ERA_YEAR, ...g));
-  return t;
+  // Rendered HTML escapes "&": match "Billing &amp; Revenue Cycle" as "Billing & Revenue Cycle".
+  const html = t0(text);
+  let t = html ? text.replace(/&amp;/g, AMP) : text;
+  for (const [re, from, to, alt] of renamesHtml()) if (ERA_YEAR < from) t = t.replace(html && alt ? alt : re, (_m, ...g) => to(ERA_YEAR, ...g));
+  return html ? t.replace(/\u0001/g, '&amp;') : t;
 }
 
 /** When a credential existed (additions: radio amateurs, enrolled agents, OSHA cards, drone pilots). */

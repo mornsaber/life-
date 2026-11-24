@@ -76,15 +76,29 @@ const stateOfRegion = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).state
 const nameRng = (typeId, regionId) => new Random([...`${typeId}:${regionId}`].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7));
 const cityOf = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
 
+/**
+ * When each kind of employer first existed: no private ambulance firm or private-equity owner for an
+ * accountant in 1853, no tech company before computers. Types not listed are old enough for any year.
+ */
+export const ORG_TYPE_FROM = {
+  techCompany: 1955, gameStudio: 1975, defenseContractor: 1940, militaryContractor: 1990, ambulanceCompany: 1960, homeCareAgency: 1965,
+  childcareCenter: 1950, fitnessChain: 1960, logisticsCompany: 1950, adAgency: 1870, recordLabel: 1895, productionStudio: 1910, airline: 1919,
+  airportAuthority: 1930, cruiseLine: 1900, sportsTeam: 1870, nationalLaboratory: 1943, researchInstitute: 1880, communityCollegeDistrict: 1920,
+  intelCommunity: 1947, cia: 1947, nsa: 1952, dhs: 2003, usdot: 1967, regulators: 1915, benefitsAgencies: 1935, utility: 1880, energyCompany: 1860,
+  weatherService: 1870, statePublicSafety: 1905, stateSocialServices: 1960, hotelGroup: 1900, retailChain: 1870, transitAuthority: 1860,
+};
+
 /** Organization types that employ this profession, matching its sector when possible. */
-function candidateTypes(profession, abroad = false) {
+function candidateTypes(profession, abroad = false, year = 9999) {
   // A type (or the department that would employ you) that exists only abroad, or only in the US.
   const fits = (id) => {
     const t = orgType(id);
     const d = t?.departments.find((x) => x.occupations.includes(profession.id));
     return abroad ? !d?.usOnly : !t?.abroadOnly && !d?.abroadOnly;
   };
-  const all = orgTypesFor(profession.id).filter(fits);
+  const fitting = orgTypesFor(profession.id).filter(fits);
+  const dated = fitting.filter((id) => !(ORG_TYPE_FROM[id] > year));
+  const all = dated.length ? dated : fitting;
   // Abroad, emergency services are bodies of their own, not city departments.
   if (abroad && all.includes('emergencyService')) return ['emergencyService'];
   const same = all.filter((id) => orgType(id)?.sector === profession.sector);
@@ -123,7 +137,7 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
       && Object.values(o.departments).some((d) => !d.branch && orgType(o.typeId)?.departments.find((x) => x.id === d.id)?.occupations.includes(profession.id)));
     if (local.length && rng.chance(0.25)) return rng.pick(local);
   }
-  const types = candidateTypes(profession, (state.character?.countryId ?? 'US') !== 'US');
+  const types = candidateTypes(profession, (state.character?.countryId ?? 'US') !== 'US', eraYear(state) ?? 9999);
   // Prefer an organization type that already exists here (one city government, not three).
   const stateId = stateOfRegion(regionId);
   // A local unit of a national or state service belongs to that service.
