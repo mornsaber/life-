@@ -235,7 +235,7 @@ export function noteRank(state, svc) {
   const title = rankOf(svc).title.replace(/^Acting /, '');
   const ranks = (svc.ranks ??= []);
   if (ranks.at(-1)?.title === title) return;
-  ranks.push({ title, age: state.character.age });
+  ranks.push({ title, age: state.character.age, code: rankOf(svc).code, branch: svc.branch, ...(svc.nation ? { nation: svc.nation } : {}) });
   if (ranks.length > 14) ranks.splice(1, ranks.length - 14);
 }
 

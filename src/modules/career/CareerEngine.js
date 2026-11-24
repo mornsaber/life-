@@ -345,7 +345,7 @@ export function logRung(state, job, kind) {
   const title = job.titleRaw ?? job.title;
   const rungs = (job.rungs ??= []);
   if (rungs.at(-1)?.title === title) return;
-  rungs.push({ title, age: state.character.age, kind });
+  rungs.push({ title, age: state.character.age, kind, levelId: job.levelId });
   if (rungs.length > 12) rungs.splice(1, rungs.length - 12);
 }
 

@@ -5,6 +5,7 @@
  */
 import { resumeView } from './views/ResumeView.js';
 import { titlesCard, titleMarketCard, walletCard } from './views/TitlesView.js';
+import { uniformCard, insigniaHistoryCard } from './Uniform.js';
 import { warHere } from '../modules/world/War.js';
 import { t as tr } from './i18n.js';
 import { epilogueOf } from '../modules/people/Epilogue.js';
@@ -347,7 +348,7 @@ export const VIEWS = {
     // Privy councils and executive councils (world/PrivyCouncil.js): for life, or while you serve.
     const councils = (state.privyCouncil ?? []).map((m) => `<li>📜 <b>${esc(m.name.replace(/^./, (c) => c.toUpperCase()))}</b>${m.letters ? ` (${esc(m.letters)})` : ''} <small class="muted">since ${m.since}${m.until ? `, until ${m.until}` : ', for life'} · ${esc(m.style ?? '')}</small></li>`).join('');
     const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul><p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
-    return `${titlesCard(state)}${titleMarketCard(state)}${walletCard(state)}${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    return `${titlesCard(state)}${titleMarketCard(state)}${walletCard(state)}${uniformCard(state)}${insigniaHistoryCard(state)}${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 

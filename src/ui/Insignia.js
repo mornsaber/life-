@@ -927,6 +927,9 @@ export function jobInsignia(job, profession, country = 'US') {
     // A police corporal wears two chevrons even where the army's corporal pattern draws none.
     return draw(rank, profession.country ?? country) || (rank === 'cpl' ? chevrons(2, 0, '', SILVER) : null);
   }
+  // Badges of their day (civilian services changed theirs too).
+  const old = periodCivilBadge(key, id, country);
+  if (old !== undefined) return old;
   if (POLICE_LIKE.includes(key) && country === 'GB') return GB_POLICE[id]?.() ?? null;
   if (POLICE_LIKE.includes(key) && ['DE', 'AT'].includes(country)) return DE_POLICE[id]?.() ?? null;
   // Brazil's Civil Police (the detective rungs) wear no military rank; India's inspectors wear stars.
@@ -943,6 +946,39 @@ export function jobInsignia(job, profession, country = 'US') {
   if (FIRE_LIKE.includes(key)) return fireInsignia(id, country);
   if (EMS_LIKE.includes(key)) return draw(emsRank(id), country) || null;
   return null;
+}
+
+/* --- civilian ranks of their day ----------------------------------- */
+/** An American officer's breast shield before collar insignia (to about 1900): gold, with his rank's bars on it. */
+const officerShield = (n = 1, color = GOLD) => svg(30, `<path d="M15 3 L26 7 V17 Q26 27 15 32 Q4 27 4 17 V7 Z" fill="${color}" stroke="#7a5a10" stroke-width=".8"/>${Array.from({ length: n }, (_, i) => `<rect x="${15 - (n * 4 - 1.5) + i * 8}" y="12" width="5" height="12" rx="1" fill="#fff8e0"/>`).join('')}`, 36);
+/** British police officers' cuff braid before shoulder pips (to about 1930): silver rings. */
+const cuffBraid = (n) => svg(36, Array.from({ length: n }, (_, i) => `<rect x="3" y="${10 + i * 6}" width="30" height="3" rx="1" fill="${SILVER}"/>`).join(''));
+/** A fireman's rank before bugles (to about 1870, the volunteer companies): a foreman's speaking-trumpet badge. */
+const BRITISH_POLICE = ['GB', 'IE', 'AU', 'NZ'];
+function periodCivilBadge(key, id, country) {
+  const y = eraYear();
+  if (y >= PRESENT) return undefined;
+  const us = !['GB', 'IE', 'AU', 'NZ', 'DE', 'AT', 'FR', 'IT', 'ES', 'IN', 'BR', 'JP', 'CN', 'KR', 'RU'].includes(country);
+  if (POLICE_LIKE.includes(key)) {
+    // America before about 1900: sergeants wore chevrons; officers a gold shield on the breast.
+    if (us && y < 1900) {
+      const r = policeRank(id, key);
+      if (!r || ['cpl', 'sgt', 'ssgt'].includes(r)) return undefined;
+      return officerShield({ lt: 1, capt: 2, major: 3 }[r] ?? 3);
+    }
+    // British police before about 1930: inspectors and above wore braid on the cuff, not pips.
+    if (BRITISH_POLICE.includes(country) && y < 1930) {
+      const n = { lieutenant: 1, detLieutenant: 1, captain: 2, detCaptain: 2, deputyChief: 3, major: 3, chief_cmd1: 3, superintendent_cmd1: 3 }[id] ?? (/^(chief|superintendent)/.test(id) ? 4 : 0);
+      return n ? cuffBraid(n) : undefined;
+    }
+  }
+  if (FIRE_LIKE.includes(key) && us && y < 1870) {
+    // The volunteer companies: the foreman carried a speaking trumpet; the chief engineer a gilt one.
+    const r = FIRE_AS_RANK[id];
+    if (!r) return undefined;
+    return ['sgt', 'lt', 'capt'].includes(r) ? FIRE_DRAW.f1() : FIRE_DRAW.f2();
+  }
+  return undefined;
 }
 
 /** Volunteer emergency services: the ranks that wear insignia (by rank index), on the country's pattern. */
