@@ -226,6 +226,16 @@ export function rankTitles(svc) {
   return branchOf(svc)[svc.track];
 }
 
+/** Ranks held in this service, for the CV: [{ title, age }], noted each year and at discharge. */
+export function noteRank(state, svc) {
+  if (!svc) return;
+  const title = rankOf(svc).title.replace(/^Acting /, '');
+  const ranks = (svc.ranks ??= []);
+  if (ranks.at(-1)?.title === title) return;
+  ranks.push({ title, age: state.character.age });
+  if (ranks.length > 14) ranks.splice(1, ranks.length - 14);
+}
+
 export function rankOf(svc) {
   const titles = rankTitles(svc);
   // NATO rank codes (OR-/OF-) for other forces; US pay grades at home.
@@ -746,7 +756,9 @@ export function discharge(ctx, type, reason) {
   if (type === 'retired' || type === 'medical') careerEndAwards(ctx, svc);
   sellOut(ctx, svc);
 
+  noteRank(state, svc);
   state.military.history.push({
+    ...(svc.ranks?.length > 1 ? { ranks: svc.ranks } : {}),
     ...(svc.warOp ? { warOp: svc.warOp, warId: svc.warId } : {}),
     branch: svc.branch,
     ...(svc.nation ? { nation: svc.nation } : {}),

@@ -12,7 +12,7 @@ import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
   enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge, reserveName } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
-import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds } from './MilitaryEngine.js';
+import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds, noteRank } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
@@ -150,6 +150,7 @@ export const MilitaryModule = {
     veteranTick(ctx);
     const svc = state.military.service;
     if (!svc) return;
+    noteRank(state, svc);
     svc.deployedThisYear = false;
     if (svc.component === 'active') activeDutyTick(ctx, svc);
     else reserveTick(ctx, svc);

@@ -337,6 +337,18 @@ export function refreshPeriodTitle(job) {
   if (t !== job.title) job.title = job.titleShown = t;
 }
 
+/**
+ * The ranks held in this job, for the CV: [{ title, age, kind: 'start'|'up'|'down' }]. Titles are
+ * kept as the ladder gives them (the CV puts them in the words of the day).
+ */
+export function logRung(state, job, kind) {
+  const title = job.titleRaw ?? job.title;
+  const rungs = (job.rungs ??= []);
+  if (rungs.at(-1)?.title === title) return;
+  rungs.push({ title, age: state.character.age, kind });
+  if (rungs.length > 12) rungs.splice(1, rungs.length - 12);
+}
+
 export function applyLevel(job, level) {
   job.levelId = level.id;
   job.titleRaw = job.titleMap?.[level.id] ?? level.title;
@@ -409,6 +421,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   // An appointed post above the ladder (Secretary-General, Commissioner): its own title, not the rung's.
   if (title) { job.titleMap = { ...(job.titleMap ?? {}), [levelId]: title }; job.appointedTitle = title; }
   applyLevel(job, level);
+  logRung(state, job, 'start');
   recalcSalary(state, job);
   ensureDepartment(job, level);
   state.career.job = job;
@@ -532,6 +545,7 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
     fired,
     ...historyOrgFields(job, fired),
     headed: job.headOf ? (job.headOf.deptId ? 'dept' : 'org') : job.headedBefore ?? null,
+    ...(job.rungs?.length > 1 ? { rungs: job.rungs } : {}),
   });
   if (job.headOf) leavePost(state, job);
   state.career.job = null;
@@ -628,6 +642,7 @@ export function promote(ctx, levelId) {
   }
   const oldSalary = job.salary;
   applyLevel(job, level);
+  logRung(state, job, 'up');
   unionAfterMove(ctx, job);
   stepForAtLeast(state, job, Math.round(oldSalary * 1.06));
   job.warnings = 0;
@@ -667,6 +682,7 @@ export function demote(ctx, reason) {
   const prev = previousLevel(profession, job.employer.size, job.levelId);
   if (!prev) return false;
   applyLevel(job, prev);
+  logRung(state, job, 'down');
   unionAfterMove(ctx, job);
   if (onBands(job)) job.band = Math.max(BAND_MIN, Math.round((job.band ?? BAND_MIN) * 0.97 * 1000) / 1000);
   else job.step = Math.max(1, job.step - 2);

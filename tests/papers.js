@@ -86,6 +86,18 @@ const tests = {
     assert.match(cv, /1978 – present/);
     assert.match(VIEWS.resume(grown('US', 1990, 40).state, {}), /Résumé/);
   },
+  'the résumé lists promotions within a job and in the services'() {
+    const { state } = grown('US', 1990, 45);
+    state.career.job = { professionId: 'police', title: 'Sergeant', employer: { name: 'Austin Police Department' }, startAge: 25, grade: 4,
+      rungs: [{ title: 'Police Officer', age: 25, kind: 'start' }, { title: 'Detective', age: 31, kind: 'up' }, { title: 'Sergeant', age: 38, kind: 'up' }] };
+    state.military.history.push({ branch: 'army', rankTitle: 'Sergeant', startAge: 18, endAge: 22, discharge: 'honorable',
+      ranks: [{ title: 'Private', age: 18 }, { title: 'Corporal', age: 20 }, { title: 'Sergeant', age: 21 }] });
+    const cv = VIEWS.resume(state, {});
+    assert.match(cv, /Joined as <b>(Police Officer|Patrolman)<\/b>/);
+    assert.match(cv, /1976 · ▲ Promoted to <b>Detective<\/b>/);
+    assert.match(cv, /▲ Promoted to <b>Sergeant<\/b>/);
+    assert.match(cv, /1965 · ▲ Promoted to <b>Corporal<\/b>/);
+  },
 };
 
 let failed = 0;
