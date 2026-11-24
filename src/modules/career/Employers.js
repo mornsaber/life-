@@ -26,7 +26,7 @@ import { COUNTRIES } from '../world/Countries.js';
 import { periodEmployers, yearNow } from '../world/Eras.js';
 
 
-export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
+export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0].replace(/ (Bay Area|Metro(politan)? Area|Metroplex)$/, '');
 
 export const stateNameOf = (regionId) => STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].name;
 
