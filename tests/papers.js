@@ -14,6 +14,7 @@ import { marketNow, inheritTitles } from '../src/modules/world/BoughtTitles.js';
 import { jobInsignia } from '../src/ui/Insignia.js';
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { OFFICES } from '../src/modules/politics/index.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const grown = (cc, year, age = 40, gender = 'male') => {
@@ -85,6 +86,16 @@ const tests = {
     assert.match(cv, /1970 – 1978/);
     assert.match(cv, /1978 – present/);
     assert.match(VIEWS.resume(grown('US', 1990, 40).state, {}), /Résumé/);
+  },
+  'the résumé names the service of its own country, and lists public offices'() {
+    const { state } = grown('GB', 1990, 50);
+    state.military.history.push({ branch: 'navy', nation: 'GB', rankTitle: 'Petty Officer', startAge: 18, endAge: 26, discharge: 'honorable' });
+    state.politics.history.push({ officeId: Object.keys(OFFICES).find((id) => OFFICES[id].national) ?? Object.keys(OFFICES)[0], startAge: 40, endAge: 48, terms: 2, reason: 'Lost re-election' });
+    const cv = VIEWS.resume(state, {});
+    assert.match(cv, /Royal Navy/);
+    assert.doesNotMatch(cv, /U\.S\. Navy|United States Navy/);
+    assert.match(cv, /Public office/);
+    assert.match(cv, /2 terms/);
   },
   'the résumé lists promotions within a job and in the services'() {
     const { state } = grown('US', 1990, 45);

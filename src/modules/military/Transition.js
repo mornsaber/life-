@@ -23,6 +23,7 @@ import { getProfession } from '../career/JobTrees.js';
 import { hire, bestEntryLevel, applicationEligibility, levelCheck } from '../career/CareerEngine.js';
 import { createEmployer } from '../career/Employers.js';
 import { MOS } from './MOS.js';
+import { yearNow } from '../world/Eras.js';
 
 export const TRACKS = {
   employment: { name: 'Employment', icon: '💼', desc: 'Résumé writing, interview prep and translating your military experience. A hiring edge for three years.' },
@@ -133,6 +134,9 @@ export function veteranTick(ctx) {
   const last = state.military.history.at(-1);
   if (last && (last.nation ?? 'US') !== (state.character.countryId ?? 'US')) return;
   const since = state.character.age - t.separatedAge;
+  // Vet Centers, the VFW, UCX and Hiring Our Heroes are America's; other veterans have their own.
+  const us = (last?.nation ?? 'US') === 'US';
+  const y = yearNow(state);
   if (since === 1 && !t.readjusted && !state.prompts.some((p) => p.type === 'military.readjust')) {
     t.readjusted = true;
     ctx.prompt({
@@ -141,13 +145,13 @@ export function veteranTick(ctx) {
       title: 'Civilian Life',
       text: 'A year out of uniform. Nobody tells you what to do at 0600 anymore. Some days that feels like freedom; some days you miss your unit more than you expected.',
       options: [
-        { id: 'vetCenter', label: '🫂 Talk to someone at a Vet Center', hint: 'Free readjustment counseling' },
-        { id: 'peers', label: '🍻 Find other veterans (a VFW, a running club, a Discord)', hint: 'Peer support' },
+        { id: 'vetCenter', label: us && y >= 1979 ? '🫂 Talk to someone at a Vet Center' : y >= 1950 ? '🫂 Talk to someone (a veterans\' charity, your doctor)' : '🫂 Talk to the padre or your doctor', hint: 'Readjustment help' },
+        { id: 'peers', label: `🍻 Find other veterans (${us ? (y >= 1899 ? 'a VFW post' : 'a veterans\' lodge') : y >= 1921 && ['GB', 'IE'].includes(last?.nation) ? 'the British Legion' : 'a veterans\' association'}${y >= 2016 ? ', a Discord' : ''})`, hint: 'Peer support' },
         { id: 'push', label: '💪 Push through on your own' },
       ],
     });
   }
-  if (!isEmployed(state) && since <= 1 && !t.ucxPaid) {
+  if (us && y >= 1958 && !isEmployed(state) && since <= 1 && !t.ucxPaid) {
     t.ucxPaid = true;
     ctx.earn(UCX, 'Unemployment compensation for ex-servicemembers (UCX)');
   }
@@ -157,9 +161,9 @@ export function veteranTick(ctx) {
       const p = getProfession(field);
       ctx.prompt({
         type: 'military.hiringFair',
-        icon: '🇺🇸',
-        title: 'Veteran Hiring Fair',
-        text: `At a Hiring Our Heroes job fair, an employer looking for veterans offered you a job in ${p.name.toLowerCase()}, the civilian side of your military job.`,
+        icon: us ? '🇺🇸' : '🤝',
+        title: us ? 'Veteran Hiring Fair' : 'Resettlement',
+        text: us ? `At ${y >= 2011 ? 'a Hiring Our Heroes job fair' : 'a veterans\' job fair'}, an employer looking for veterans offered you a job in ${p.name.toLowerCase()}, the civilian side of your military job.` : `Through the forces' resettlement service, an employer offered you a job in ${p.name.toLowerCase()}, the civilian side of your military job.`,
         options: [{ id: 'accept', label: '✅ Take it' }, { id: 'decline', label: '🙅 Keep looking' }],
         data: { professionId: field },
       });

@@ -300,7 +300,7 @@ function campaignsCard(state, svc) {
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
-    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li>${militaryInsignia(h.rankCode, h.nation ?? null, { branch: h.branch, title: h.rankTitle })} <b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
+    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li>${militaryInsignia(h.rankCode, h.nation ?? null, { branch: h.branch, title: h.rankTitle })} <b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay${(state.military.history.at(-1)?.nation ?? 'US') === 'US' ? ' and VA benefits' : ' and any war pension'} appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
@@ -601,12 +601,21 @@ function veteranCard(state) {
   const since = state.character.age - t.separatedAge;
   if (since > FAIR_YEARS) return '';
   const field = civilianField(state);
-  const items = [
+  // The American transition programme and VA benefits are for American veterans; others get their own country's.
+  const last = state.military.history.at(-1);
+  const us = !last?.nation || last.nation === 'US';
+  const rating = state.health?.va?.rating ?? 0;
+  const items = us ? [
     t.track ? `${TRACKS[t.track].icon} TAP track: <b>${TRACKS[t.track].name}</b> — ${esc(TRACKS[t.track].desc)}` : null,
     field ? `🇺🇸 Veteran hiring fairs offer jobs in <b>${esc(getProfession(field).name)}</b> while you're unemployed (through age ${t.separatedAge + FAIR_YEARS}).` : null,
-    (state.health?.va?.rating ?? 0) >= 50 ? '🏥 Your VA rating qualifies you for full VA health care.' : (state.health?.va?.rating ?? 0) > 0 ? '🏥 The VA covers care for your service-connected conditions.' : null,
-    '🏠 VA home loans: no down payment, no PMI.',
-  ].filter(Boolean);
+    rating >= 50 ? '🏥 Your VA rating qualifies you for full VA health care.' : rating > 0 ? '🏥 The VA covers care for your service-connected conditions.' : null,
+    yearNow(state) >= 1944 ? '🏠 VA home loans: no down payment, no PMI.' : null,
+  ] : [
+    field ? `🤝 Resettlement help toward work in <b>${esc(getProfession(field).name)}</b> (through age ${t.separatedAge + FAIR_YEARS}).` : null,
+    rating > 0 ? `🏥 A war pension for your service-related conditions (${rating}% assessed).` : null,
+  ];
+  const listed = items.filter(Boolean);
+  if (!listed.length && !secondCareerButton(state)) return '';
   const net = retiredFrom(state) ? '' : secondCareerButton(state);
-  return card('Veteran Transition', `<ul class="history">${items.map((i) => `<li>${i}</li>`).join('')}</ul>${net ? `<div class="action-grid">${net}</div>` : ''}`, { icon: '🧭', accent: 'green' });
+  return card('Veteran Transition', `<ul class="history">${listed.map((i) => `<li>${i}</li>`).join('')}</ul>${net ? `<div class="action-grid">${net}</div>` : ''}`, { icon: '🧭', accent: 'green' });
 }

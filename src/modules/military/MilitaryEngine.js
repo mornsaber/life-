@@ -457,7 +457,7 @@ export function finishOfficerAcademy(ctx, svc) {
     return;
   }
   svc.track = 'enlisted';
-  svc.grade = Math.min(2, BRANCHES[svc.branch].enlisted.length - 1);
+  svc.grade = Math.min(2, branchOf(svc).enlisted.length - 1);
   svc.commissionedYos = null;
   ctx.log(`You failed the commissioning course at ${school}. The ${branchOf(svc).name} offered you a place in the ranks instead, as a ${rankOf(svc).title}.`, '🥾', 'warn');
   ctx.stat('happiness', -8);
@@ -769,6 +769,7 @@ export function discharge(ctx, type, reason) {
     branch: svc.branch,
     ...(svc.nation ? { nation: svc.nation } : {}),
     ...(svc.conscript ? { conscript: true } : {}),
+    ...(svc.female ? { female: true } : {}),
     track: svc.track,
     component: svc.component,
     specialty: svc.specialty,

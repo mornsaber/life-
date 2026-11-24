@@ -14,6 +14,7 @@ import { SKILLS, skillsOf } from '../../modules/life/Skills.js';
 import { rankOf, branchOf } from '../../modules/military/MilitaryEngine.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { OFFICES } from '../../modules/politics/index.js';
 
 const born = (state) => state.character.birthYear ?? yearNow(state) - state.character.age;
 const yr = (state, age) => born(state) + age;
@@ -55,10 +56,27 @@ function jobs(state) {
 }
 
 function service(state) {
-  const rows = (state.military?.history ?? []).map((h) => ({ rank: h.rankTitle, branch: h.branch, from: h.startAge, to: h.endAge, why: h.discharge, ranks: h.ranks }));
+  const rows = (state.military?.history ?? []).map((h) => ({ rank: h.rankTitle, branch: h.branch, from: h.startAge, to: h.endAge, why: h.discharge, ranks: h.ranks, nation: h.nation ?? null, female: h.female }));
   const s = state.military?.service;
-  if (s) rows.unshift({ rank: rankOf(s).title, branch: s.branch, from: s.joinedAge ?? state.character.age, to: null, ranks: [...(s.ranks ?? []), ...(s.ranks?.at(-1)?.title === rankOf(s).title ? [] : [{ title: rankOf(s).title, age: state.character.age }])] });
-  return rows.map((r) => ({ ...r, branchName: (() => { try { return branchOf({ branch: r.branch, nation: s?.nation })?.name ?? r.branch; } catch { return r.branch; } })() }));
+  if (s) rows.unshift({ rank: rankOf(s).title, branch: s.branch, nation: s.nation ?? null, female: s.female, from: s.joinedAge ?? state.character.age, to: null, ranks: [...(s.ranks ?? []), ...(s.ranks?.at(-1)?.title === rankOf(s).title ? [] : [{ title: rankOf(s).title, age: state.character.age }])] });
+  return rows.map((r) => ({ ...r, branchName: (() => { try { return branchOf({ branch: r.branch, nation: r.nation ?? undefined, female: r.female })?.name ?? r.branch; } catch { return r.branch; } })() }));
+}
+
+/** Public offices held, newest first: elected, appointed, or given by the party. */
+function offices(state) {
+  const p = state.politics;
+  if (!p) return [];
+  const country = COUNTRIES[state.character.countryId ?? 'US']?.name ?? '';
+  const town = (REGIONS[state.character.regionId]?.name ?? '').split(',')[0];
+  const row = (id, from, to, terms, why) => {
+    const o = OFFICES[id];
+    if (!o) return null;
+    const where = o.national || o.headOfState || o.cabinet ? country : o.provincial || o.level >= 5 ? '' : town;
+    return { title: o.name, icon: o.icon, where, from, to, terms, why };
+  };
+  const rows = (p.history ?? []).map((h) => row(h.officeId, h.startAge, h.endAge, h.terms, h.reason));
+  if (p.office) rows.push(row(p.office.id, p.office.startAge ?? state.character.age, null, p.office.terms));
+  return rows.filter(Boolean).sort((a, b) => (b.to ?? 999) - (a.to ?? 999) || b.from - a.from);
 }
 
 export function resumeView(state) {
@@ -67,6 +85,7 @@ export function resumeView(state) {
   if (c.age < 14) return card(resumeHeading(cc), empty('Too young for a résumé: there is nothing on it yet but school.'), { icon: '📄' });
   const J = jobs(state);
   const S = service(state);
+  const O = offices(state);
   const degrees = (state.education?.degrees ?? []).filter((d) => d.type !== 'highschool' || !(state.education.degrees.length > 1));
   const licences = Object.entries(state.credentials?.held ?? {}).filter(([id, h]) => h.status === 'active' && CREDENTIALS[id] && !['learnerPermit', 'studentPilot'].includes(id)).map(([id]) => CREDENTIALS[id].name);
   const langs = fluentForeign(state);
@@ -76,8 +95,8 @@ export function resumeView(state) {
   const fields = [...new Set(J.map((x) => x.field).filter(Boolean))];
   const lead = J[0];
   const summary = lead
-    ? `${lead.title}${lead.current ? '' : ' (formerly)'} with ${years} year${years === 1 ? '' : 's'} of work${fields.length ? ` in ${fields.slice(0, 2).join(' and ').toLowerCase()}` : ''}${S.length ? ', and service in the armed forces' : ''}.`
-    : S.length ? `Served in the armed forces${S[0].to == null ? '' : ` until ${yr(state, S[0].to)}`}.` : 'Looking for a first position.';
+    ? `${lead.title}${lead.current ? '' : ' (formerly)'} with ${years} year${years === 1 ? '' : 's'} of work${fields.length ? ` in ${fields.slice(0, 2).join(' and ').toLowerCase()}` : ''}${O.length ? `${S.length ? ',' : ', and'} public office as ${O[0].title}` : ''}${S.length ? ', and service in the armed forces' : ''}.`
+    : O.length ? `${O[0].title}${O[0].to == null ? '' : ` until ${yr(state, O[0].to)}`}.` : S.length ? `Served in the armed forces${S[0].to == null ? '' : ` until ${yr(state, S[0].to)}`}.` : 'Looking for a first position.';
   const place = `${REGIONS[c.regionId]?.name ?? ''}${cc !== 'US' ? `, ${COUNTRIES[cc]?.name ?? cc}` : ''}`;
   const section = (title, body) => (body ? `<h4 class="sub" style="border-bottom:1px solid var(--line,#ccc);padding-bottom:2px">${title}</h4>${body}` : '');
   const exp = J.map((x) => { const steps = ladderSteps(state, x); return `<div style="margin:.35rem 0"><div><b>${esc(x.title)}</b>${x.employer ? ` · ${esc(x.employer)}` : ''}</div><small class="muted">${span(state, x.from, x.to)}${!steps && x.earlier?.length ? ` · earlier ${esc(x.earlier.slice(0, 2).join(', '))}` : ''}${x.why ? ` · ${esc(x.why)}` : ''}</small>${steps}</div>`; }).join('');
@@ -88,6 +107,7 @@ export function resumeView(state) {
     <div style="text-align:center;margin-bottom:.4rem"><div style="font-size:1.2em;font-weight:700">${esc(styledName(state))}</div><small class="muted">${esc(place)} · born ${born(state)}</small></div>
     <p><i>${esc(summary)}</i></p>
     ${section('Experience', exp || '<p class="muted">No paid work yet.</p>')}
+    ${section('Public office', O.map((x) => `<div style="margin:.35rem 0"><div><b>${esc(x.title)}</b>${x.where ? ` · ${esc(x.where)}` : ''}</div><small class="muted">${span(state, x.from, x.to)}${x.terms > 1 ? ` · ${x.terms} terms` : ''}${x.why && x.why.length <= 60 ? ` · ${esc(String(x.why).replace(/\.$/, '').toLowerCase())}` : ''}</small></div>`).join(''))}
     ${section('Military service', mil)}
     ${section('Education', edu)}
     ${section('Licences and certificates', list(licences))}

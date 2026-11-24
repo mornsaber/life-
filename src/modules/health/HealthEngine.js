@@ -383,7 +383,8 @@ export function refreshVaRating(ctx, { announce = false } = {}) {
   const h = state.health;
   const rating = combinedVaRating(h.conditions.filter((c) => c.serviceConnected).map(vaRatingFor));
   if (rating === h.va.rating) {
-    if (announce) ctx.log(`The VA confirmed your ${rating}% disability rating.`, '🇺🇸');
+    // Only worth a line when there is something to rate; and the 🇺🇸 is for American veterans.
+    if (announce && rating > 0) ctx.log(`The VA confirmed your ${rating}% disability rating.`, (state.military.history.at(-1)?.nation ?? 'US') === 'US' ? '🇺🇸' : '🎖️');
     return;
   }
   const before = h.va.rating;
@@ -394,7 +395,7 @@ export function refreshVaRating(ctx, { announce = false } = {}) {
   if (existing && annual) existing.annual = annual;
   else if (existing) pensions.splice(pensions.indexOf(existing), 1);
   else if (annual) ctx.emit('retirement:addPension', { pension: { id: 'va', label: 'VA disability compensation', annual, startAge: state.character.age, source: 'va', cola: 0.025 } });
-  ctx.log(`The VA ${before ? 'changed' : 'set'} your service-connected disability rating to ${rating}%${annual ? ` ($${annual.toLocaleString()}/yr, tax-free)` : ''}.`, '🇺🇸', 'milestone');
+  ctx.log(`The VA ${before ? 'changed' : 'set'} your service-connected disability rating to ${rating}%${annual ? ` ($${annual.toLocaleString()}/yr, tax-free)` : ''}.`, (state.military.history.at(-1)?.nation ?? 'US') === 'US' ? '🇺🇸' : '🎖️', 'milestone');
   record(state, `VA rating ${rating}%`);
 }
 
