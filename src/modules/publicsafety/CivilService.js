@@ -23,17 +23,21 @@ import { PROMO_GATES, promotionStatus, promote, levelCheck, levelYears } from '.
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, nextLevels } from '../career/Ladder.js';
 
-/** Ranks that promote off a civil-service list, by career (the US). */
+/**
+ * Ranks that promote off a civil-service list, by career (the US). The supervisory ranks are
+ * tested; above them most departments appoint (a captain or a battalion chief is picked by the
+ * chief from those who hold the rank below).
+ */
 export const EXAM_RANKS = {
-  police: ['sergeant', 'lieutenant', 'captain'],
-  sheriff: ['sergeant', 'lieutenant', 'captain'],
-  statePolice: ['sergeant', 'lieutenant', 'captain'],
-  transitPolice: ['sergeant', 'lieutenant'],
-  airportPolice: ['sergeant', 'lieutenant', 'captain'],
-  universityPolice: ['sergeant', 'lieutenant'],
-  airportFire: ['lieutenant', 'captain', 'battalion'],
-  fire: ['lieutenant', 'captain', 'battalion'],
-  stateFire: ['captain', 'battalion'],
+  police: ['sergeant', 'lieutenant'],
+  sheriff: ['sergeant', 'lieutenant'],
+  statePolice: ['sergeant'],
+  transitPolice: ['sergeant'],
+  airportPolice: ['sergeant'],
+  universityPolice: ['sergeant'],
+  airportFire: ['lieutenant'],
+  fire: ['lieutenant', 'captain'],
+  stateFire: ['captain'],
 };
 export const LIST_YEARS = 3;
 /** Rank on the list you need to reach before you're promoted. */
@@ -48,8 +52,8 @@ const familyOf = (job) => {
 
 /** The tested (or schooled) ranks of each system, by family. */
 const RANKS = {
-  qualify: { police: ['sergeant', 'detSergeant', 'lieutenant', 'detLieutenant'], fire: ['lieutenant', 'captain'] },
-  rankExam: { police: ['sergeant', 'detSergeant', 'lieutenant', 'detLieutenant', 'captain', 'detCaptain'], fire: ['lieutenant', 'captain', 'battalion'] },
+  qualify: { police: ['sergeant', 'detSergeant', 'lieutenant', 'detLieutenant'], fire: ['lieutenant'] },
+  rankExam: { police: ['sergeant', 'detSergeant', 'lieutenant', 'detLieutenant'], fire: ['lieutenant', 'captain'] },
   concours: { police: ['lieutenant', 'detLieutenant', 'superintendent_cmd1', 'chief_cmd1'], fire: ['captain', 'deputyChief'] },
   track: { police: ['investigator', 'lieutenant', 'detLieutenant', 'major'], fire: ['captain', 'deputyChief'] },
 };

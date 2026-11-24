@@ -18,7 +18,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, yearsInProfession, prestige } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { getProfession, PROFESSIONS, NATIONAL_PROFESSIONS } from './JobTrees.js';
-import { ladderFor, levelById, entryLevels, SIZE_ORDER } from './Ladder.js';
+import { ladderFor, levelById, entryLevels, SIZE_ORDER, gradeAt } from './Ladder.js';
 import { createEmployer } from './Employers.js';
 import { hire, levelCheck, backgroundCheck } from './CareerEngine.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
@@ -45,7 +45,7 @@ const supervisor = (level) => Boolean(level?.abilities?.includes('supervise'));
 export function previewPay(state, { professionId, levelId, employer, step = 1, merit = 0, regionId = state.character.regionId }) {
   const profession = getProfession(professionId);
   const level = levelById(profession, levelId);
-  const job = { professionId, sector: profession.sector, employer, step, merit, posting: null, grade: level.grade, levelId, abilities: [...level.abilities] };
+  const job = { professionId, sector: profession.sector, employer, step, merit, posting: null, grade: gradeAt(level, employer?.size), levelId, abilities: [...level.abilities] };
   const home = state.character.regionId;
   state.character.regionId = regionId;
   try { return recalcSalary(state, job); } finally { state.character.regionId = home; }

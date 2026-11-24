@@ -1,5 +1,5 @@
 /**
- * Pay grades G1–G10, paid two different ways.
+ * Pay grades G1–G10 (and G11+ for the tops of the longest ladders), paid two different ways.
  *
  * Government (federal, state, municipal) runs a grade-and-step schedule like the
  * General Schedule: ten steps per grade, and the wait between them lengthens
@@ -22,7 +22,9 @@
  */
 import { REGIONS } from '../life/Regions.js';
 
-export const GRADE_BASE = [0, 30000, 37000, 46000, 57000, 70000, 87000, 108000, 135000, 175000, 240000];
+export const GRADE_BASE = [0, 30000, 37000, 46000, 57000, 70000, 87000, 108000, 135000, 175000, 240000, 285000, 340000, 405000, 480000, 570000, 680000];
+/** A rung moved up the grades to keep its ladder in order is paid as written, plus a step for each grade gained. */
+export const gradeGainPay = (orig, grade) => (orig != null && grade > orig && GRADE_BASE[orig] && GRADE_BASE[grade] ? (GRADE_BASE[orig] / GRADE_BASE[grade]) * (1 + 0.05 * (grade - orig)) : 1);
 export const MAX_STEP = 10;
 export const STEP_RATE = 0.025;
 
@@ -140,7 +142,7 @@ export function payCap(job, countryId) {
 }
 
 /** How the job's pay is described: "GS-13, step 4" in the US federal service, "Grade 7, step 4" elsewhere in government, "Band 7" in a company. */
-const GS = [null, 'GS-3', 'GS-5', 'GS-7', 'GS-9', 'GS-11', 'GS-12', 'GS-13', 'GS-14', 'GS-15', 'SES'];
+const GS = [null, 'GS-3', 'GS-5', 'GS-7', 'GS-9', 'GS-11', 'GS-12', 'GS-13', 'GS-14', 'GS-15', 'SES', 'SES', 'SES', 'EX-IV', 'EX-III', 'EX-II', 'EX-I'];
 export function payGradeLabel(job, countryId) {
   if (onBands(job)) return `Band ${job.grade}`;
   if (job.sector === 'federal' && (!countryId || countryId === 'US')) return GS[job.grade] ?? `G${job.grade}`;
@@ -178,7 +180,7 @@ export function bandYear(job, phase) {
 }
 
 /** Target bonus by grade (a share of salary); executives earn half again. */
-export const BONUS_TARGET = { 4: 0.02, 5: 0.04, 6: 0.06, 7: 0.1, 8: 0.14, 9: 0.2, 10: 0.3 };
+export const BONUS_TARGET = { 4: 0.02, 5: 0.04, 6: 0.06, 7: 0.1, 8: 0.14, 9: 0.2, 10: 0.3, 11: 0.35, 12: 0.4, 13: 0.45, 14: 0.5, 15: 0.55, 16: 0.6 };
 /** The year's bonus: the target, scaled by your rating and how the company did. */
 export function bonusFor(job, phase) {
   const target = (BONUS_TARGET[job.grade] ?? 0) * (job.abilities?.includes('exec') ? 1.5 : 1);

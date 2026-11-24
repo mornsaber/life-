@@ -1433,6 +1433,7 @@ const RENAMES = [
   [/\bPretrial Services Unit\b/g, 1975, () => 'Bail Unit'],
   [/\bCommunity Corrections Bureau\b/g, 1970, () => 'Parole Bureau'],
   [/\b(High-Risk Supervision|Sex Offender) Unit\b/g, 1985, () => 'Special Supervision Unit'],
+  [/\bSex Offender Investigations Team\b/g, 1994, () => 'Warrants Team'], // sex-offender registration (the Jacob Wetterling Act) from 1994
   [/\bSecurity Operations Bureau\b/g, 1960, () => 'Custody Bureau'],
   [/\bSecret Service Protective Operations\b/g, 1950, () => 'Secret Service White House Detail'],
   [/\bHospital Police & Security\b/g, 1965, () => 'Hospital Watchmen'],

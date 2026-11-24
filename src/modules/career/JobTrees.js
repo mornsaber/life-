@@ -19,7 +19,7 @@
 import { clergyCareerFor, CLERGY_CAREERS } from '../community/HolyOrders.js';
 import { PRIVATE_TITLES } from '../world/PrivateTitles.js';
 import { PROFESSION_TITLES } from '../world/ProfessionStandards.js';
-import { L, addGovernmentTiers } from './Ladder.js';
+import { L, addGovernmentTiers, normaliseGrades } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
 import { PACK_PROFESSIONS, MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../content/careerPacks.js';
@@ -39,7 +39,7 @@ Object.assign(PRIVATE_PROFESSIONS, Object.fromEntries(Object.entries(PACK_PROFES
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
 // Government careers get tiny-agency and major-agency rank structures (Ladder).
-for (const p of PROFESSION_LIST) addGovernmentTiers(p);
+for (const p of PROFESSION_LIST) { addGovernmentTiers(p); normaliseGrades(p); }
 
 // Index which careers require which credentials (employers fund what their own ladders demand).
 for (const p of PROFESSION_LIST) {

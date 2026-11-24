@@ -14,6 +14,7 @@ import { hire, promotionStatus, PROMO_FACTORS } from '../src/modules/career/Care
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { AdvancementModule, upOrOutIn, wantsAssessment } from '../src/modules/career/Advancement.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { packFor, vocationOf } from '../src/modules/career/Vocations.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function worker(professionId, levelId, { seed = 3, size = 'large', years = 24 } = {}) {
@@ -110,10 +111,13 @@ const tests = {
   },
   'senior public posts need the assessment centre'() {
     const prof = getProfession('publicHealth');
-    const below = prof.levels.filter((l) => (l.grade ?? 0) === 5)[0] ?? prof.levels.find((l) => (l.grade ?? 0) >= 4);
+    // Once, on the way into the senior grades (G8+): a supervisor up for director.
+    const below = prof.levels.find((l) => l.id === 'supervisor');
     const { engine, state, job } = worker('publicHealth', below.id, { size: 'large' });
     state.education.degrees.push({ type: 'master', programId: 'mph', major: null, year: 24 });
     job.yearsInLevel = 10; job.performance = 80;
+    // The management course its ladder asks of every manager, done.
+    const pack = packFor(state); if (pack) vocationOf(state, pack).courses.management = state.character.age;
     assert.ok(wantsAssessment(state, job), 'an assessment centre to sit');
     assert.match(promotionStatus(state).reason ?? '', /assessment centre/);
     assert.match(VIEWS.career(state), /assessment centre/);

@@ -5,7 +5,7 @@
  */
 import { getProfession } from './JobTrees.js';
 import { levelById } from './Ladder.js';
-import { salaryBreakdown, onBands, bandFromStep, payCap } from './PayGrades.js';
+import { salaryBreakdown, onBands, bandFromStep, payCap, gradeGainPay } from './PayGrades.js';
 import { stateOf } from '../life/Regions.js';
 import { clearedPremium } from './ClearedWork.js';
 import { lawValue } from '../politics/Laws.js';
@@ -24,9 +24,9 @@ export function recalcSalary(state, job) {
   const profession = getProfession(job.professionId);
   const level = profession ? levelById(profession, job.levelId) : null;
   const managerial = Boolean(level?.abilities?.includes('supervise'));
-  const rankPay = (level?.rankPay ?? 1) * (job.employer.size === 'mega' && level?.megaHeadPay ? level.megaHeadPay : 1);
+  const rankPay = (level?.rankPay ?? 1) * (job.employer.size === 'mega' && level?.megaHeadPay ? level.megaHeadPay : 1) * gradeGainPay(level?.origGrade, job.grade);
   // Command staff only (lieutenants and sergeants are on the union scale); federal pay is set nationally.
-  const agencyScale = ['municipal', 'state', 'public'].includes(job.sector) && managerial && (level?.grade ?? 0) >= 7 ? PUBLIC_MGMT_SCALE[job.employer.size] ?? 1 : 1;
+  const agencyScale = ['municipal', 'state', 'public'].includes(job.sector) && managerial && (level?.origGrade ?? level?.grade ?? 0) >= 7 ? PUBLIC_MGMT_SCALE[job.employer.size] ?? 1 : 1;
   // Old saves: a company job's position in its band starts where its step put it.
   if (onBands(job)) job.band ??= bandFromStep(job.step);
   job.pay = salaryBreakdown({

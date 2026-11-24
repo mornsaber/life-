@@ -20,7 +20,7 @@ import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession, US_ONLY_PROFESSIONS, PROFESSIONS } from './JobTrees.js';
-import { levelById, entryLevels, nextLevels, previousLevel, ladderFor, GOV_SECTORS } from './Ladder.js';
+import { levelById, entryLevels, nextLevels, previousLevel, ladderFor, GOV_SECTORS, gradeAt } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { unitFor } from './Units.js';
@@ -136,7 +136,7 @@ let LEVEL_OWNER = null;
 function professionOfLevel(level) {
   // Ladders are copied per employer size, so match the rung by id, title and grade.
   const key = (l) => `${l.id}|${l.title}|${l.grade}`;
-  if (!LEVEL_OWNER) { LEVEL_OWNER = new Map(); for (const p of Object.values(PROFESSIONS)) for (const l of p.levels ?? []) if (!LEVEL_OWNER.has(key(l))) LEVEL_OWNER.set(key(l), p); }
+  if (!LEVEL_OWNER) { LEVEL_OWNER = new Map(); for (const p of Object.values(PROFESSIONS)) for (const l of p.levels ?? []) for (const g of [l.grade, ...Object.values(l.gradeBySize ?? {})]) { const k = key({ ...l, grade: g }); if (!LEVEL_OWNER.has(k)) LEVEL_OWNER.set(k, p); } }
   return LEVEL_OWNER.get(key(level)) ?? null;
 }
 export function levelCheck(state, level) {
@@ -332,6 +332,10 @@ export function stepForAtLeast(state, job, minimum) {
  * acting rank or a title some other system set is left alone).
  */
 export function refreshPeriodTitle(job) {
+  // A save from before grades were put in order: the rung's grade as the ladder has it now.
+  const p = job?.levelId && !job.gradeSynced ? getProfession(job.professionId) : null;
+  const level = p && levelById(p, job.levelId);
+  if (job && !job.gradeSynced) { job.gradeSynced = true; if (level) { const g = gradeAt(level, job.employer?.size); if (g > job.grade) { job.grade = g; job.peakGrade = Math.max(job.peakGrade ?? 0, g); } } }
   if (!job?.titleRaw || job.title !== job.titleShown) return;
   const t = periodTitle(job.titleRaw);
   if (t !== job.title) job.title = job.titleShown = t;
@@ -354,12 +358,13 @@ export function applyLevel(job, level) {
   job.titleRaw = job.titleMap?.[level.id] ?? level.title;
   job.title = job.titleShown = periodTitle(job.titleRaw);
   job.track = level.track;
-  job.grade = level.grade;
+  job.grade = gradeAt(level, job.employer?.size);
   job.abilities = [...level.abilities];
   job.clearance = level.req?.clearance ?? job.clearance ?? null;
   job.yearsInLevel = 0;
   job.missedReviews = 0;
-  job.peakGrade = Math.max(job.peakGrade ?? 0, level.grade);
+  job.peakGrade = Math.max(job.peakGrade ?? 0, job.grade);
+  job.gradeSynced = true;
 }
 
 setApplyLevel((job, level) => applyLevel(job, level));

@@ -36,7 +36,7 @@ export const BUSINESS = {
     { id: 'surveyor', name: 'membership of the Royal Institution of Chartered Surveyors', icon: '📏', from: 1881, countries: COMMONWEALTH, professions: ['realestate', 'propertyManagement'], minGrade: 3, cost: 2000, passRate: 0.7, perf: 3 },
     { id: 'personnel', name: (s) => (y(s) < 1990 ? 'the Institute of Personnel Management diploma' : 'a CIPD qualification'), icon: '👥', from: 1946, professions: ['humanResources'], minGrade: 3, cost: 2500, perf: 4 },
     { id: 'mba', name: (s) => (y(s) < 1960 ? 'a Master of Business Administration' : 'an MBA'), icon: '🎓', from: 1908, minGrade: 5, cost: 60000, years: 2, perf: 6 },
-    { id: 'executive', name: 'an executive programme at a business school', icon: '🏛️', from: 1945, minGrade: 7, cost: 25000, perf: 3, gateGrade: 9 },
+    { id: 'executive', name: 'an executive programme at a business school', icon: '🏛️', from: 1945, minGrade: 7, cost: 25000, perf: 5 }, // helps; boards don't demand it
   ],
   postingOdds: 0.08,
   postings: [

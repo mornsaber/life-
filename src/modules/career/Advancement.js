@@ -193,8 +193,13 @@ function schemeYear(ctx, job) {
   }
 }
 
-/** Senior public-service posts are filled through an assessment centre. */
-const needsAssessment = (state, job, level) => isPublic(job) && (level.grade ?? 0) >= 6 && !EXAM_RANKS[job.professionId] && yearNow(state) >= 1945 && !job.military;
+/**
+ * The first senior public-service post is filled through an assessment centre (the Senior Civil
+ * Service, the SES): once, on the way into the senior grades, not for every promotion after.
+ */
+const SENIOR = 8;
+const needsAssessment = (state, job, level) => !(!isPublic(job) || EXAM_RANKS[job.professionId] || yearNow(state) < 1945 || job.military)
+  && (level.grade ?? 0) >= SENIOR && (job.grade ?? 0) < SENIOR;
 export const assessed = (state, job) => job.assessedAge != null && state.character.age - job.assessedAge <= 4;
 export const assessmentOdds = (state, job) => clamp(0.25 + (state.stats.smarts - 50) / 200 + ((job.performance ?? 55) - 55) / 200 + skillOf(state, 'leadership') / 300, 0.1, 0.9);
 PROMO_GATES.push((state, job, level) => (needsAssessment(state, job, level) && !assessed(state, job) ? `Pass the senior assessment centre to compete for ${level.title}` : null));

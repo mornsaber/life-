@@ -102,7 +102,7 @@ export function rehireCheck(state, entry) {
 function returnLevel(state, profession, size, entry) {
   let level = levelById(profession, entry.levelId);
   const ladder = ladderFor(profession, size);
-  if (!level || !ladder.includes(level)) level = ladder[0];
+  level = (level && ladder.find((l) => l.id === level.id)) ?? ladder[0];
   // Long absences or lapsed qualifications: one rung lower.
   for (let i = 0; i < 3 && level && (!levelCheck(state, level).ok || (entry.yearsAgo > 5 && i === 0)); i++) level = previousLevel(profession, size, level.id) ?? level;
   return levelCheck(state, level).ok ? level : bestEntryLevel(state, profession, size);

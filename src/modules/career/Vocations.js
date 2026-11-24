@@ -87,7 +87,7 @@ export function courseCurrent(state, pack, course) {
   return !course.renew || state.character.age - done < course.renew;
 }
 /** Does a course gate this rung? By id (`required`), by grade (`gateGrade`: this grade and up) or management (`gateMgmt`). */
-export const gates = (c, level) => Boolean(level && (c.required?.includes(level.id) || (c.gateGrade && level.grade >= c.gateGrade) || (c.gateMgmt && level.track === 'mgmt')));
+export const gates = (c, level) => Boolean(level && (c.required?.includes(level.id) || (c.gateGrade && (level.origGrade ?? level.grade) >= c.gateGrade) || (c.gateMgmt && level.track === 'mgmt')));
 /** Courses this rung needs that you haven't got (or have let lapse). Takes a level (or a level id of your job's ladder). */
 export function missingCourses(state, pack, level) {
   const lv = typeof level === 'string' ? getProfession(state.career.job.professionId).levels.find((l) => l.id === level) : level;
@@ -298,7 +298,7 @@ function offerElite(ctx, pack) {
 export function vocationGate(state, level) {
   const job = state.career?.job;
   const pack = packFor(state);
-  if (!job || !pack || !getProfession(job.professionId).levels.includes(level)) return [];
+  if (!job || !pack || !getProfession(job.professionId).levels.some((l) => l === level || (level?.sized && l.id === level.id))) return [];
   const missing = missingCourses(state, pack, level).map((c) => nameOf(state, c));
   const v = peekVocation(state, pack);
   if (v.conditionsUntil && state.character.age < v.conditionsUntil) missing.push(`conditions on your practice lifted (age ${v.conditionsUntil})`);

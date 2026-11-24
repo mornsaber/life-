@@ -173,7 +173,7 @@ const tests = {
       const p = getProfession(id);
       for (const seed of [1, 2, 3]) {
         const emp = createEmployer(new Random(seed), state, p, state.character.regionId);
-        const absent = p.levels.filter((l) => !isAssignmentLevel(p, l) && !ladderFor(p, emp.size).includes(l));
+        const absent = p.levels.filter((l) => !isAssignmentLevel(p, l) && !ladderFor(p, emp.size).some((x) => x.id === l.id));
         if (absent.length) missing.push(`${cc} ${id} @${emp.size}: ${absent.map((l) => l.title).join(', ')}`);
       }
     }

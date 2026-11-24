@@ -77,7 +77,23 @@ export function isAssignmentLevel(profession, level) {
   return Boolean(re && level && level.track === 'ic' && re.test(level.id));
 }
 
+/** A rung's grade at an employer of this size (a big agency's chief sits above its extra command ranks). */
+export const gradeAt = (level, size) => level?.gradeBySize?.[size] ?? level?.grade;
+const COPIES = new WeakMap();
+
 export function ladderFor(profession, size) {
+  const raw = rawLadder(profession, size);
+  if (!raw.some((l) => l.gradeBySize?.[size] != null)) return raw;
+  // The same rung object each time for a size (callers compare rungs), graded for that size.
+  const cache = (COPIES.get(profession) ?? COPIES.set(profession, new Map()).get(profession));
+  return raw.map((l) => {
+    if (l.gradeBySize?.[size] == null) return l;
+    const k = `${l.id}@${size}`;
+    if (!cache.has(k)) cache.set(k, { ...l, grade: l.gradeBySize[size], sized: true });
+    return cache.get(k);
+  });
+}
+function rawLadder(profession, size) {
   // Owning the firm isn't a promotion: you found or buy a business for that (Business).
   const levels = profession.levels.filter((l) => !l.founder && !isAssignmentLevel(profession, l));
   // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
@@ -147,8 +163,14 @@ export function addGovernmentTiers(profession) {
   const mgmt = levels.filter((l) => l.track === 'mgmt' && l !== top && !l.appointed);
   const below = mgmt.sort((a, b) => b.grade - a.grade)[0];
   if (!below || !top) return;
-  const titles = megaRanks(profession).filter((t) => !levels.some((l) => l.title === t));
-  const at = levels.indexOf(top);
+  // Ranks above one the ladder already has; never one that would sit below it.
+  const ranks = megaRanks(profession);
+  const have = ranks.reduce((m, t, i) => (levels.some((l) => l.title === t) ? i : m), -1);
+  const titles = ranks.slice(have + 1);
+  // A federal field agency's head of office (a Special Agent in Charge) answers to headquarters:
+  // its section chiefs and assistant directors sit above, not below.
+  const hq = FEDERAL_LE.includes(profession.id) && /in Charge/.test(top.title);
+  const at = levels.indexOf(top) + (hq ? 1 : 0);
   const added = titles.map((title, i) => ({
     id: `${top.id}_cmd${i + 1}`, title, grade: Math.min(top.grade, below.grade + 1 + Math.floor(i / 2)), track: 'mgmt', years: 3,
     abilities: [...new Set([...below.abilities, 'supervise', 'budget'])], minSize: 'mega', reports: (below.reports ?? 6) + 4 * (i + 1),
@@ -158,7 +180,43 @@ export function addGovernmentTiers(profession) {
   }));
   levels.splice(at, 0, ...added);
   // At a major agency the head out-earns every command rank under it.
-  if (added.length) top.megaHeadPay = Math.round((1 + 0.04 * (added.length + 1)) * 100) / 100;
+  if (added.length && !hq) top.megaHeadPay = Math.round((1 + 0.04 * (added.length + 1)) * 100) / 100;
+}
+
+/**
+ * Grades in order: each promotion is a step up. Along each track a rung sits at least one grade
+ * above the one before it (two titles no longer share a grade; the first rung of a fork may share
+ * the last core grade, as a sergeant shares a senior constable's). A ladder that needs it climbs
+ * past G10 (G11+). Grades are worked out for each employer size, since a big employer's extra
+ * ranks push the ones above them up: `grade` is the rung's grade at a mid-size employer (or the
+ * smallest that has it), `gradeBySize` where another size differs, and `origGrade` the grade the
+ * ladder was written with (pay is priced from it, plus a step for each grade gained).
+ */
+export function normaliseGrades(profession) {
+  if (profession.normalised) return;
+  profession.normalised = true;
+  const at = new Map();
+  for (const size of SIZE_ORDER) {
+    const ladder = rawLadder(profession, size);
+    const shared = ladder.filter((l) => l.track === 'shared');
+    let prev = -Infinity;
+    const put = (l, g) => { if (!at.has(l)) at.set(l, {}); at.get(l)[size] = g; return g; };
+    for (const l of shared) prev = put(l, Math.max(l.grade, prev + 1));
+    const forkFloor = prev === -Infinity ? -Infinity : prev;
+    for (const t of ['ic', 'mgmt']) {
+      let p = forkFloor - 1;
+      for (const l of ladder.filter((x) => x.track === t)) p = put(l, Math.max(l.grade, p + 1));
+    }
+  }
+  for (const [l, by] of at) {
+    const base = by.medium ?? by[SIZE_ORDER.find((s) => by[s] != null)];
+    const others = Object.fromEntries(Object.entries(by).filter(([, g]) => g !== base));
+    const changed = base !== l.grade || Object.keys(others).length;
+    if (!changed) continue;
+    l.origGrade = l.grade;
+    l.grade = base;
+    if (Object.keys(others).length) l.gradeBySize = others;
+  }
 }
 
 export function levelById(profession, levelId) {

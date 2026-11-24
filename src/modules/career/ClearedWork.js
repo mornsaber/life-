@@ -71,7 +71,8 @@ function offerLevel(state, profession, levelCheck, bestEntryLevel) {
   const ladder = ladderFor(profession, 'enterprise');
   if (job?.professionId === profession.id) {
     const l = levelById(profession, job.levelId);
-    if (l && ladder.includes(l)) return l;
+    const here = l && ladder.find((x) => x.id === l.id);
+    if (here) return here;
   }
   // Your most recent level in the field, if you still qualify for it.
   const past = [...state.career.history].reverse().find((h) => h.professionId === profession.id);
