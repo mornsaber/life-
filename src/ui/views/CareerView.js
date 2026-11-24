@@ -72,7 +72,7 @@ import { servedPopulation } from '../../modules/org/Staffing.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
 import { contractMarketCard, merchantReserveCard } from './ServiceViews.js';
-import { periodDollars, yearNow } from '../../modules/world/Eras.js';
+import { periodDollars, yearNow, yearlyPay } from '../../modules/world/Eras.js';
 import { hasTech, insigniaCountry, credentialRequired } from '../../modules/world/Eras.js';
 import { careerPlayCard } from './CareerPlayView.js';
 import { companyCard, advancementCard, ministryCard, boardroomCard, wearCard, commandCard, chiefCard, postingsCard, boardSeatsCard } from './CareerDepthView.js';
@@ -305,6 +305,7 @@ function executiveSearchCard(state) {
     const odds = e.ok ? Math.round(executiveOdds(state, l) * 100) : 0;
     return `<li class="job-row ${e.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">👔</span>
       <div class="job-info"><b>${esc(l.title)}</b> <small class="muted">${esc(l.orgName)}${l.deptName ? ` · ${esc(l.deptName)}` : ''}</small><small>${l.selection === 'appointed' ? `Appointed by ${esc(l.appointedBy)}` : l.selection === 'board' ? 'Chosen by the board' : 'Executive search'} · ${l.deptId ? `6+ yrs in ${esc(l.occupations.map((o) => getProfession(o)?.name ?? o).join(' / '))}` : '15+ yrs, graduate degree (MBA) or senior-executive record'}</small>
+        ${l.salary ? `<small>💵 ${esc(yearlyPay(state, l.salary))}</small>` : ''}
         ${e.ok ? `<small class="req">≈${odds}% chance the search committee picks you</small>` : ''}</div>
       ${button(e.ok ? 'Apply' : '🔒', 'orgs.applyExec', { arg: l.id, variant: 'small', disabled: !e.ok || used >= EXEC_APPLICATIONS, title: e.reason ?? '' })}
       ${e.ok ? '' : `<span class="why">${esc(e.reason)}</span>`}</li>`;

@@ -30,7 +30,9 @@ import { REGIONS } from '../life/Regions.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { ORG_TYPES } from './OrgTypes.js';
-import { orgOf, orgType, sideRng, personOf, supervises, ensureOrgOfType, ensureHeads, localizePost } from './Organizations.js';
+import { orgOf, orgType, sideRng, personOf, supervises, ensureOrgOfType, ensureHeads, localizePost, ORG_TYPE_FROM } from './Organizations.js';
+import { recalcSalary as priceJob } from '../career/Compensation.js';
+import { eraYear, yearlyPay } from '../world/Eras.js';
 import { departure } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
 
@@ -44,6 +46,28 @@ export const postDef = (org, deptId) => {
   if (!t) return null;
   return localizePost(org, deptId, deptId ? t.departments.find((d) => d.id === deptId)?.head ?? null : t.head);
 };
+
+/**
+ * What a head post pays, priced as the job will be once taken (era, country, difficulty, caps) with
+ * the head-of premium unless the post is itself a ladder level. A copy is priced; nothing is changed.
+ */
+export function postPay(state, { job = null, professionId, levelId, orgId, deptId = null, size = 'large', occupations = null }) {
+  const org = orgOf(state, orgId);
+  const def = org ? postDef(org, deptId) : null;
+  let probe;
+  if (job) probe = JSON.parse(JSON.stringify(job));
+  else {
+    const profession = getProfession(professionId);
+    const level = profession ? levelById(profession, levelId) : null;
+    if (!level) return null;
+    probe = { professionId, sector: profession.sector, employer: { size, orgId }, step: 1, merit: 0, posting: null, grade: level.grade, levelId, abilities: [...level.abilities] };
+  }
+  if (!def || !levelMatchesPost(def, probe, occupations)) probe.payAdjust = (probe.payAdjust ?? 1) * HEAD_PAY[deptId ? 'dept' : 'org'];
+  return priceJob(state, probe);
+}
+
+/** MBAs date from 1908; boards came to expect them (or a graduate degree) only after the war. */
+const degreeExpected = () => eraYear() >= 1955;
 
 /** Posts the player can hold: not elected offices and not politics offices (city manager is hired through politics). */
 export const promotable = (def) => Boolean(def) && !['elected', 'owner', 'outside'].includes(def.selection) && !def.office;
@@ -206,11 +230,12 @@ export function postTick(ctx, job) {
     ctx.log(`${holder.name} ${why}. ${by(next.def)[0].toUpperCase()}${by(next.def).slice(1)} named ${successor?.name ?? 'someone else'} ${next.def.title}.`, '🏢');
     return;
   }
+  const pay = postPay(state, { job, orgId: org.id, deptId: next.deptId ?? null, occupations: next.deptId ? orgType(org.typeId)?.departments.find((d) => d.id === next.deptId)?.occupations : null });
   ctx.prompt({
     type: 'orgs.postOffer',
     icon: '🏢',
     title: `${next.def.title}?`,
-    text: `${holder.name} ${why}. ${by(next.def)[0].toUpperCase()}${by(next.def).slice(1)} wants you to take over as ${next.def.title} of ${next.deptId ? org.departments[next.deptId].name : org.name}.${next.def.selection === 'appointed' ? ' It\'s a political appointment: a new administration could replace you (you\'d return to your current rank).' : ''}`,
+    text: `${holder.name} ${why}. ${by(next.def)[0].toUpperCase()}${by(next.def).slice(1)} wants you to take over as ${next.def.title} of ${next.deptId ? org.departments[next.deptId].name : org.name}.${next.def.selection === 'appointed' ? ' It\'s a political appointment: a new administration could replace you (you\'d return to your current rank).' : ''}${pay ? `\nPay: ${yearlyPay(state, pay)}.` : ''}`,
     options: [
       { id: 'accept', label: `🏢 Accept — become ${next.def.title}` },
       { id: 'decline', label: '🙅 Stay where you are' },
@@ -251,7 +276,8 @@ export function executiveEligibility(state, listing) {
   if (!ledThings) return { ok: false, reason: 'Needs management experience (a management post, or 5+ years running a business with staff)' };
   if (r.years < (ceo ? 15 : 10)) return { ok: false, reason: `Needs ${ceo ? 15 : 10}+ years of work experience` };
   if (!ceo && r.field(listing.occupations) < 6) return { ok: false, reason: `Needs 6+ years in the field (${listing.occupations.map((o) => getProfession(o)?.name ?? o).join(' / ')})` };
-  if (ceo && !r.graduate && r.peakGrade < 9 && !r.ranOrg && r.ownerScale < 50) return { ok: false, reason: 'Boards want an MBA or other graduate degree — or a record running an organization' };
+  if (ceo && degreeExpected() && !r.graduate && r.peakGrade < 9 && !r.ranOrg && r.ownerScale < 50) return { ok: false, reason: 'Boards want an MBA or other graduate degree — or a record running an organization' };
+  if (ceo && !degreeExpected() && r.peakGrade < 8 && !r.ranOrg && r.ownerScale < 20) return { ok: false, reason: 'The owners want someone who has run things: a senior post, or a business of your own' };
   const level = levelById(getProfession(listing.professionId), listing.levelId);
   if (!level) return { ok: false, reason: 'No such post' };
   return { ok: true };
@@ -276,9 +302,10 @@ export function refreshExecutiveSearch(state) {
   const abroad = (state.character.countryId ?? 'US') !== 'US';
   // Only bodies whose work exists here (no sheriff's office or state police abroad where there are none).
   const here = new Set(professionsFor(state).map((p) => p.id));
-  const exists = (d) => !abroad || d.occupations.some((id) => here.has(id));
+  const exists = (d) => d.occupations.some((id) => here.has(id));
+  const year = eraYear();
   // Abroad, public bodies aren't US state departments or counties: executive searches are for firms and the council.
-  const types = Object.entries(ORG_TYPES).filter(([id, t]) => (abroad ? (t.sector === 'private' || id === 'cityGov') && !t.abroadOnly : !t.abroadOnly) && t.departments.some(exists) && (t.scope !== 'nation' || rng.chance(0.3)));
+  const types = Object.entries(ORG_TYPES).filter(([id, t]) => !(ORG_TYPE_FROM[id] > year) && (abroad ? (t.sector === 'private' || id === 'cityGov') && !t.abroadOnly : !t.abroadOnly) && t.departments.some(exists) && (t.scope !== 'nation' || rng.chance(0.3)));
   const listings = [];
   for (let i = 0; i < 12 && listings.length < 5; i++) {
     const [typeId, t] = rng.pick(types);
@@ -294,6 +321,8 @@ export function refreshExecutiveSearch(state) {
     const id = `${org.id}|${deptPick?.id ?? '-'}`;
     if (listings.some((l) => l.id === id)) continue;
     listings.push({ id, orgId: org.id, orgName: org.name, deptId: deptPick?.id ?? null, deptName: deptPick ? org.departments[deptPick.id]?.name ?? deptPick.name : null, title: def.title, selection: def.selection, appointedBy: def.appointedBy ?? null, sector: t.sector, occupations, professionId, levelId: levelForPost(def, professionId, 'large') });
+    const posted = listings.at(-1);
+    posted.salary = postPay(state, { professionId: posted.professionId, levelId: posted.levelId, orgId: org.id, deptId: posted.deptId, occupations: posted.deptId ? posted.occupations : null }) ?? null;
   }
   state.career.execSearch = { age: state.character.age, listings };
 }
@@ -301,7 +330,7 @@ export function refreshExecutiveSearch(state) {
 /** Odds a search committee picks you. */
 export function executiveOdds(state, listing) {
   const r = executiveRecord(state);
-  let p = 0.12 + Math.min(0.15, (r.years - 10) * 0.01) + Math.max(0, r.peakGrade - 6) * 0.04 + (r.headed ? 0.1 : 0) + (r.mba ? 0.08 : r.graduate ? 0.04 : 0) + Math.min(0.08, r.ownerYears * 0.01) + Math.min(0.06, prestige(state) / 800) + (state.stats.smarts - 50) / 400;
+  let p = 0.12 + Math.min(0.15, (r.years - 10) * 0.01) + Math.max(0, r.peakGrade - 6) * 0.04 + (r.headed ? 0.1 : 0) + (degreeExpected() ? (r.mba ? 0.08 : r.graduate ? 0.04 : 0) : 0) + Math.min(0.08, r.ownerYears * 0.01) + Math.min(0.06, prestige(state) / 800) + (state.stats.smarts - 50) / 400;
   if (listing.selection === 'appointed') p *= 0.6; // appointments go to people the appointing official knows
   if (listing.deptId) p += 0.05;
   return clamp(p, 0.03, 0.7);
@@ -326,7 +355,7 @@ export const ExecutiveActions = {
       type: 'orgs.execOffer',
       icon: '👔',
       title: `Offer: ${listing.title}`,
-      text: `${listing.orgName} wants you as ${listing.title}${listing.deptName ? ` (${listing.deptName})` : ''}.${listing.selection === 'appointed' ? ` It's an appointment by ${listing.appointedBy} — a new administration could replace you.` : ''}${state.career.job ? `\nAccepting means leaving your job as ${state.career.job.title}.` : ''}`,
+      text: `${listing.orgName} wants you as ${listing.title}${listing.deptName ? ` (${listing.deptName})` : ''}.${listing.selection === 'appointed' ? ` It's an appointment by ${listing.appointedBy} — a new administration could replace you.` : ''}${state.career.job ? `\nAccepting means leaving your job as ${state.career.job.title}.` : ''}${listing.salary ? `\nPay: ${yearlyPay(state, listing.salary)}.` : ''}`,
       options: [{ id: 'accept', label: '✍️ Accept' }, { id: 'decline', label: '🙅 Decline' }],
       data: { listing },
     });
@@ -348,7 +377,7 @@ export function executiveResolvers({ hire, recalcSalary, employerAt, ensureDepar
       takePost(ctx, job, org, data.deptId, { how: 'appointed' });
       ensureDepartment(job, { abilities: job.abilities, reports: data.deptId ? 12 : 25 });
       recalcSalary(state, job);
-      ctx.log(`You were named ${job.headOf.title}${data.deptId ? ` of ${org.departments[data.deptId].name}` : ` of ${org.name}`}. $${job.salary.toLocaleString()}/yr.`, '🏢', 'milestone');
+      ctx.log(`You were named ${job.headOf.title}${data.deptId ? ` of ${org.departments[data.deptId].name}` : ` of ${org.name}`}. ${yearlyPay(state, job.salary)}.`, '🏢', 'milestone');
       ctx.toast(job.headOf.title, 'good');
       ctx.stat('happiness', 10);
     },
@@ -369,7 +398,7 @@ export function executiveResolvers({ hire, recalcSalary, employerAt, ensureDepar
       if (!job.headOf) takePost(ctx, job, org, l.deptId, { how: 'external' });
       ensureDepartment(job, { abilities: job.abilities, reports: l.deptId ? 12 : 25 });
       recalcSalary(state, job);
-      ctx.log(`You joined ${org.name} as ${job.headOf?.title ?? job.title}: $${job.salary.toLocaleString()}/yr.`, '👔', 'milestone');
+      ctx.log(`You joined ${org.name} as ${job.headOf?.title ?? job.title}: ${yearlyPay(state, job.salary)}.`, '👔', 'milestone');
     },
   };
 }

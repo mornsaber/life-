@@ -7,7 +7,7 @@
  */
 import { referenceBonus } from './WorkLife.js';
 import { workRepBonus } from '../life/Reputation.js';
-import { fitsEra } from '../world/Eras.js';
+import { fitsEra, yearlyPay } from '../world/Eras.js';
 import { cityJobsBonus } from '../life/Cities.js';
 import { skillHireBonus } from '../life/Skills.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -28,7 +28,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { educationFields, schoolPrestige } from '../education/Catalog.js';
 import { networkBonus } from '../campus/Network.js';
-import { lateralStep } from './SeniorMoves.js';
+import { lateralStep, previewPay } from './SeniorMoves.js';
 import { examRequired } from '../world/Eras.js';
 
 export const APPLICATIONS_PER_YEAR = 3;
@@ -242,9 +242,10 @@ export function hireChance(state, profession, level, score, maxScore, employer =
   return clamp(base + stats + candidateBonus(state, profession) - seniority - market + history + workRepBonus(state) + cityJobsBonus(state) + skillHireBonus(state, profession.id), 0.05, 0.95);
 }
 
+// Priced exactly as the job will be once taken: the era's wages, the country's, the women's rate of
+// the day, difficulty and any legal cap (career/Compensation.js), not today's American scale.
 function offerSalary(state, profession, level, employer, step, merit) {
-  const total = salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
-  return Math.min(total, payCap({ sector: profession.sector, professionId: profession.id, grade: level.grade, abilities: level.abilities }, state.character.countryId));
+  return previewPay(state, { professionId: profession.id, levelId: level.id, employer, step, merit });
 }
 
 function offerPrompt(ctx, data) {
@@ -257,7 +258,7 @@ function offerPrompt(ctx, data) {
     type: 'career.negotiate',
     icon: '💰',
     title: 'Job Offer!',
-    text: `${data.employer.name} offers you ${level.title} [${isPublic ? `${payGradeLabel({ sector: profession.sector, grade: level.grade }, state.character.countryId)}, step ${data.step}` : `Band ${level.grade}`}] at $${salary.toLocaleString()}/yr.` +
+    text: `${data.employer.name} offers you ${level.title} [${isPublic ? `${payGradeLabel({ sector: profession.sector, grade: level.grade }, state.character.countryId)}, step ${data.step}` : `Band ${level.grade}`}] at ${yearlyPay(state, salary)}.` +
       (profession.dutyStation ? '\nDuty station: a remote park with government housing provided.' : '') +
       (state.career.job ? `\nAccepting means resigning as ${state.career.job.title}.` : ''),
     options: isPublic

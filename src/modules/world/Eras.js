@@ -706,6 +706,10 @@ export function priceIndex(year) {
  * elsewhere the local currency of the day had its own history (and, often, its own currency), so
  * it's not shown.
  */
+/** "$41,000/yr (about $1,640 in 1925 money)": a yearly amount for offers and posts, in the money of the day too. */
+export const yearlyPay = (state, amount) => { const d = periodDollars(state, amount); return `$${Math.round(amount).toLocaleString()}/yr${d != null ? ` (about $${d.toLocaleString()} in ${yearNow(state)} money)` : ''}`; };
+/** The same, with no state to hand (offers built away from the engine): the era being played. */
+export const yearlyPayNow = (amount) => { const y = ERA_YEAR; const us = (getEraState()?.character?.countryId ?? 'US') === 'US'; return `$${Math.round(amount).toLocaleString()}/yr${y < PRESENT && us ? ` (about $${Math.round(amount * priceIndex(y)).toLocaleString()} in ${y} money)` : ''}`; };
 export const periodDollars = (state, amount) => (yearNow(state) < PRESENT && (state.character?.countryId ?? 'US') === 'US' ? Math.round(amount * priceIndex(yearNow(state))) : null);
 
 
@@ -1556,6 +1560,7 @@ const RENAMES = [
   // A company's top and its departments before management-speak (the org chart).
   [/\b([Tt])he private-equity owners\b/g, 1980, (_y, t) => `${t}he proprietors`],
   [/\bChief Operating Officer\b/g, 1975, (y) => (y >= 1900 ? 'General Manager' : 'Manager')],
+  [/\bA headhunter wants you\b/g, 1950, () => 'A rival firm sent word'],
   [/\bCommunications Center\b/g, 1968, (y) => (y >= 1920 ? 'Telephone Room' : 'Despatch Office')],
   [/\bCommunications Manager\b/g, 1968, () => 'Chief Despatcher'],
   [/\bRevenue Cycle Director\b/g, 1990, () => 'Chief Clerk'],

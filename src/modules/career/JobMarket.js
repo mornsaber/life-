@@ -8,6 +8,7 @@
  * job.nonCompete: { years } — signed with this employer
  * state.career.nonCompete: { professionId, untilAge, employer, stateId } — binding you after you leave
  */
+import { eraYear, yearlyPayNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { lawValue } from '../politics/Laws.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
@@ -129,7 +130,7 @@ export function searchOffers(ctx, n, odds) {
   return offers;
 }
 
-export const offerSummary = (o) => (o.transfer ? `Transfer within ${o.employer.orgName ?? o.employer.name} to ${o.employer.division ?? cityName(o.regionId)} (${cityName(o.regionId)}) — same rank, step and seniority; pay adjusted for the locality` : `${o.employer.name} (${o.employer.size})${o.regionId ? ` in ${cityName(o.regionId)} — you'd move` : ''} · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.levelled === 'down' ? ' (a rung down: titles run bigger there)' : o.levelled === 'up' ? ' (a rung up: a smaller firm)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`);
+export const offerSummary = (o) => (o.transfer ? `Transfer within ${o.employer.orgName ?? o.employer.name} to ${o.employer.division ?? cityName(o.regionId)} (${cityName(o.regionId)}) — same rank, step and seniority; pay adjusted for the locality` : `${o.employer.name} (${o.employer.size})${o.regionId ? ` in ${cityName(o.regionId)} — you'd move` : ''} · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.levelled === 'down' ? ' (a rung down: titles run bigger there)' : o.levelled === 'up' ? ' (a rung up: a smaller firm)' : ''}${o.step ? ` · step ${o.step}` : ''} · ${yearlyPayNow(o.salary)} · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${eraYear() < 1945 || o.employer.benefits.health ? '' : ' · no health plan'}${eraYear() < 1978 ? '' : o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`);
 
 /** Take an offer: a new employer in the same field (resigning the old job). */
 export function acceptOffer(ctx, offer) {
