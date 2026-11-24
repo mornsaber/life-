@@ -1446,6 +1446,7 @@ const RENAMES = [
   [/\bChief Executive Officer\b/g, 1975, (y) => (y >= 1900 ? 'Managing Director' : 'Senior Partner')],
   [/\bForensic Accountant\b/g, 1980, () => 'Investigating Accountant'],
   [/\bInvestment Banking\b/g, 1930, () => 'Merchant Banking'],
+  [/\bDirectorate of Digital Innovation\b/g, 2015, (y) => (y >= 1963 ? 'Directorate of Science & Technology' : 'Technical Services Division')],
   [/\bCybersecurity Directorate\b/g, 1995, (y) => (y >= 1952 ? 'Communications Security Directorate' : 'Cipher Security Section')],
   [/\bCybersecurity\b/g, 1995, (y) => (y >= 1952 ? 'Communications Security' : 'Cipher Security')],
   [/\bCompliance Section\b/g, 1985, () => 'Inspection Branch'],
@@ -1596,6 +1597,14 @@ const RENAMES = [
   [/\bJakarta\b/g, 1942, () => 'Batavia'],
   [/\bHarare\b/g, 1982, () => 'Salisbury'],
   [/\bKinshasa\b/g, 1966, () => 'Léopoldville'],
+  // Capitals built later, under the names of what stood there before.
+  [/\bNaypyidaw\b/g, 2005, () => 'Pyinmana'],
+  [/\bAstana\b/g, 1998, (y) => (y >= 1992 ? 'Akmola' : y >= 1961 ? 'Tselinograd' : 'Akmolinsk')],
+  [/\bIslamabad\b/g, 1961, () => 'Rawalpindi'],
+  [/\bGaborone\b/g, 1969, () => 'Gaberones'],
+  [/\bBelmopan\b/g, 1970, () => 'Belize City'],
+  [/\bNouakchott\b/g, 1958, () => 'Ksar'],
+  [/\bNgerulmud\b/g, 2006, () => 'Koror'],
 ];
 /**
  * International organisations before today's: the League of Nations (1920–46) before the UN, the

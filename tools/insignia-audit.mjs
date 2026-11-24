@@ -33,7 +33,7 @@ const ALLOW = [
   ['JP', /Taishō|Gensui|Sōchō|Jun-i|Shōho|1-sa/], // a Gensui wore a Taishō's insignia; a sergeant major and a warrant officer looked alike
   ['US', /Quartermaster Sergeant|First Sergeant|Coxswain|Quartermaster|Boatswain's Mate/], // three chevrons and a tie; the old rating badges
   ['GB', /Leading Seaman|Garrison Sergeant Major|Regimental Sergeant Major|Warrant Officer|Quartermaster Sergeant|Colonel-Commandant/],
-  ['CA', /Leading Seaman|Chief Petty Officer|Midshipman|Air Chief Marshal/], ['IN', /Honorary|Master Chief|Brigadier/],
+  ['CA', /Leading Seaman|Chief Petty Officer|Midshipman|Air Chief Marshal|Lance Corporal|Warrant Officer|Regimental Sergeant Major|Aircraftman|Flight Sergeant|Pilot Officer|Flying Officer|Flight Lieutenant|Squadron Leader|Wing Commander|Group Captain|Air Commodore|Air Vice-Marshal|Air Marshal/], ['IN', /Honorary|Master Chief|Brigadier/],
   ['IT', /Maresciallo|Generale d'Armata/], ['DE', /Obermatrose|Obermaat|Unteroffizier|Offizierstellvertreter/],
 ];
 const allowed = (cc, text) => ALLOW.some(([c, re]) => c === cc && re.test(text));

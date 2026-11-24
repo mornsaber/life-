@@ -119,7 +119,11 @@ export function insigniaHistoryCard(state) {
 function cloth(cc, branch, y, civil) {
   if (civil === 'police') return { coat: '#1d2540', legs: '#1d2540' };
   if (civil === 'fire') return { coat: '#1b2233', legs: '#1b2233' };
-  if (['navy', 'coastguard'].includes(branch)) return { coat: '#1d2b4f', legs: '#1d2b4f' };
+  if (['navy', 'coastguard'].includes(branch)) return y < 1857 ? { coat: '#2a3550', legs: '#e8e4d8' } : { coat: '#1d2b4f', legs: '#1d2b4f' };
+  // The first airmen wore their army's khaki (the RFC, and the RAF to 1920); the Luftwaffe its blue-grey.
+  if (branch === 'airforce' && y < 1920) return { coat: '#8a7a4a', legs: '#8a7a4a' };
+  if (branch === 'airforce' && cc === 'DE' && y < 1956) return { coat: '#5c6a7a', legs: '#5c6a7a' };
+  if (branch === 'airforce' && cc === 'RU') return { coat: y < 1992 ? '#3f4f6b' : '#2f3f5b', legs: '#2f3f5b' };
   if (branch === 'airforce') return y < 1947 && cc === 'US' ? { coat: '#6b6b3a', legs: '#6b6b3a' } : cc === 'US' ? { coat: '#2f4d7a', legs: '#2f4d7a' } : { coat: '#5b6f8f', legs: '#5b6f8f' };
   const camo = y >= 1985;
   if (cc === 'GB' || ['AU', 'NZ', 'CA', 'IN'].includes(cc)) return y < 1902 ? { coat: '#b3202a', legs: '#1d1d2b' } : camo ? { coat: '#6b7a4f', legs: '#6b7a4f', camo: true } : { coat: '#8a7a4a', legs: '#8a7a4a' };

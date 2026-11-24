@@ -419,7 +419,7 @@ export function militaryInsignia(code, nation = null, { branch = null, title = n
   const kind = m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1];
   const g = n;
   if (kind === 'E') {
-    if (commonwealth && g >= 8) return svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">${g >= 9 ? '⚜' : cwEmblem(nation)}</text>`);
+    if (commonwealth) return cwEnlisted(g, branch, nation);
     return ['', chevrons(1), chevrons(1, 1), chevrons(2), chevrons(3), chevrons(3, 1), chevrons(3, 2), chevrons(3, 3, 'diamond'), chevrons(3, 3, 'star')][Math.max(0, g - 1)] ?? chevrons(3, 3, 'star');
   }
   if (kind === 'W') return warrant(Math.max(1, g));
@@ -582,6 +582,13 @@ function periodTitleBadge(rawTitle, { prefix, n, nation, branch }) {
   // A title that lives on in today's ladder at another grade wears that grade's badge.
   let ladder = [];
   try { ladder = branchOf({ nation: nation ?? undefined, branch: branch ?? 'army', track: enlisted ? 'enlisted' : prefix === 'W' ? 'warrant' : 'officer' })?.[enlisted ? 'enlisted' : prefix === 'W' ? 'warrant' : 'officer'] ?? []; } catch { ladder = []; }
+  // Canada before unification wore Britain's ranks and badges: look in the British ladder first.
+  if (nation === 'CA' && y < 1968) {
+    let gb = [];
+    try { gb = branchOf({ nation: 'GB', branch: branch ?? 'army', track: enlisted ? 'enlisted' : 'officer' })?.[enlisted ? 'enlisted' : 'officer'] ?? []; } catch { gb = []; }
+    const g = gb.findIndex((t) => stripTitle(t) === title);
+    if (g >= 0) return militaryInsignia(`${prefix}-${g + 1}`, 'GB', { branch });
+  }
   const at = ladder.findIndex((t) => stripTitle(t) === title);
   if (at >= 0 && at !== n - 1) return militaryInsignia(`${prefix}-${at + 1}`, nation, { branch });
   // The dominions and India wore Britain's badges under Britain's titles (Canada until 1968).
@@ -592,6 +599,28 @@ function periodTitleBadge(rawTitle, { prefix, n, nation, branch }) {
     if (g >= 0) return militaryInsignia(`${prefix}-${g + 1}`, 'GB', { branch });
   }
   return undefined;
+}
+
+/**
+ * The British pattern for other ranks (and the dominions'): one, two, three chevrons; a crown over
+ * three for a staff sergeant; the crown alone for a warrant officer class 2; the royal arms for a
+ * class 1. The RAF's aircraftmen wear a propeller (two blades, then three), then chevrons.
+ */
+function cwEnlisted(g, branch, nation) {
+  const crownTxt = (y = 9) => `<text x="17" y="${y}" font-size="9" text-anchor="middle" fill="${GOLD}">${cwEmblem(nation)}</text>`;
+  const chev = (k, y0 = 6) => Array.from({ length: k }, (_, i) => `<path d="M4 ${y0 + 8 + i * 5} L17 ${y0 + i * 5} L30 ${y0 + 8 + i * 5}" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linejoin="round"/>`).join('');
+  const crownOverThree = svg(34, crownTxt() + chev(3, 12), 40);
+  const crownAlone = svg(30, `<text x="15" y="24" font-size="18" text-anchor="middle" fill="${GOLD}">${cwEmblem(nation)}</text>`);
+  const arms = svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">⚜</text>`);
+  const prop = (blades) => svg(34, `<circle cx="17" cy="17" r="2.5" fill="${GOLD}"/>${Array.from({ length: blades }, (_, i) => `<ellipse cx="17" cy="9" rx="2.6" ry="8" fill="${GOLD}" transform="rotate(${(360 / blades) * i} 17 17)"/>`).join('')}`, 34);
+  // Canada since unification (1968): a maple leaf for the master corporal and the sergeant, the crown in a wreath for a master warrant officer.
+  if (nation === 'CA' && eraYear() >= 1968) {
+    const leaf = (k) => svg(34, `<text x="17" y="${k === 3 ? 9 : 10}" font-size="8" text-anchor="middle" fill="${GOLD}">🍁\uFE0E</text>${chev(k, 12)}`, 40);
+    const wreathed = svg(34, `<path d="M6 26 Q17 34 28 26" fill="none" stroke="${GOLD}" stroke-width="2"/><text x="17" y="22" font-size="15" text-anchor="middle" fill="${GOLD}">${cwEmblem(nation)}</text>`, 34);
+    return ['', chevrons(1), chevrons(2), leaf(2), leaf(3), crownAlone, wreathed, arms, svg(34, `<text x="17" y="24" font-size="18" text-anchor="middle" fill="${GOLD}">⚜</text><path d="M6 28 Q17 34 28 28" fill="none" stroke="${GOLD}" stroke-width="2"/>`, 34)][Math.max(0, Math.min(8, g - 1))];
+  }
+  if (branch === 'airforce') return ['', prop(2), prop(3), chevrons(2), chevrons(3), crownOverThree, arms, arms, arms][Math.max(0, Math.min(8, g - 1))];
+  return ['', chevrons(1), chevrons(2), chevrons(3), crownOverThree, crownAlone, arms, arms, arms][Math.max(0, Math.min(8, g - 1))];
 }
 
 /** Historical insignia for a rank (kind E/W/O, grade n), or undefined to use today's. */

@@ -24,6 +24,8 @@ export const SERVICE_ABROAD = {
   // No grand juries outside the US: prosecutors decide.
   'an internal affairs review and a grand jury': 'a professional-standards investigation and a prosecutors\' review',
   'The grand jury declined to indict': 'Prosecutors declined to charge', 'the grand jury minutes': 'the inquiry transcript', 'grand jury': 'prosecutors\' review',
+  // American command titles in fire and police services abroad.
+  'Deputy Assistant Chief': 'Assistant Chief Officer', 'Chief of Department': 'Chief Officer',
   // Veterans: a ministry or veterans' agency, not the VA.
   'Disability benefits and VA/pension where eligible': 'Disability benefits and a pension where eligible',
   'VA disability compensation': 'veterans\' disability pension', 'service-connected disability rating': 'service-related disability assessment', 'a VA claim': 'a veterans\' disability claim',

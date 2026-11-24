@@ -194,6 +194,13 @@ function gradeTeamName(n, schoolN, cc) {
     return `${pick(grades, n)} team`;
   }
   if (['GB', 'IE', 'AU', 'NZ'].includes(cc)) return `Year ${stage === 0 ? 1 + (n % 6) : 7 + (n % 5)} team`;
+  // Each country counts its classes its own way.
+  if (['DE', 'AT', 'CH'].includes(cc)) return `Klasse ${stage === 0 ? 1 + (n % 4) : stage === 1 ? 5 + (n % 5) : 10 + (n % 3)}`;
+  if (['FR', 'BE', 'LU'].includes(cc)) return pick([['CP', 'CE1', 'CE2', 'CM1', 'CM2'], ['classes de 6e', 'classes de 5e', 'classes de 4e', 'classes de 3e'], ['classes de seconde', 'classes de première', 'classes de terminale']][stage], n);
+  if (cc === 'IT') return `${['Prima', 'Seconda', 'Terza', 'Quarta', 'Quinta'][n % (stage === 1 ? 3 : 5)]} ${stage === 0 ? 'elementare' : stage === 1 ? 'media' : 'superiore'}`;
+  if (['ES', 'MX', 'AR', 'CO', 'CL', 'PE'].includes(cc)) return `${1 + (n % (stage === 1 ? 3 : 6))}º de ${stage === 0 ? 'Primaria' : stage === 1 ? 'Secundaria' : 'Bachillerato'}`;
+  if (cc === 'JP') return `${stage === 0 ? 'Elementary' : stage === 1 ? 'Junior high' : 'Senior high'} year ${1 + (n % (stage === 0 ? 6 : 3))}`;
+  if (['IN', 'PK', 'BD', 'LK', 'NG', 'KE', 'GH', 'ZA'].includes(cc)) return `${['Class', 'Standard'][cc === 'ZA' || cc === 'KE' ? 1 : 0]} ${stage === 0 ? 1 + (n % 5) : stage === 1 ? 6 + (n % 3) : 9 + (n % 4)}`;
   return `Grade ${stage === 0 ? 1 + (n % 6) : stage === 1 ? 7 + (n % 3) : 10 + (n % 3)} team`;
 }
 function schoolName(n, cc) {

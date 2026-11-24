@@ -63,6 +63,8 @@ export const ERA_CONSCRIPTION = {
     { from: 1962, until: 1973, scheme: ballot('National Service ballot', 3, 0.2, { text: 'Your birthday was drawn in the National Service ballot.' }) },
   ],
 };
+/** When women were first called up (outside wartime volunteering): Israel from its founding, Norway 2015, Sweden 2017… */
+const WOMEN_CALLED_UP_FROM = { IL: 1949, NG: 1973, ER: 1995, NO: 2015, SE: 2017, DK: 2026, MA: 2019, MM: 2024, KP: 2003, CV: 1990, BO: 2000, TN: 2000, MY: 2004 };
 /** When a country's present-day scheme began (or resumed): before it, no call-up. */
 const PRESENT_FROM = { IL: 1949, SG: 1967, KR: 1949, TW: 1951, NG: 1973, CN: 1955, AT: 1955, CH: 1874, FI: 1919, GR: 1911, TR: 1927, EG: 1955, DE: 2025, RU: 1992, LT: 2015, LV: 2024, UA: 2014, CY: 1964, AE: 2014, QA: 2013, KW: 2017, IR: 1925, VN: 1960, KP: 1958, MX: 1942, BR: 1946, CL: 1900, CO: 1900, NO: 1897, DK: 1849, EE: 1992, TH: 1905, MM: 2011, MA: 2019, DZ: 1969, CU: 1963, MN: 1921 };
 const conscriptionOf = (state) => {
@@ -199,6 +201,8 @@ export const ConscriptionModule = {
     const scheme = conscriptionOf(state);
     const genders = scheme && typeof scheme === 'object' ? scheme.genders ?? ['male'] : ['male'];
     if (!k || !genders.includes(state.character.gender) || !isCitizen(state, countryOf(state).id)) return;
+    // Women were called up only from these years (a scheme that takes them today didn't always).
+    if (state.character.gender === 'female' && yearNow(state) < (WOMEN_CALLED_UP_FROM[countryOf(state).id] ?? 2000)) return;
     if (state.legal.incarceration || state.military.service) return;
     const age = state.character.age;
     const c = record(state);
