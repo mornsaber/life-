@@ -26,7 +26,7 @@ import { clamp } from '../../core/Random.js';
 import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { OFFICES } from './Offices.js';
 import { LAWS, levelValue, proposedValue, enact, describeValue } from './Laws.js';
-import { EU_MEMBERS } from '../career/IntlOrgCareers.js';
+import { EU_MEMBERS, memberIn } from '../career/IntlOrgCareers.js';
 import { COUNTRIES } from '../world/Countries.js';
 
 /** Political groups: seats, lean (+ toward labour/left), scepticism (votes against more Europe). */
@@ -141,7 +141,7 @@ function applyFile(ctx, file) {
   const { state } = ctx;
   const changed = [];
   if (file.lawId) {
-    for (const cc of EU_MEMBERS) {
+    for (const cc of EU_MEMBERS.filter((c) => memberIn(EU_MEMBERS, c))) {
       const cur = levelValue(state, file.lawId, 'federal', cc);
       const next = proposedValue(file.lawId, cur, file.direction);
       if (next === null) continue;
@@ -198,7 +198,7 @@ function plenary(ctx) {
 function hearings(ctx) {
   const { state, rng } = ctx;
   const nm = randomName(rng, rng.chance(0.5) ? 'male' : 'female');
-  const cc = rng.pick(EU_MEMBERS.filter((c) => COUNTRIES[c]));
+  const cc = rng.pick(EU_MEMBERS.filter((c) => COUNTRIES[c] && memberIn(EU_MEMBERS, c)));
   const portfolio = rng.pick(['Trade', 'Competition', 'Energy', 'Justice', 'Migration', 'Agriculture', 'the Internal Market', 'Health', 'Climate Action', 'Defence']);
   const flaw = rng.pick(['a conflict of interest over a family company', 'evasive answers on the portfolio', 'a past corruption inquiry at home', 'nothing: a strong performance', 'a poor grasp of the files']);
   ctx.prompt({

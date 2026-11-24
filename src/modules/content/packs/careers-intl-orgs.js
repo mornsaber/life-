@@ -26,9 +26,13 @@ import { L } from '../../career/Ladder.js';
 import { citizenshipsOf } from '../../world/Countries.js';
 import { eraYear } from '../../world/Eras.js';
 import { sovereignIn } from '../../world/HistoricalData.js';
+import { euMemberIn } from '../../world/EuMembership.js';
 
 /** EU and NATO members (citizenship gates). */
-export const EU_MEMBERS = ['AT', 'BE', 'CY', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LV', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'BG', 'CZ', 'HU'];
+/** Every country that has been in the EEC/EU (Britain 1973–2020); memberIn() says who was in, when. */
+export const EU_MEMBERS = ['AT', 'BE', 'CY', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LV', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'BG', 'CZ', 'HU', 'GB'];
+/** The Schengen area (no Britain, Ireland or Cyprus; Romania and Bulgaria from 2025). */
+export const SCHENGEN_MEMBERS = ['AT', 'BE', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IT', 'LT', 'LV', 'LU', 'MT', 'NL', 'PL', 'PT', 'SE', 'SI', 'SK', 'CZ', 'HU', 'RO', 'BG', 'CH', 'NO', 'IS', 'LI'];
 
 export const NATO_MEMBERS = ['US', 'CA', 'GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'DK', 'NO', 'PL', 'RO', 'TR', 'EE', 'LV', 'LT', 'SE', 'FI', 'CZ', 'HU', 'PT', 'GR', 'SK', 'SI', 'HR', 'BG', 'AL', 'ME', 'MK', 'IS', 'LU'];
 
@@ -63,7 +67,7 @@ export function orgMember(org, cc, y = eraYear()) {
 export const citizenOf = (state, org) => citizenshipsOf(state).some((c) => orgMember(org, c));
 
 /** Was this country a member in the year being played? */
-export const memberIn = (list, cc, y = eraYear()) => list.includes(cc) && !(((list === EU_MEMBERS ? EU_JOINED : list === NATO_MEMBERS ? NATO_JOINED : {})[cc] ?? 0) > y);
+export const memberIn = (list, cc, y = eraYear()) => (list === EU_MEMBERS ? euMemberIn(cc, y) : list.includes(cc) && !(((list === NATO_MEMBERS ? NATO_JOINED : {})[cc] ?? 0) > y));
 export const citizenOfAny = (state, list) => citizenshipsOf(state).some((c) => memberIn(list, c));
 
 export const passed = (state, comp) => Boolean(state.intlOrgs?.competitions?.[comp]?.passed);
@@ -158,7 +162,7 @@ const careers = {
   },
   euInstitutions: {
     ...INTL, id: 'euInstitutions', name: 'EU Institutions (European Civil Service)', icon: '🇪🇺', sector: 'private', payMultiplier: 1.35, background: 'standard',
-    employers: ['European Commission', 'European External Action Service', 'European Parliament (Secretariat)', 'Council of the European Union (General Secretariat)', 'European Central Bank', 'Court of Justice of the European Union'],
+    employers: ['European Commission', 'European External Action Service', 'European Parliament (Secretariat)', 'Council of the European Union (General Secretariat)', 'European Central Bank', 'Court of Justice of the European Union', 'European Investment Bank', 'European Court of Auditors', 'Europol', 'Frontex (European Border and Coast Guard Agency)', 'European Medicines Agency', 'European Economic and Social Committee'],
     entry: { education: { level: 'bachelor' } },
     eligible: (state) => {
       if (!citizenOfAny(state, EU_MEMBERS)) return { ok: false, reason: 'EU citizens only' };
@@ -171,11 +175,18 @@ const careers = {
       ['ad7', 'Administrator (AD7)', 7, { years: 4 }],
       ['ad8', 'Administrator (AD8)', 7],
       ['ad9', 'Policy Officer (AD9)', 8, { track: 'ic' }],
+      ['ad11', 'Principal Administrator (AD11)', 8, { track: 'ic' }],
       ['adviser', 'Adviser (AD13)', 9, { track: 'ic' }],
+      ['delegation', 'Head of EU Delegation (Ambassador)', 9, { track: 'ic', abilities: ['diplomatic'] }],
       ['hou', 'Head of Unit (AD9–AD12)', 8, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 25 }],
       ['director', 'Director (AD14)', 9, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 200 }],
       ['deputyDg', 'Deputy Director-General', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 1200 }],
       ['dg', 'Director-General (AD15–AD16)', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 1500 }],
+      ['secGen', 'Secretary-General of the European Commission', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 3000 }],
+      // The College: appointed, not promoted into (world/IntlOrgs.js offers the posts).
+      ['commissioner', 'European Commissioner', 11, { track: 'mgmt', appointed: true, appointedBy: 'your government, with the European Parliament\'s consent', abilities: ['supervise', 'budget', 'delegate', 'policy', 'diplomatic'], reports: 2000 }],
+      ['evp', 'Executive Vice-President of the European Commission', 12, { track: 'mgmt', appointed: true, appointedBy: 'the President of the Commission', abilities: ['supervise', 'budget', 'delegate', 'policy', 'diplomatic', 'exec'], reports: 5000 }],
+      ['president', 'President of the European Commission', 13, { track: 'mgmt', appointed: true, appointedBy: 'the European Council, elected by the European Parliament', abilities: ['supervise', 'budget', 'delegate', 'policy', 'diplomatic', 'exec'], reports: 32000 }],
     ],
   },
   nato: {

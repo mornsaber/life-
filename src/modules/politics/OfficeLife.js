@@ -23,6 +23,7 @@ import { OFFICES } from './Offices.js';
 import { mySeat } from './Legislature.js';
 import { corruptionHere } from '../crime/CrimeWorld.js';
 import { regimeOf } from '../world/Regimes.js';
+import { coverOf } from '../life/Protection.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
 const orng = (state) => {
@@ -80,7 +81,9 @@ function security(ctx, rng) {
   // An attempt on your life: rare, and survivable with a detail.
   if (level >= 4 && rng.chance(0.004 * level * era * unrest)) {
     ol.attempts = (ol.attempts ?? 0) + 1;
-    const dies = rng.chance(p?.tier === 'detail' ? 0.12 : p ? 0.3 : 0.45);
+    // Your cover, all of it (life/Protection.js): the state's detail, your own team, the armoured car.
+    const cover = coverOf(state).cover;
+    const dies = rng.chance(clamp(0.5 * (1 - cover / 100), 0.05, 0.45));
     if (dies) { ctx.log('An assassin got through.', '🕯️', 'death'); return ctx.die('Assassinated in office'); }
     ctx.stat('health', -rng.int(0, 15));
     ctx.stat('stress', 15);

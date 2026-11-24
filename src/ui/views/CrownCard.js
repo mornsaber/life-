@@ -2,6 +2,7 @@
  * The Crown on the Politics tab: the monarch and the heir where you live, a born royal's own
  * life (title, place in the line, popularity, duties), and a peer's title.
  */
+import { protectionCard as guardCard } from './ProtectionCard.js';
 import { houseTitle } from '../../modules/world/Houses.js';
 import { esc, money, button, card, meter, kv, chip, disclosure, select } from '../Components.js';
 import { fullName, ageOf } from '../../modules/people/People.js';
@@ -297,7 +298,7 @@ export function successionView(state) {
 /** 🎗️ Household: honours, patronages, the forces, titles. */
 export function householdView(state) {
   const x = crownParts(state);
-  return [consentCard(state), protectionCard(state), pressCard(state), x.honours, militaryCard(state), x.peerage, x.noble].filter(Boolean).join('') || card('Household', '<p class="muted">Honours and appointments come with a working royal life.</p>', { icon: '🎗️' });
+  return [consentCard(state), protectionCard(state), guardCard(state), pressCard(state), x.honours, militaryCard(state), x.peerage, x.noble].filter(Boolean).join('') || card('Household', '<p class="muted">Honours and appointments come with a working royal life.</p>', { icon: '🎗️' });
 }
 /** 🏰 Estates: the house, its seat and lands, and the money. */
 export function estatesView(state) {

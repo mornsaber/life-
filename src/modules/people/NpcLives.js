@@ -147,7 +147,8 @@ function yearOf(ctx, p) {
   if (age === 18 && !life.studying && life.edu === 'highschool' && !p.eduDecided) {
     const smarts = p.traits?.smarts ?? rng.int(30, 85);
     const r = rng.next();
-    const college = 0.15 + smarts / 160 + (p.relation === 'child' && state.people.fund529?.[p.id] ? 0.15 : 0);
+    // A governess's years of lessons (life/Property.js) count too.
+    const college = 0.15 + smarts / 160 + (p.relation === 'child' && state.people.fund529?.[p.id] ? 0.15 : 0) + Math.min(0.15, (p.tutored ?? 0) * 0.02);
     if (r < college) life.studying = { degree: 'bachelor', until: age + STUDY_YEARS.bachelor };
     else if (r < college + 0.15) life.studying = { degree: rng.pick(['trade', 'associate']), until: age + 2 };
     if (life.studying) {

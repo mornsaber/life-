@@ -15,6 +15,7 @@
  *
  * state.royal.protection: 'state' | 'private' | 'none'; state.royal.pressOffice; state.royal.deals
  */
+import { coverOf } from '../life/Protection.js';
 import { yearlyCount, bumpYearly, currentYear } from '../../core/State.js';
 import { clamp, Random } from '../../core/Random.js';
 import { living } from '../people/People.js';
@@ -97,7 +98,8 @@ export const CourtLifeModule = {
       ctx.log('You could no longer pay for your own protection officers. They left.', '🛡️', 'warn');
     }
     // The threats.
-    const guarded = protectionOf(state) !== 'none';
+    // Guarded: the state's officers, your own, or enough of your own arrangements (life/Protection.js).
+    const guarded = protectionOf(state) !== 'none' || coverOf(state).cover >= 30;
     if (state.character.age >= 12 && rng.chance(threatOf(state) / 300)) {
       const k = rng.pick(INCIDENTS);
       ctx.stat('stress', guarded ? Math.round(k.stress / 3) : k.stress);

@@ -20,7 +20,7 @@ import { VIEWS } from '../src/ui/Renderer.js';
 import { foreignAwardsYear } from '../src/modules/world/ForeignAwards.js';
 import { ladderFor } from '../src/modules/career/Ladder.js';
 import { TOP_POSTS, postTitle } from '../src/modules/world/IntlOrgs.js';
-import { orgMember } from '../src/modules/content/packs/careers-intl-orgs.js';
+import { orgMember, memberIn, EU_MEMBERS, SCHENGEN_MEMBERS } from '../src/modules/content/packs/careers-intl-orgs.js';
 import { natoPostFor } from '../src/modules/military/Commands.js';
 import { setEraYear } from '../src/modules/world/Eras.js';
 
@@ -150,6 +150,18 @@ const tests = {
     const ie = life({ countryId: 'IE' }, 4).state; graduate(ie); ie.character.age = 30;
     assert.match(applicationEligibility(ie, 'commonwealthSec').reason ?? '', /Commonwealth/, 'Ireland left in 1949');
     assert.match(applicationEligibility(ie, 'aseanSec').reason ?? '', /ASEAN/);
+  },
+  'the EU: Britain in from 1973 to 2020; the College above the Directors-General; posts of their day'() {
+    assert.equal(memberIn(EU_MEMBERS, 'GB', 1980), true);
+    assert.equal(memberIn(EU_MEMBERS, 'GB', 2022), false);
+    assert.equal(memberIn(EU_MEMBERS, 'PL', 1990), false);
+    assert.ok(!SCHENGEN_MEMBERS.includes('GB') && !SCHENGEN_MEMBERS.includes('IE'));
+    const lad = ladderFor(getProfession('euInstitutions'), 'enterprise');
+    const g = (id) => lad.find((l) => l.id === id).grade;
+    assert.ok(g('dg') < g('commissioner') && g('commissioner') < g('evp') && g('evp') < g('president'));
+    for (const id of ['euHighRep', 'euCouncilPresident', 'ecbPresident', 'euJudge', 'euAuditor', 'euOmbudsman', 'eibPresident']) assert.ok(getProfession(TOP_POSTS[id].prof).levels.some((l) => l.id === TOP_POSTS[id].level), id);
+    setEraYear(1996);
+    try { assert.equal(postTitle('ecbPresident', { character: { birthYear: 1950, age: 46 } }), 'President of the European Monetary Institute'); } finally { setEraYear(null); }
   },
   'NATO commands for the senior officers of member forces'() {
     const r = { chance: () => true, pick: (a) => a[0] };

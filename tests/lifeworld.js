@@ -109,7 +109,7 @@ const tests = {
     assert.ok(serviceCost(1890) < serviceCost(1990));
     const { engine, state } = grown('GB', 1890, 35);
     state.finances.cash = 5e6;
-    assert.ok(!rolesOpen(state).some((r) => r.id === 'bodyguard'), 'no bodyguards in 1890');
+    assert.equal(rolesOpen(state).find((r) => r.id === 'bodyguard')?.name, 'Private detective (bodyguard)', 'an 1890 bodyguard is a private detective');
     assert.ok(!rolesOpen(state).some((r) => r.id === 'butler'), 'a butler needs a household beneath him');
     for (const role of ['maid', 'cook', 'gardener', 'coachman']) engine.dispatch('property.hire', role);
     assert.ok(state.property.staff.length >= 2, 'servants taken on (the servant problem only bites after 1919)');

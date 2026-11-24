@@ -42,8 +42,33 @@ export const STAFF = {
   coachman: { names: [[9999, 'Coachman']], icon: '🐴', base: 32000, until: 1925 },
   chauffeur: { names: [[9999, 'Chauffeur']], icon: '🚘', base: 55000, from: 1905, stress: -1 },
   secretary: { names: [[1970, 'Private secretary'], [9999, 'Personal assistant']], icon: '🗂️', base: 65000, stress: -3 },
-  bodyguard: { names: [[9999, 'Bodyguard']], icon: '🕶️', base: 90000, from: 1960, safety: true },
+  bodyguard: { names: [[1960, 'Private detective (bodyguard)'], [9999, 'Bodyguard']], icon: '🕶️', base: 90000, from: 1850, safety: true },
 };
+/**
+ * What each post does for you, every year it is filled (scaled by the servant's skill): `perk` is
+ * the line shown on the Property tab.
+ */
+export const PERKS = {
+  maid: 'A clean house: less stress',
+  cook: 'Proper meals at home: better health, a happier household',
+  housekeeper: 'Runs the house: the other staff stay longer and steal less',
+  butler: 'Receives your callers: standing in society, and a household that runs itself',
+  footman: 'Waits at table: a little standing',
+  ladysMaid: 'Your hair and clothes done: better looks',
+  valet: 'Your clothes and shave done: better looks',
+  nanny: 'The children cared for: much less stress, and children who are close to you',
+  governess: 'Lessons at home: brighter children',
+  auPair: 'Help with the children: less stress',
+  gardener: 'The garden kept: a happier home, and a house that holds its value',
+  coachman: 'Driven everywhere: no driving yourself',
+  chauffeur: 'Driven everywhere: no drink-driving, no commute',
+  secretary: 'Your correspondence and diary kept: better at work, less stress',
+  bodyguard: 'Close protection: safer from attack, kidnap and stalkers',
+};
+/** Driven by your own coachman or chauffeur. */
+export const chauffeured = (state) => staffOf(state).some((s) => ['chauffeur', 'coachman'].includes(s.role));
+/** Protected by your own bodyguard (the protection detail counts it). */
+export const bodyguards = (state) => staffOf(state).filter((s) => s.role === 'bodyguard').length;
 export const staffName = (role, y) => (STAFF[role]?.names.find(([until]) => y < until) ?? STAFF[role]?.names.at(-1))?.[1] ?? role;
 /** Service was cheap before the First World War and dear after the Second (relative to other prices). */
 export const serviceCost = (y) => (y < 1914 ? 0.35 : y < 1940 ? 0.55 : y < 1960 ? 0.8 : 1);
@@ -83,9 +108,15 @@ export function propertyTick(ctx) {
       continue;
     }
     const r = STAFF[s.role];
-    if (r.happy) ctx.stat('happiness', r.happy);
-    if (r.stress) ctx.stat('stress', r.stress);
+    s.skill ??= 60; s.loyalty ??= 65;
+    const k = s.skill / 70;
+    if (r.happy) ctx.stat('happiness', Math.round(r.happy * k));
+    if (r.stress) ctx.stat('stress', Math.round(r.stress * k));
     if (r.health) ctx.stat('health', r.health);
+    staffPerk(ctx, s, k);
+    // Long service: better at the job, and more attached to the house.
+    s.skill = Math.min(95, s.skill + (rng.chance(0.4) ? 1 : 0));
+    s.loyalty = Math.max(10, Math.min(100, s.loyalty + (s.wage >= wageFor(state, s.role, y) ? 1 : -2) + (p.staff.some((x) => x.role === 'housekeeper' || x.role === 'butler') ? 1 : 0)));
     // A role that has gone out of its time retires with its holder.
     if (r.until && y >= r.until) {
       p.staff = p.staff.filter((x) => x !== s);
@@ -120,7 +151,11 @@ export function propertyTick(ctx) {
   }
   if (!p.staff.length || !rng.chance(0.25) || state.prompts.some((x) => x.type === 'property.staff')) return;
   const s = rng.pick(p.staff);
-  const kind = rng.pick(['steal', 'notice', 'loved', 'poached', 'gossip']);
+  // A loyal servant doesn't steal or talk; a good housekeeper or butler keeps the rest in line.
+  const kept = p.staff.some((x) => x !== s && ['housekeeper', 'butler'].includes(x.role));
+  const loyal = (s.loyalty ?? 65) >= 80;
+  const kinds = ['notice', 'loved', 'poached', ...(loyal || (kept && rng.chance(0.5)) ? [] : ['steal', 'gossip'])];
+  const kind = rng.pick(kinds);
   const role = staffName(s.role, y).toLowerCase();
   const text = {
     steal: `The silver is short. Suspicion falls on ${s.name}, your ${role}.`,
@@ -136,6 +171,31 @@ export function propertyTick(ctx) {
         : kind === 'steal' ? [{ id: 'dismiss', label: '🚪 Dismiss them' }, { id: 'police', label: '👮 Call the police' }, { id: 'let', label: '🤐 Say nothing' }]
           : [{ id: 'keep', label: '🤝 Leave it be' }, { id: 'dismiss', label: '🚪 Let them go' }],
   });
+}
+
+/** The year's perk of one servant (PERKS). */
+function staffPerk(ctx, s, k) {
+  const { state } = ctx;
+  const kids = kidsAtHome(state);
+  switch (s.role) {
+    case 'butler': case 'footman': {
+      const soc = (state.society ??= { standing: 20 });
+      soc.standing = Math.min(100, (soc.standing ?? 20) + Math.round((s.role === 'butler' ? 2 : 1) * k));
+      break;
+    }
+    case 'ladysMaid': case 'valet': if ((state.stats.looks ?? 50) < 85) ctx.stat('looks', 1); break;
+    case 'nanny': case 'governess': case 'auPair':
+      for (const c of kids) c.relationship = Math.min(100, (c.relationship ?? 60) + (s.role === 'nanny' ? 1 : 2));
+      if (s.role === 'governess') for (const c of kids) c.tutored = (c.tutored ?? 0) + 1; // read by the children's schooling
+      break;
+    case 'gardener': {
+      const home = (state.housing?.properties ?? []).find((h) => h.primary) ?? state.housing?.properties?.[0];
+      if (home?.value) home.value = Math.round(home.value * (1 + 0.004 * k));
+      break;
+    }
+    case 'secretary': if (state.career?.job) state.career.job.performance = Math.min(100, (state.career.job.performance ?? 60) + Math.round(2 * k)); break;
+    default:
+  }
 }
 
 export const PropertyModule = {
@@ -154,8 +214,10 @@ export const PropertyModule = {
   },
   onAgeUp: propertyTick,
   actions: {
-    hire(ctx, role) {
+    hire(ctx, arg) {
       const { state } = ctx;
+      const [role, how] = String(arg).split('|');
+      const opts = { agency: how === 'agency' && yearNow(state) >= 1880 };
       const y = yearNow(state);
       if (state.character.age < 18) return ctx.toast('18+', 'warn');
       if (noServants(state)) return ctx.toast('Private servants are not allowed here.', 'warn');
@@ -169,8 +231,23 @@ export const PropertyModule = {
       if (y >= 1919 && y < 1960 && rng.chance(0.3)) return ctx.log(`You advertised for a ${r.name.toLowerCase()}. Nobody suitable answered: girls go to the factories and the shops now.`, '📰', 'warn');
       const female = r.female || (['maid', 'cook', 'housekeeper', 'nanny', 'governess', 'auPair', 'ladysMaid'].includes(role) ? rng.chance(0.92) : ['butler', 'footman', 'valet', 'coachman', 'chauffeur', 'gardener', 'bodyguard'].includes(role) ? rng.chance(y < 1970 ? 0.02 : 0.15) : rng.chance(0.5));
       const nm = randomName(rng, female ? 'female' : 'male');
-      p.staff.push({ id: `staff_${state.character.age}_${p.staff.length}`, role, name: `${nm.firstName} ${nm.lastName}`, since: state.character.age, wage: r.wage, female, age: role === 'auPair' ? rng.int(18, 24) : ['butler', 'housekeeper', 'governess'].includes(role) ? rng.int(30, 50) : rng.int(16, 40) });
-      ctx.log(`You took on ${nm.firstName} ${nm.lastName} as your ${r.name.toLowerCase()}.`, r.icon, 'good');
+      // An agency (from the 1880s) or a word from a friend: a better servant, for a fee.
+      const skill = rng.int(40, 85) + (opts.agency ? 10 : 0);
+      if (opts.agency) ctx.spend(Math.round(r.wage * 0.15), 'Agency fee', { allowDebt: true });
+      p.staff.push({ id: `staff_${state.character.age}_${p.staff.length}`, role, name: `${nm.firstName} ${nm.lastName}`, since: state.character.age, wage: r.wage, female, skill: Math.min(95, skill), loyalty: rng.int(50, 75), age: role === 'auPair' ? rng.int(18, 24) : ['butler', 'housekeeper', 'governess'].includes(role) ? rng.int(30, 50) : rng.int(16, 40) });
+      ctx.log(`You took on ${nm.firstName} ${nm.lastName} as your ${r.name.toLowerCase()}${skill >= 80 ? ' — very good at the work, by all accounts' : skill < 50 ? ' — willing, if not yet very good' : ''}.`, r.icon, 'good');
+    },
+    /** A bonus at Christmas (or a rise): loyalty. */
+    reward(ctx, id) {
+      const { state } = ctx;
+      const s = state.property?.staff?.find((x) => x.id === id);
+      if (!s) return;
+      if (state.yearly?.[`staffReward.${id}`]) return ctx.toast('Once a year.', 'warn');
+      (state.yearly ??= {})[`staffReward.${id}`] = 1;
+      const gift = Math.round(s.wage * 0.1);
+      if (!ctx.spend(gift, `A bonus for ${s.name}`, { credit: false })) return ctx.toast('Not enough cash.', 'warn');
+      s.loyalty = Math.min(100, (s.loyalty ?? 65) + 15);
+      ctx.log(`You gave ${s.name} a bonus${yearNow(state) < 1950 ? ' and the afternoon off' : ''}. ${s.female ? 'She' : 'He'} was touched.`, '🎁', 'good');
     },
     dismiss(ctx, id) {
       const p = ctx.state.property;

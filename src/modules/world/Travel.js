@@ -23,7 +23,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, criminalRecord, hasFelony } from '../../core/State.js';
 import { COUNTRIES, FOREIGN_CITIES, citizenshipsOf } from './Countries.js';
 import { residencesOf, residencyOf, birthCountryOf } from './Immigration.js';
-import { EU_MEMBERS } from '../career/IntlOrgCareers.js';
+import { SCHENGEN_MEMBERS } from '../content/packs/careers-intl-orgs.js';
 import { regimeOf, exitBlock, sanctionsOn } from './Regimes.js';
 import { warIn } from './War.js';
 import { yearNow, PRESENT } from './Eras.js';
@@ -37,7 +37,7 @@ export const CONTINENT = {
 };
 const continentOf = (cc) => Object.keys(CONTINENT).find((k) => CONTINENT[k].includes(cc)) ?? 'Elsewhere';
 
-const SCHENGEN = [...EU_MEMBERS, 'CH', 'NO', 'IS', 'LI'];
+const SCHENGEN = SCHENGEN_MEMBERS;
 const BLOCS = [SCHENGEN, ['GB', 'IE'], ['AU', 'NZ'], ['ID', 'MY', 'TH', 'VN', 'KH', 'PH', 'SG', 'BN', 'MM', 'LA'], ['NG', 'GH', 'SN', 'CI', 'GM', 'GW', 'ML', 'NE', 'BF', 'TG', 'BJ', 'SL', 'LR'], ['SA', 'KW', 'QA', 'AE', 'BH', 'OM'], ['BR', 'AR', 'CO', 'PE', 'UY', 'PY', 'CL', 'BO']];
 const sameBloc = (a, b) => BLOCS.some((bl) => bl.includes(a) && bl.includes(b));
 

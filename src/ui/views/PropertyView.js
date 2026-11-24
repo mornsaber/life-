@@ -2,10 +2,11 @@
  * The Property tab: everything you own and what it costs to keep, and the household staff.
  */
 import { esc, money, button, card, kv, empty } from '../Components.js';
-import { propertyLedger, staffOf, rolesOpen, staffName, STAFF, staffWages } from '../../modules/life/Property.js';
+import { propertyLedger, staffOf, rolesOpen, staffName, STAFF, staffWages, PERKS } from '../../modules/life/Property.js';
 import { yearNow } from '../../modules/world/Eras.js';
 import { estateOf, greatHouse, villasNow, collectablesNow, COLLECTABLES, LOT } from '../../modules/life/Estate.js';
 import { priceLevel } from '../../modules/world/Countries.js';
+import { protectionCard } from './ProtectionCard.js';
 
 function ledgerCard(state) {
   const rows = propertyLedger(state);
@@ -20,8 +21,10 @@ function staffCard(state) {
   if (state.character.age < 18) return '';
   const y = yearNow(state);
   const staff = staffOf(state);
-  const lis = staff.map((s) => `<li class="region-row"><span>${STAFF[s.role].icon} <b>${esc(s.name)}</b> <small>${esc(staffName(s.role, y))} · since age ${s.since}</small></span><small>${money(s.wage)}/yr</small>${button('Let go', 'property.dismiss', { arg: s.id, variant: 'tiny ghost' })}</li>`).join('');
-  const open = rolesOpen(state, y).map((r) => button(`${r.icon} ${r.name}`, 'property.hire', { arg: r.id, variant: 'small', hint: `${money(r.wage)}/yr`, disabled: state.finances.cash < r.wage })).join('');
+  const word = (n, hi, mid, lo) => (n >= 80 ? hi : n >= 55 ? mid : lo);
+  const lis = staff.map((s) => `<li class="region-row"><span>${STAFF[s.role].icon} <b>${esc(s.name)}</b> <small>${esc(staffName(s.role, y))} · since age ${s.since} · ${word(s.skill ?? 60, 'excellent', 'capable', 'learning')} · ${word(s.loyalty ?? 65, 'devoted', 'loyal', 'restless')}</small><small class="muted">${esc(PERKS[s.role] ?? '')}</small></span><small>${money(s.wage)}/yr</small>${button('🎁 Bonus', 'property.reward', { arg: s.id, variant: 'tiny ghost', hint: money(Math.round(s.wage * 0.1)) })}${button('Let go', 'property.dismiss', { arg: s.id, variant: 'tiny ghost' })}</li>`).join('');
+  const agency = y >= 1880;
+  const open = rolesOpen(state, y).map((r) => button(`${r.icon} ${r.name}`, 'property.hire', { arg: agency ? `${r.id}|agency` : r.id, variant: 'small', hint: `${money(r.wage)}/yr${agency ? ' + agency fee' : ''} · ${PERKS[r.id] ?? ''}`, disabled: state.finances.cash < r.wage })).join('');
   const era = y < 1914 ? 'Service is cheap and everyone with means keeps a maid at least; a great house has a dozen.' : y < 1960 ? 'Since the war, good servants are hard to find: the young go to the factories and the shops.' : 'Staff are a luxury now: a cleaner, a nanny, and for the rich a chef, a driver and a PA.';
   return card('Household Staff', `${lis ? `<ul class="history">${lis}</ul>` : empty('Nobody in service.')}
     ${open ? `<h4 class="sub">Take someone on</h4><div class="action-grid">${open}</div>` : ''}
@@ -56,5 +59,5 @@ function collectionCard(state) {
 }
 
 export function propertyView(state) {
-  return ledgerCard(state) + estateCard(state) + staffCard(state) + villaCard(state) + collectionCard(state);
+  return ledgerCard(state) + estateCard(state) + staffCard(state) + protectionCard(state) + villaCard(state) + collectionCard(state);
 }

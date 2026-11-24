@@ -22,6 +22,7 @@ import { ratingLabel } from '../../modules/career/PayGrades.js';
 import { legislatureCards } from './LegislatureView.js';
 import { presidencyCard } from './PresidencyCard.js';
 import { officeLifeCard } from './OfficeLifeCard.js';
+import { protectionCard } from './ProtectionCard.js';
 import { hemicycle, seatBar, partyLegend } from './PartyVisuals.js';
 import { partySystem, partyInfo } from '../../modules/politics/PartySystem.js';
 import { bodiesHere } from '../../modules/politics/Legislature.js';
@@ -237,7 +238,7 @@ export function politicsView(state) {
   const x = politicsParts(state);
   const work = `${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${patronageCard(state)}${crownCards(state)}`;
   const none = x.current || work.trim() ? '' : card('No Office', `<p class="muted">You don't hold public office. ${oneParty(state) ? 'Posts are given by the Party: see 🎗️ Party.' : 'Stand for election from 📣 Campaign, and follow the chambers in 🏛️ Chamber.'}</p>`, { icon: '🗳️' });
-  return `${x.current}${presidencyCard(state)}${officeLifeCard(state)}${none}${work}${x.history}`;
+  return `${x.current}${presidencyCard(state)}${officeLifeCard(state)}${state.politics?.office ? protectionCard(state) : ''}${none}${work}${x.history}`;
 }
 
 /** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */

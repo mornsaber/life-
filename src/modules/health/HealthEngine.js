@@ -16,6 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
+import { chauffeured } from '../life/Property.js';
 import { medicalDebtWords } from '../life/DebtOfTheDay.js';
 import { geneFactor, geneticsTick, GeneticsResolvers, GeneticsActions } from './Genetics.js';
 import { recoveryTick, RecoveryResolvers } from './Recovery.js';
@@ -201,7 +202,8 @@ function progress(ctx) {
 function addictionEffects(ctx, c, def) {
   const { state, rng } = ctx;
   // Only someone with a car out front faces the choice to drive.
-  if (def.dui && state.character.age >= 16 && (state.vehicles?.owned ?? []).length && !state.prompts.some((p) => p.type === 'health.driveDrunk') && rng.chance(def.dui * (c.severity / 60) * 2)) {
+  // Your own driver takes you home: no drive to choose.
+  if (def.dui && state.character.age >= 16 && (state.vehicles?.owned ?? []).length && !chauffeured(state) && !state.prompts.some((p) => p.type === 'health.driveDrunk') && rng.chance(def.dui * (c.severity / 60) * 2)) {
     ctx.prompt({
       type: 'health.driveDrunk', icon: '🍺', title: 'Last Call',
       text: 'You\'ve had far too much to drink, and your car is outside.',
