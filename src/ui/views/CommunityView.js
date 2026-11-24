@@ -141,7 +141,7 @@ function religiousCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${warRolesCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}${secretSocietiesCard(state)}`;
+  return `${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}${secretSocietiesCard(state)}`;
 }
 
 /** Party membership and how you've voted. */
@@ -178,7 +178,7 @@ export function warRolesCard(state) {
   return card('Your Part in the War', `${war ? `<p class="muted">${esc(war.operation)}: front ${war.front > 0 ? '+' : ''}${Math.round(war.front)}, public support ${war.support}%.</p>` : ''}${rows.join('')}${c ? `<p>✈️ On contract: <b>${esc(c.title)}</b> in ${esc(COUNTRIES[c.country]?.name ?? c.country)} until ${c.until} (${money(c.pay)}/yr).</p>` : ''}`, { icon: '🎖️', accent: 'red' });
 }
 
-function warCard(state) {
+export function warCard(state) {
   const w = state.world;
   if (!w?.wars) return '';
   const war = warHere(state);

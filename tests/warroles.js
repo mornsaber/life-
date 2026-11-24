@@ -36,7 +36,7 @@ const tests = {
     engine.dispatch('warRoles.lead', 'surge');
     assert.notEqual(w.front, 0);
     engine.dispatch('warRoles.lead', 'address');
-    assert.match(VIEWS.community(state, {}), /Your Part in the War/);
+    assert.match(VIEWS.world(state, {}), /Your Part in the War/);
   },
   'a general\'s campaign and a soldier at the front move the front'() {
     const { engine, state, ctx } = life('US', 7);

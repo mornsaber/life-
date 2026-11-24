@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { warHere } from '../modules/world/War.js';
 import { t as tr } from './i18n.js';
 import { epilogueOf } from '../modules/people/Epilogue.js';
 import { fandomOf, sportHere } from '../modules/life/Fandom.js';
@@ -78,7 +79,7 @@ const epilogueCard = (state) => {
 const leisureCard = (state) => { const ls = leisureNow(state).filter((l) => state.character.age >= l.minAge); return ls.length ? card('Going Out', `<p class="muted">What people did for fun in ${state.era ? 'this day' : 'our day'}. Once a year each.</p><div class="action-grid">${ls.map((l) => button(`${l.icon} ${l.label}`, 'leisure.go', { arg: l.id, variant: 'small', disabled: Boolean(state.yearly[`leisure.${l.id}`]), hint: state.yearly[`leisure.${l.id}`] ? 'Done this year' : leisureCost(state, l) ? `$${leisureCost(state, l).toLocaleString()}` : 'Free' })).join('')}</div>`, { icon: '🎟️' }) : ''; };
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
-import { communityView } from './views/CommunityView.js';
+import { communityView, warCard, warRolesCard } from './views/CommunityView.js';
 import { garageView } from './views/GarageView.js';
 import { propertyView } from './views/PropertyView.js';
 import { farmView } from './views/FarmView.js';
@@ -281,7 +282,8 @@ function retirementLifeCard(state) {
 }
 
 export const VIEWS = {
-  world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state) + newsThreadCard(state),
+  // The war comes first when there is one: what's happening, and your part in it.
+  world: (state) => warCard(state) + warRolesCard(state) + timesCard(state) + eraCard(state) + frontPageCard(state) + newsThreadCard(state),
   goals: (state) => sandboxCard(state) + scenarioCard(state) + littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
@@ -511,7 +513,7 @@ export class Renderer {
     const ui = { ...this.ui, tips: this.settings.tips };
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
-    const yours = `<nav class="your-life" aria-label="Your life">${YOUR_LIFE.map((i) => `<button class="chip-link" data-action="ui.tab" data-arg="${i.tab}"><span aria-hidden="true">${i.icon}</span> ${esc(i.label)}</button>`).join('')}</nav>`;
+    const yours = `<nav class="your-life" aria-label="Your life">${YOUR_LIFE.map((i) => { const war = i.tab === 'world' && warHere(state); return `<button class="chip-link" data-action="ui.tab" data-arg="${i.tab}"><span aria-hidden="true">${war ? '⚔️' : i.icon}</span> ${esc(tr(war ? 'War' : i.label))}</button>`; }).join('')}</nav>`;
     return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${yours}${periodText(yourTimesCard(state) + (firstLifeDone(this.settings ?? {}) ? tipsCard(state, ui.tips !== false) : firstLifeCard(state, this.settings ?? {})) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
   }
 
