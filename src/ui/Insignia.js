@@ -686,6 +686,22 @@ const SCARLET = '#c0182c';
 const astronautWings = (color = GOLD) => svg(46, `<path d="M23 20 C14 12 8 14 3 12 C8 18 14 20 23 22 Z M23 20 C32 12 38 14 43 12 C38 18 32 20 23 22 Z" fill="${color}"/><circle cx="23" cy="16" r="4.2" fill="none" stroke="${color}" stroke-width="1.6"/><path d="M23 8 L23 30" stroke="${color}" stroke-width="1.6"/>`);
 
 /** Ranks of the Vatican's and Singapore's own services, and the Swiss Guard. */
+/** A railway officer's cap: gold braid bands round the peak (one for an inspector, more up the line); a conductor's cap plate. */
+const capBand = (n) => svg(40, `<path d="M6 22 Q20 6 34 22 Z" fill="#1d2433" stroke="#888"/><rect x="5" y="22" width="30" height="7" fill="#11151d"/>${Array.from({ length: n }, (_, i) => `<rect x="5" y="${22 + i * 2.4}" width="30" height="1.6" fill="${GOLD}"/>`).join('')}<path d="M5 29 Q20 34 35 29" fill="none" stroke="#000" stroke-width="2"/>`);
+const capPlate = (word) => svg(44, `<rect x="2" y="12" width="40" height="11" rx="2" fill="${SILVER}"/><text x="22" y="20.5" font-size="6.4" text-anchor="middle" fill="#222" font-family="sans-serif">${word}</text>`);
+/** Railway grades that wore braid (both the British companies and the American roads). */
+const RAILWAY = {
+  steamRailway: { inspector: () => capBand(1), shedMaster: () => capBand(2), superintendent: () => capBand(3) },
+  railroad: { conductor: () => capPlate('CONDUCTOR'), trainmaster: () => capBand(1), roadForeman: () => capBand(1), superintendent: () => capBand(2), gm: () => capBand(3) },
+};
+/** Forestry services in the German-speaking countries wear rank: green stars, then silver and gold for the senior grades. */
+const FOREST_GREEN = '#5f9b4f';
+const FORESTER = { forester: () => deStars(1, FOREST_GREEN), senior: () => deStars(2, FOREST_GREEN), fmo: () => deStars(3, FOREST_GREEN), district: () => deStars(1, SILVER), state_cmd1: () => deStars(2, SILVER), state_cmd2: () => deStars(1, GOLD), state_cmd3: () => deStars(2, GOLD), state: () => deStars(3, GOLD) };
+/** Nurses' epaulettes (Britain, Ireland and the Commonwealth services that copied them): bands for the grade. */
+const NURSE_BLUE = '#9fc3ea';
+const NURSING = { rn: () => epaulette(1, NURSE_BLUE), seniorRn: () => epaulette(2, NURSE_BLUE), icu: () => epaulette(2, NURSE_BLUE), flightNurse: () => epaulette(2, NURSE_BLUE), cns: () => epaulette(3, NURSE_BLUE), np: () => epaulette(3, NURSE_BLUE), charge: () => epaulette(3, '#ffffff'), manager: () => epaulette(4, '#ffffff'), director: () => epaulette(2, GOLD), cno: () => epaulette(3, GOLD) };
+const NURSE_EPAULETTES = ['GB', 'IE', 'AU', 'NZ', 'ZA', 'MT'];
+
 const OWN = {
   // National gendarmeries (the Carabinieri, the Gendarmerie nationale, the Guardia Civil, the Jandarma, the Marechaussee):
   // military ranks on their country's pattern.
@@ -823,6 +839,9 @@ export function jobInsignia(job, profession, country = 'US') {
   const id = job?.levelId;
   if (!key || !id) return null;
   if (COLONIAL_RANKS[key]) return colonialInsignia(key, id, country);
+  if (RAILWAY[key]) return RAILWAY[key][id]?.() ?? null;
+  if (key === 'forester') return ['DE', 'AT', 'CH', 'LI'].includes(country) ? FORESTER[id]?.() ?? null : null;
+  if (key === 'nursing') return NURSE_EPAULETTES.includes(country) ? NURSING[id]?.() ?? null : null;
   const own = OWN[key]?.[id];
   if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
   if (OWN[key]) return null;

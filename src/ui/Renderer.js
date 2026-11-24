@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { titlesCard, titleMarketCard, walletCard } from './views/TitlesView.js';
 import { warHere } from '../modules/world/War.js';
 import { t as tr } from './i18n.js';
 import { epilogueOf } from '../modules/people/Epilogue.js';
@@ -343,7 +344,7 @@ export const VIEWS = {
     // Privy councils and executive councils (world/PrivyCouncil.js): for life, or while you serve.
     const councils = (state.privyCouncil ?? []).map((m) => `<li>📜 <b>${esc(m.name.replace(/^./, (c) => c.toUpperCase()))}</b>${m.letters ? ` (${esc(m.letters)})` : ''} <small class="muted">since ${m.since}${m.until ? `, until ${m.until}` : ', for life'} · ${esc(m.style ?? '')}</small></li>`).join('');
     const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul><p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
-    return `${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    return `${titlesCard(state)}${titleMarketCard(state)}${walletCard(state)}${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 
@@ -541,12 +542,14 @@ export class Renderer {
   pageHtml(state) {
     const section = sectionOf(this.tab);
     const groupId = groupOf(this.tab);
-    const item = GROUPS[groupId]?.items.find((i) => i.tab === this.tab || sectionOf(i.tab).id === section.id);
-    const title = item?.label ?? section.tabs.find((t) => t.id === this.tab)?.label ?? section.label;
+    // The exact screen first; a sibling in the same section only when the screen has no menu row of its own.
+    const exact = Object.values(GROUPS).flatMap((g) => g.items).find((i) => i.tab === this.tab);
+    const item = exact ?? GROUPS[groupId]?.items.find((i) => sectionOf(i.tab).id === section.id);
+    const title = exact?.label ?? section.tabs.find((t) => t.id === this.tab)?.label ?? item?.label ?? section.label;
     const subs = section.tabs.length > 1 && section.id !== 'life'
       ? `<nav class="subtabs" role="tablist" aria-label="${section.label}">${section.tabs.map((t) => `<button role="tab" id="tab-${t.id}" class="subtab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel"><span aria-hidden="true">${t.icon}</span> ${tr(t.label)}</button>`).join('')}</nav>`
       : '';
-    return `<div class="page-head"><button class="btn ghost small" data-action="${groupId ? 'ui.menu' : 'ui.home'}" data-arg="${groupId ?? ''}" aria-label="Back">‹ ${esc(tr(groupId ? GROUPS[groupId].label(state) : 'Story'))}</button><h2>${item?.icon ?? section.icon} ${esc(tr(title))}</h2></div>${subs}
+    return `<div class="page-head"><button class="btn ghost small" data-action="${groupId ? 'ui.menu' : 'ui.home'}" data-arg="${groupId ?? ''}" aria-label="Back">‹ ${esc(tr(groupId ? GROUPS[groupId].label(state) : 'Story'))}</button><h2>${exact?.icon ?? section.tabs.find((t) => t.id === this.tab)?.icon ?? item?.icon ?? section.icon} ${esc(tr(title))}</h2></div>${subs}
       <div class="tab-panel" id="tabpanel" role="tabpanel" tabindex="-1">${periodText(VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips }))}</div>`;
   }
 

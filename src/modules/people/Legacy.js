@@ -25,6 +25,7 @@
  *   exemptionUsed  lifetime gift-tax exemption spent on gifts above the annual exclusion
  *   gifts        { [personId]: balance } given during your life
  */
+import { inheritTitles } from '../world/BoughtTitles.js';
 import { houseTitle } from '../world/Houses.js';
 import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, stocksValue } from '../../core/State.js';
@@ -624,6 +625,8 @@ function passCrownAndTitles(old, s, child, childAge) {
       s.character.style = { ...(s.character.style ?? {}), prefix: courtesy(s) };
     }
   }
+  // A baronetcy to the eldest son; lordships of the manor and feudal baronies with the estate.
+  inheritTitles(old, s, child, eldestSon, kids, addLog);
   // A former ruling house: the claim goes to the eldest son (or eldest child), the rest are cadets.
   const h = old.house;
   if (h && !h.renounced && !s.royal) {

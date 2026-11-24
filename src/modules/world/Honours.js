@@ -16,6 +16,7 @@
  *
  * state.character.style = { prefix: 'Sir' | 'Dame' | 'Lord' | 'Baroness' | ..., peerage: 'Baron Smith, of Leeds' }
  */
+import { usedPrefix, baronetLetters } from './BoughtTitles.js';
 import { withTitle } from './Titles.js';
 import { addHonor, netWorth, hasFelony } from '../../core/State.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
@@ -439,7 +440,7 @@ export function postNominals(state) {
   const supreme = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) <= 1);
   const orders = state.honors.filter((h) => h.source === 'order' && h.post && !h.declined);
   const gallantry = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) > 1).sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99));
-  return [...supreme, ...orders, ...gallantry].map((h) => h.post).concat(councilLetters(state), officeLetters(state), religiousPost(state)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+  return [baronetLetters(state), ...[...supreme, ...orders, ...gallantry].map((h) => h.post)].concat(councilLetters(state), officeLetters(state), religiousPost(state)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
 /** Your name with any title an honour gave you: Sir John Smith, Lord Smith, Cav. Maria Rossi. */
@@ -466,7 +467,9 @@ export function styledName(state) {
   const clerical = clericalPrefix(state);
   if (clerical && (!s?.prefix || /^(Sir|Dame)$/.test(s.prefix))) return withOfficialStyle(state, `${clerical} ${c.firstName} ${c.lastName}`);
   const knight = /^(Sir|Dame)$/.test(s?.prefix ?? '');
-  const base = !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
+  // A title bought and used (a papal count, or a "Laird" from a souvenir plot): world/BoughtTitles.js.
+  const bought = !s?.prefix ? usedPrefix(state) : null;
+  const base = bought ? `${bought} ${c.firstName} ${c.lastName}` : !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
       : knight ? withTitle(state, `${s.prefix} ${c.firstName} ${c.lastName}`, { knight: true })
         : `${s.prefix} ${c.firstName} ${c.lastName}`;
