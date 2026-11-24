@@ -565,6 +565,13 @@ export function periodInsignia(kind, n, nation, branch) {
       const old = ['', '', '', chevrons(2), chevrons(3), chevrons(3), chevrons(3, 0, 'diamond'), chevrons(3, 3), chevrons(3, 3)][Math.min(8, Math.max(0, n - 1))];
       return old ? pointDown(old) : old;
     }
+    // A private's single stripe (E-2) came in 1968 (1958 in the Marines); a private first class wore
+    // one chevron from 1920 (1917 in the Marines) and only later the rocker below it.
+    if (kind === 'E' && !naval && branch !== 'airforce') {
+      const pv2 = branch === 'marines' ? 1958 : 1968;
+      if (n === 2 && y < pv2) return '';
+      if (n === 3 && y < pv2) return y < (branch === 'marines' ? 1917 : 1920) ? '' : chevrons(1);
+    }
     if (kind === 'O' && !naval && n === 1 && y < 1917) return svg(16, `<rect x="4" y="4" width="8" height="26" rx="2" fill="none" stroke="${GOLD}" stroke-width="1.2"/>`);
   }
   return undefined;

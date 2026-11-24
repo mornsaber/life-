@@ -70,3 +70,36 @@ export function tipsFor(state) {
   t.push(['🗓️', 'After each birthday, <b>The Year in Review</b> shows what changed. Your full story is below it, newest year first.']);
   return t;
 }
+
+/**
+ * What now? Help after the year's big moments: a new partner, an engagement, a wedding, a baby on
+ * the way or born, a loss, a break-up, a lost job, a diagnosis. Each comes with a few concrete next
+ * steps, each a button (ui.go to a tab, or straight to the person). Drawn from the Year in Review.
+ */
+export function eventHelp(state) {
+  const y = state.lastYear;
+  const c = state.character;
+  if (!y || y.age !== c.age || !c.alive || state.prompts?.length) return [];
+  const yr = c.birthYear != null ? c.birthYear + c.age : 9999;
+  const person = (id) => (state.people?.list ?? []).find((p) => p.id === id);
+  const open = (id, text) => ({ text, action: 'ui.go', arg: `people|person=${id}` });
+  const tab = (t, text) => ({ text, action: 'ui.go', arg: t });
+  const out = [];
+  for (const e of y.people ?? []) {
+    const p = person(e.pid);
+    const n = p?.firstName ?? 'them';
+    if (e.kind === 'met' && p?.alive) out.push({ icon: '💞', title: `You're seeing ${n}`, why: 'New relationships grow with time together; neglect cools them.', steps: [open(p.id, `Spend time with ${n}`), tab('activities', 'Plan an outing together'), open(p.id, 'Later: move in or propose')] });
+    if (e.kind === 'engaged' && p?.alive) out.push({ icon: '💍', title: `Engaged to ${n}`, why: 'Weddings cost money; a modest one is fine.', steps: [open(p.id, 'Set a date and plan the wedding'), tab('money', 'Check what you can spend')] });
+    if (e.kind === 'married' && p?.alive) out.push({ icon: '💒', title: `Married to ${n}`, why: 'Marriage joins your money, your home and, often, your plans for children.', steps: [tab('home', 'Find a home together'), tab('money', 'Look at your money as a household'), open(p.id, 'Talk about children')] });
+    if (e.kind === 'born' && p?.alive) out.push({ icon: '👶', title: `${n} is here`, why: yr < 1900 ? 'A new baby needs feeding, warmth and a careful eye on fevers.' : 'Babies are expensive and tiring: time, money and sleep all take a hit.', steps: [open(p.id, `Spend time with ${n}`), tab('career', yr < 1970 ? 'Think about work and home' : 'Look at leave and hours at work'), tab('money', yr < 1930 ? 'Put a little by for the child' : 'Start saving for the child')] });
+    if (e.kind === 'died') out.push({ icon: '🕯️', title: `Grieving ${n}`, why: 'Grief weighs on happiness and health for a while.', steps: [tab('activities', 'Take time for yourself'), tab('people', 'Lean on family and friends'), ...(['spouse', 'parent'].includes(e.rel) ? [tab('money', 'See to the estate and money')] : [])] });
+    if (e.kind === 'split') out.push({ icon: '💔', title: `After ${n}`, why: e.wasSpouse ? 'A divorce divides money and, if there are children, time with them.' : 'Break-ups hurt for a year or two.', steps: [tab('activities', 'Look after yourself'), ...(e.wasSpouse ? [tab('money', 'Check your finances after the split')] : []), tab('people', 'See friends')] });
+  }
+  if (y.expecting) {
+    const care = yr < 1920 ? 'Arrange a midwife' : yr < 1950 ? 'See the doctor about the birth' : 'Book antenatal care';
+    out.push({ icon: '🤰', title: 'A baby on the way', why: 'You have the months before the birth to get ready.', steps: [tab('health', care), tab('home', 'Make room at home'), tab('money', 'Budget for the baby')] });
+  }
+  if (y.job?.kind === 'warn' && !state.career?.job && c.age < 65) out.push({ icon: '📦', title: 'Out of work', why: 'Every year without pay eats into savings; your skills fade too.', steps: [tab('career', 'Look for a new job'), tab('money', yr < 1935 ? 'Stretch your savings' : 'See what help you can get'), tab('school', 'Retrain or study')] });
+  for (const id of (y.newConditions ?? []).slice(0, 1)) out.push({ icon: '🩺', title: 'A new diagnosis', why: 'Treatment early usually goes better.', steps: [tab('health', 'See your treatment options'), tab('activities', 'Rest and cut stress')] });
+  return out.slice(0, 3);
+}

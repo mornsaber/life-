@@ -21,6 +21,7 @@ export function snapshot(state) {
     people: Object.fromEntries((state.people?.list ?? []).map((p) => [p.id, { alive: p.alive, relation: p.relation }])),
     conditions: (state.health?.conditions ?? []).filter((c) => c.diagnosed && !c.remission).map((c) => c.id),
     jailed: Boolean(state.legal?.incarceration),
+    expecting: Boolean(state.people?.expecting),
   };
 }
 
@@ -46,11 +47,12 @@ export function review(before, state) {
   for (const p of state.people?.list ?? []) {
     const was = before.people[p.id];
     const rel = RELATION_WORD[p.relation];
-    if (!was && p.alive && p.relation === 'child') people.push({ icon: '👶', text: `${name(p)} was born` });
-    else if (!was && p.alive && ['partner', 'spouse'].includes(p.relation)) people.push({ icon: '💞', text: `You met ${name(p)}` });
-    else if (was?.alive && !p.alive && rel) people.push({ icon: '🕯️', text: `Your ${rel} ${name(p)} died` });
-    else if (was && was.relation !== 'spouse' && p.relation === 'spouse' && p.alive) people.push({ icon: '💍', text: `You married ${name(p)}` });
-    else if (was && ['spouse', 'partner', 'fiance'].includes(was.relation) && ['ex', 'friend'].includes(p.relation)) people.push({ icon: '💔', text: `You and ${name(p)} split up` });
+    if (!was && p.alive && p.relation === 'child') people.push({ icon: '👶', text: `${name(p)} was born`, kind: 'born', pid: p.id });
+    else if (!was && p.alive && ['partner', 'spouse'].includes(p.relation)) people.push({ icon: '💞', text: `You met ${name(p)}`, kind: 'met', pid: p.id });
+    else if (was?.alive && !p.alive && rel) people.push({ icon: '🕯️', text: `Your ${rel} ${name(p)} died`, kind: 'died', pid: p.id, rel: p.relation });
+    else if (was && was.relation !== 'spouse' && p.relation === 'spouse' && p.alive) people.push({ icon: '💍', text: `You married ${name(p)}`, kind: 'married', pid: p.id });
+    else if (was && was.relation === 'partner' && p.relation === 'fiance' && p.alive) people.push({ icon: '💍', text: `You and ${name(p)} got engaged`, kind: 'engaged', pid: p.id });
+    else if (was && ['spouse', 'partner', 'fiance'].includes(was.relation) && ['ex', 'friend'].includes(p.relation)) people.push({ icon: '💔', text: `You and ${name(p)} split up`, kind: 'split', pid: p.id, wasSpouse: was.relation === 'spouse' });
   }
 
   // Health: new diagnoses and recoveries.
@@ -81,5 +83,5 @@ export function review(before, state) {
   const spent = top([...(f.lastLedger?.expenses ?? []), { reason: 'Taxes', amount: ly.tax ?? 0 }, { reason: 'Living costs', amount: ly.living ?? 0 }, { reason: 'Health insurance', amount: ly.insurance ?? 0 }, { reason: 'Loan payments', amount: ly.loanPayment ?? 0 }]);
   const earned = top(f.lastLedger?.income ?? []);
 
-  return { age: state.character.age, spent, earned, stats, cash: after.cash - before.cash, worth: after.worth - before.worth, job, people: people.slice(0, 4), health: health.slice(0, 3), highlights, entries: year.length };
+  return { age: state.character.age, spent, earned, stats, cash: after.cash - before.cash, worth: after.worth - before.worth, job, people: people.slice(0, 4), expecting: Boolean(after.expecting && !before.expecting), newConditions: health.filter((h) => h.condition).map((h) => h.condition), health: health.slice(0, 3), highlights, entries: year.length };
 }

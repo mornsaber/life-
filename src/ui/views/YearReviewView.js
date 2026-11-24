@@ -6,7 +6,7 @@ import { esc, money, card, chip, meter } from '../Components.js';
 import { resultsThisYear } from '../../modules/life/ResultCards.js';
 import { STAT_META } from '../../core/State.js';
 import { CONDITIONS } from '../../modules/health/Conditions.js';
-import { nextSteps, tipsFor } from '../../modules/life/Guide.js';
+import { nextSteps, tipsFor, eventHelp } from '../../modules/life/Guide.js';
 import { ASPIRATIONS, aspirationsOf, progressOf } from '../../modules/life/Aspirations.js';
 import { button } from '../Components.js';
 
@@ -35,6 +35,14 @@ export function yearReviewCard(state) {
     ? '<p class="muted">A quiet year. Nothing much changed.</p>'
     : `${results ? `<div class="yr-results">${results}</div>` : ''}${stats ? `<div class="chip-row">${stats}</div>` : ''}${moneyLine}${rows.length ? `<ul class="yr-list">${rows.join('')}</ul>` : ''}${highlights ? `<h4 class="sub">Moments</h4><ul class="yr-list">${highlights}</ul>` : ''}${y.entries > (y.highlights?.length ?? 0) ? '<p class="fine">The full year is in your Life Story below.</p>' : ''}`;
   return card(`Age ${y.age}: The Year in Review`, body, { icon: '🗓️', accent: 'blue', className: 'year-review', fold: false });
+}
+
+/** What now? Help after the year's big moments (a partner, a baby, a loss), with next steps. */
+export function whatNowCard(state) {
+  const help = eventHelp(state);
+  if (!help.length) return '';
+  const body = help.map((h) => `<div class="what-now"><b>${h.icon} ${esc(h.title)}</b><p class="fine">${esc(h.why)}</p><div class="chip-row">${h.steps.map((x) => `<button class="btn small ghost" data-action="${x.action}" data-arg="${esc(x.arg)}">${esc(x.text)}</button>`).join(' ')}</div></div>`).join('');
+  return card('What Now?', body, { icon: '🧭', accent: 'green', className: 'what-now-card', fold: false });
 }
 
 /** "This year": a few things you could do now, each a button to the tab where you'd do it. */

@@ -687,7 +687,10 @@ const COLONY_POLICED = ['police', 'sheriff', 'statePolice', 'transitPolice', 'ai
 /* ------------------------------------------------------------------ */
 
 /** Consumer prices by year (US CPI, 1982–84 = 100), loosely; 2026 ≈ 330. */
-const CPI = [[1900, 8], [1910, 9.1], [1920, 20], [1930, 16.7], [1940, 14], [1950, 24.1], [1960, 29.6], [1970, 38.8], [1980, 82.4], [1990, 130.7], [2000, 172.2], [2010, 218.1], [2020, 258.8], [2026, 330]];
+// US consumer prices (1982–84 = 100), with the 19th century's war inflations and long deflations
+// (historical estimates, after the Minneapolis Fed and MeasuringWorth series).
+const CPI = [[1800, 17], [1810, 17.5], [1814, 21.5], [1817, 18.5], [1820, 14.5], [1830, 12], [1837, 12.5], [1843, 9.5], [1850, 9.5], [1860, 10],
+  [1865, 16.5], [1870, 13.5], [1879, 10], [1890, 9], [1896, 8.2], [1900, 8], [1910, 9.1], [1920, 20], [1930, 16.7], [1940, 14], [1950, 24.1], [1960, 29.6], [1970, 38.8], [1980, 82.4], [1990, 130.7], [2000, 172.2], [2010, 218.1], [2020, 258.8], [2026, 330]];
 /** What today's dollar was worth in a given year (0.03 in 1930). */
 export function priceIndex(year) {
   if (year >= PRESENT) return 1;
