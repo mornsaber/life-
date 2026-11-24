@@ -64,7 +64,8 @@ export const DIRECT_ENTRY = {
   PH: { police: [route('pnpa', 'Philippine National Police Academy (cadetship)', 'lieutenant', { education: 'highschool', maxAge: 22, odds: 0.1, school: 'four years at the PNPA, Silang' }), route('lateral', 'Lateral entry for professionals (lawyers, doctors, engineers)', 'captain', { education: 'professional', maxAge: 46, odds: 0.2 })] },
 };
 // Routes are a country's own: a pack declares them (it never inherits its base country's).
-for (const p of PACKS) if (p.tables?.DIRECT_ENTRY) DIRECT_ENTRY[p.id] = p.tables.DIRECT_ENTRY;
+// A pack's route without a date of its own is a modern one (graduate entry to a police force: about 1990 on).
+for (const p of PACKS) if (p.tables?.DIRECT_ENTRY) DIRECT_ENTRY[p.id] = Object.fromEntries(Object.entries(p.tables.DIRECT_ENTRY).map(([k, rs]) => [k, rs.map((r) => ({ from: 1990, ...r }))]));
 
 const countryOf = (state) => state.character.countryId ?? 'US';
 export const directEntryRoutes = (state, professionId) => DIRECT_ENTRY[countryOf(state)]?.[professionId] ?? [];
@@ -77,11 +78,12 @@ const attempts = (state, id) => state.career.directEntry?.[id] ?? 0;
 export const DIRECT_FROM = { ips: 1948, dsp: 1950, si: 1950, dei: 2014, des: 2016, hendon: 1934, lieutenant: 1995, commissaire: 1941, gehoben: 1975, ispettore: 1981, commissario: 1981, inspector: 1986, gyeongwi: 1981, class1: 1948, pnpa: 1978 };
 /** Schemes that ended: Hendon closed with the war in 1939. */
 export const DIRECT_UNTIL = { hendon: 1940 };
-export const directEntryInEra = (state, routeId) => !(DIRECT_FROM[routeId] > yearNow(state)) && !(DIRECT_UNTIL[routeId] <= yearNow(state));
+const routeFrom = (state, routeId) => DIRECT_FROM[routeId] ?? Object.values(DIRECT_ENTRY[countryOf(state)] ?? {}).flat().find((r) => r.id === routeId)?.from;
+export const directEntryInEra = (state, routeId) => !(routeFrom(state, routeId) > yearNow(state)) && !(DIRECT_UNTIL[routeId] <= yearNow(state));
 export function directEntryEligibility(state, professionId, routeId) {
   const r = directEntryRoutes(state, professionId).find((x) => x.id === routeId);
   if (!r) return { ok: false, reason: 'No such route here' };
-  if (!directEntryInEra(state, routeId)) return { ok: false, reason: DIRECT_UNTIL[routeId] <= yearNow(state) ? `The scheme closed in ${DIRECT_UNTIL[routeId]}` : `No such scheme yet (from about ${DIRECT_FROM[routeId]})` };
+  if (!directEntryInEra(state, routeId)) return { ok: false, reason: DIRECT_UNTIL[routeId] <= yearNow(state) ? `The scheme closed in ${DIRECT_UNTIL[routeId]}` : `No such scheme yet (from about ${routeFrom(state, routeId)})` };
   const age = state.character.age;
   if (!isCitizen(state, countryOf(state))) return { ok: false, reason: 'Citizens only' };
   if (age < 18 || age > r.maxAge) return { ok: false, reason: `Ages 18–${r.maxAge}` };

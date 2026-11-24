@@ -734,6 +734,8 @@ export const examRequired = (state, examId) => {
   return !(EXAM_FROM[examId] > y);
 };
 export const CREDENTIAL_FROM = {
+  // State licensing boards for doctors were general by about 1900; funeral directors were licensed from 1894 (Virginia).
+  medicalLicense: 1900, funeralDirectorLicense: 1900,
   learnerPermit: 1930, driverLicense: 1910, motorcycle: 1920, cdlA: 1986, cdlB: 1986, passengerEndorsement: 1986, schoolBusEndorsement: 1986, hazmatEndorsement: 1986,
   studentPilot: 1927, privatePilot: 1927, instrumentRating: 1932, commercialPilot: 1927, cfi: 1930, atp: 1938, firstClassMedical: 1926, typeRating: 1960,
   cna: 1987, emr: 1995, evoc: 1980, emt: 1970, paramedic: 1972, np: 1965, boardCertified: 1917, ccrn: 1975, crnaLicense: 1956, ccp: 1990, flightParamedic: 1985,
@@ -1727,6 +1729,8 @@ const PROGRAM_ID_FROM = {
   teacherPrep: 1984, premedPostbacc: 1960, linemanSchool: 1950, culinaryArts: 1946, interpreterCert: 1941, msAccounting: 1960, counselingMaster: 1960, dieteticsMS: 1970,
   imd: 1970, mdphd: 1964, jdmba: 1970, paMaster: 1967, mph: 1916, mba: 1908, mpa: 1924, msw: 1904, mls: 1887, mortuaryScience: 1882, do: 1892, dc: 1897, od: 1910,
   associate: 1901, phd: 1861, maritimeAcademy: 1874, dvm: 1879, machinistTech: 1900, radiologyTech: 1920, respiratoryTech: 1950,
+  // The first schools: nurse anaesthesia (1909), physical therapy's reconstruction aides (1917), occupational therapy (1918), speech correction (1925), clinical psychology doctorates (1946).
+  crnaProgram: 1909, dpt: 1917, mot: 1918, slpMaster: 1925, psyd: 1946,
 };
 export const PRESENT_PROGRAM_FROM = PROGRAM_ID_FROM;
 export const programIdInEra = (state, id) => !(PROGRAM_ID_FROM[id] > yearNow(state));

@@ -3,6 +3,7 @@
  * extracurriculars, the GED, plus teen part-time jobs (also on the Work
  * tab) and the service-academy checklist.
  */
+import { diplomaExpected } from '../../modules/world/Eras.js';
 import { esc, money, button, card, kv, select } from '../Components.js';
 import {
   cadetRank, SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES, gedFee, gradeLabel, inK12, hasDiploma, schoolAccess, teenJobPay,
@@ -91,7 +92,7 @@ export function academyCard(state) {
   const abroad = (state.character.countryId ?? 'US') !== 'US';
   const steps = [
     check(age >= 17, 'Age 17–23 (apply senior year or later)'),
-    check(hasDiploma(state), abroad ? 'School-leaving qualifications' : 'High-school diploma or GED'),
+    diplomaExpected(state) ? check(hasDiploma(state), abroad ? 'School-leaving qualifications' : 'High-school diploma or GED') : check(state.stats.smarts >= 45, 'The entrance examination (reading, arithmetic, some Latin)'),
     check(nominated, abroad ? `Entrance selection: written exam and interview ${nominated ? '' : '(from 16; grades, activities and fitness help)'}` : `Congressional nomination ${nominated ? '' : '(apply from 16; JROTC, activities, GPA and military prep schools help)'}`),
     check(state.stats.fitness >= 55 && state.stats.health >= 50, `Candidate fitness assessment (fitness 55+, health 50+ — you: ${state.stats.fitness}/${state.stats.health})`),
     check(!hasFelony(state), 'Clean record'),
@@ -119,7 +120,8 @@ export function k12View(state) {
   if (inK12(state) || (k.dropout && age < 18)) {
     return [schoolCard(state), k.dropout ? '' : activitiesCard(state), teenJobsCard(state), k.dropout ? '' : transferCard(state)].join('');
   }
-  if (!hasDiploma(state) && age >= 16 && !state.legal.incarceration) {
+  // Before the 1940s few finished school, and nobody asked to see a diploma (world/Eras.js diplomaExpected).
+  if (!hasDiploma(state) && age >= 16 && !state.legal.incarceration && diplomaExpected(state)) {
     return card('No Diploma', `<p class="muted">Most colleges, the military and many jobs need a high-school diploma or a GED.</p><div class="action-grid">${gedButton(state)}</div>`, { icon: '📄', accent: 'red' });
   }
   return '';

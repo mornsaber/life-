@@ -12,6 +12,7 @@ const quick = process.argv.includes('--quick');
 const AUDITS = [
   ['Organisational units by year', 'orgunits.mjs', ['--strict']],
   ['Rank badges against titles', 'insignia-audit.mjs', []],
+  ['Degree gates before 1900', 'degree-gates.mjs', ['--strict']],
   ['American words abroad', 'foreign-terms.mjs', quick ? ['GB:1960', 'DE:1990', 'IN:1990', '--strict'] : ['--strict']],
   ...(quick ? [] : [['Anachronisms across many lives', 'weirdness.mjs', []]]),
 ];

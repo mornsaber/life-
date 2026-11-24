@@ -24,6 +24,7 @@
  *   school { step1, step1Tries, honors, rotations, step2, step2Tries, interest, pubs, aways } | null,
  *   schoolRecord, practice, practiceAge, partner, partnerOffered, partTime, burnout, mocAge, facultyRank
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly, medicalDegree } from '../../core/State.js';
 import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
@@ -53,7 +54,10 @@ const inCollege = (state) => state.education.degrees.some((d) => ['bachelor', 'm
 /* Pre-med                                                             */
 /* ------------------------------------------------------------------ */
 
+/** The Medical College Admission Test began in 1928; before it medical schools set their own entrance. */
+export const MCAT_FROM = 1928;
 export function mcatEligibility(state) {
+  if (yearNow(state) < MCAT_FROM) return { ok: false, reason: 'No admission test yet: medical schools set their own entrance' };
   if (state.character.age < 19) return { ok: false, reason: 'Age 19+' };
   if (!inCollege(state)) return { ok: false, reason: 'In or after college' };
   if (isMd(state.education.enrolled) || medicalDegree(state)) return { ok: false, reason: 'Already in medicine' };
@@ -110,6 +114,7 @@ ADMISSION_HOOKS.push({
     if (programId === 'md' && undergradEntryYears(state.character.countryId, 'md')) return null;
     const m = med(state);
     if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return null; // BS/MD: admission guaranteed
+    if (yearNow(state) < MCAT_FROM) return null;
     if (!m?.mcat) return 'Take the MCAT first';
     // Offshore schools take any MCAT score, however old.
     if (programId === 'imd') return null;
