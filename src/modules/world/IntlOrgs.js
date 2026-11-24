@@ -27,8 +27,9 @@
  * state.malta    = { grade, since, office, officeSince, vowsAt, conferred }
  * job.intlTerm   = age an appointed term ends
  */
-import { yearNow } from './Eras.js';
+import { yearNow, eraYear } from './Eras.js';
 import { DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5, memberIn } from '../career/IntlOrgCareers.js';
+import { orgMember } from '../content/packs/careers-intl-orgs.js';
 import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
@@ -152,23 +153,50 @@ function political(state) {
   return { level, head };
 }
 const jobAt = (state, prof, minGrade) => { const j = state.career.job; return j?.professionId === prof && (j.grade ?? 0) >= minGrade; };
+/** Holding one of these rungs of that organisation now. */
+const holds = (state, prof, ...levels) => { const j = state.career.job; return j?.professionId === prof && levels.includes(j.levelId); };
+const yr = () => eraYear();
 
-/** Appointed posts: you take the top rung of the organisation's ladder, under the post's own title. */
+/**
+ * Appointed posts: you take that rung of the organisation's ladder, under the post's own title.
+ * `rank` orders the posts within one organisation (a USG may be made Deputy Secretary-General or
+ * Secretary-General during a term; never the other way round); `heads` the post that runs it;
+ * `from`/`until` the years it existed; `then` [[until, title]] its older names.
+ */
 export const TOP_POSTS = {
-  unSG: { prof: 'unSecretariat', level: 'asg', title: 'Secretary-General of the United Nations', by: 'the General Assembly, on the Security Council\'s recommendation', employer: 'United Nations Secretariat (New York)', term: 5, chance: 0.02, who: (s, pol) => !anyOf(s, P5) && (pol.head || jobAt(s, 'unSecretariat', 10)) },
-  usg: { prof: 'unSecretariat', level: 'asg', title: 'Under-Secretary-General of the United Nations', by: 'the Secretary-General', employer: 'United Nations Secretariat (New York)', term: 4, chance: 0.04, who: (s, pol) => pol.level >= 4 || jobAt(s, 'unSecretariat', 9) || jobAt(s, 'foreignService', 9) },
-  unAgency: { prof: 'unAgencies', level: 'regional', title: 'Executive Head of a UN agency', by: 'the Secretary-General and the agency\'s governing board', employer: null, term: 5, chance: 0.03, who: (s, pol) => pol.level >= 4 || jobAt(s, 'unAgencies', 9) || jobAt(s, 'publicHealth', 9) },
-  euCommissioner: { prof: 'euInstitutions', level: 'dg', title: 'European Commissioner', by: 'your government, with the European Parliament\'s consent', employer: 'European Commission', term: 5, chance: 0.06, who: (s, pol) => anyOf(s, EU_MEMBERS) && pol.level >= 4 },
-  euPresident: { prof: 'euInstitutions', level: 'dg', title: 'President of the European Commission', by: 'the European Council, elected by the European Parliament', employer: 'European Commission', term: 5, chance: 0.04, who: (s, pol) => anyOf(s, EU_MEMBERS) && pol.head },
-  natoSG: { prof: 'nato', level: 'asg', title: 'Secretary General of NATO', by: 'the North Atlantic Council, by consensus', employer: 'NATO Headquarters (International Staff)', term: 4, chance: 0.04, who: (s, pol) => anyOf(s, NATO_MEMBERS) && !cits(s).includes('US') && pol.head },
-  bankHead: { prof: 'intlFinance', level: 'vp', title: 'President of the World Bank Group', by: 'the Board of Executive Directors', employer: null, term: 5, chance: 0.03, who: (s, pol) => (cits(s).includes('US') || anyOf(s, EU_MEMBERS)) && (pol.head || jobAt(s, 'intlFinance', 10) || jobAt(s, 'finance', 10)) },
-  intlJudge: { prof: 'intlJustice', level: 'chief', title: 'Judge of an international court', by: 'the UN General Assembly and Security Council (or the Assembly of States Parties)', employer: null, term: 9, chance: 0.03, who: (s) => Boolean(s.judiciary?.seat) || jobAt(s, 'law', 9) || jobAt(s, 'intlJustice', 10) },
+  usg: { prof: 'unSecretariat', level: 'usg', rank: 1, from: 1920, title: 'Under-Secretary-General of the United Nations', then: [[1946, 'Under Secretary-General of the League of Nations']], by: 'the Secretary-General', employer: 'United Nations Secretariat (New York)', term: 4, chance: 0.04, who: (s, pol) => pol.level >= 4 || jobAt(s, 'unSecretariat', 10) || jobAt(s, 'foreignService', 9) },
+  srsg: { prof: 'unSecretariat', level: 'usg', rank: 1, from: 1948, title: 'Special Representative of the Secretary-General', by: 'the Secretary-General', employer: 'UN peace operations (Department of Peace Operations)', term: 3, chance: 0.03, who: (s, pol) => pol.level >= 4 || jobAt(s, 'unSecretariat', 10) || jobAt(s, 'foreignService', 9) || (s.military?.history ?? []).some((h) => h.track === 'officer' && (h.grade ?? 0) >= 7) },
+  unHumanRights: { prof: 'unSecretariat', level: 'usg', rank: 1, from: 1994, title: 'United Nations High Commissioner for Human Rights', by: 'the Secretary-General, approved by the General Assembly', employer: 'Office of the High Commissioner for Human Rights (OHCHR)', term: 4, chance: 0.015, who: (s, pol) => pol.level >= 5 || Boolean(s.judiciary?.seat) || jobAt(s, 'intlJustice', 10) },
+  unDSG: { prof: 'unSecretariat', level: 'dsg', rank: 2, from: 1997, title: 'Deputy Secretary-General of the United Nations', then: [[1946, 'Deputy Secretary-General of the League of Nations']], by: 'the Secretary-General', employer: 'United Nations Secretariat (New York)', term: 5, chance: 0.03, who: (s, pol) => pol.level >= 5 || holds(s, 'unSecretariat', 'asg', 'usg') },
+  // Never a national of the five permanent members of the Security Council (from 1946; the League's were British and French).
+  unSG: { prof: 'unSecretariat', level: 'sg', rank: 3, heads: true, from: 1920, title: 'Secretary-General of the United Nations', then: [[1946, 'Secretary-General of the League of Nations']], by: 'the General Assembly, on the Security Council\'s recommendation', employer: 'United Nations Secretariat (New York)', term: 5, chance: 0.02, who: (s, pol) => (yr() < 1946 || !anyOf(s, P5)) && (pol.head || pol.level >= 5 || holds(s, 'unSecretariat', 'asg', 'usg', 'dsg')) },
+  unAgency: { prof: 'unAgencies', level: 'asg', rank: 2, heads: true, from: 1919, title: 'Executive Head of a UN agency', then: [[1946, 'Director of a League technical organisation']], by: 'the Secretary-General and the agency\'s governing board', employer: null, term: 5, chance: 0.03, who: (s, pol) => pol.level >= 4 || jobAt(s, 'unAgencies', 10) || jobAt(s, 'publicHealth', 9) },
+  unhcr: { prof: 'unAgencies', level: 'asg', rank: 2, heads: true, from: 1951, title: 'United Nations High Commissioner for Refugees', by: 'the General Assembly, on the Secretary-General\'s nomination', employer: 'UNHCR (the UN Refugee Agency)', term: 5, chance: 0.015, who: (s, pol) => pol.level >= 5 || jobAt(s, 'unAgencies', 10) },
+  euCommissioner: { prof: 'euInstitutions', level: 'dg', rank: 1, from: 1958, title: 'European Commissioner', then: [[1958, 'Member of the High Authority of the ECSC']], by: 'your government, with the European Parliament\'s consent', employer: 'European Commission', term: 5, chance: 0.06, who: (s, pol) => anyOf(s, EU_MEMBERS) && pol.level >= 4 },
+  euPresident: { prof: 'euInstitutions', level: 'dg', rank: 2, heads: true, from: 1952, title: 'President of the European Commission', then: [[1958, 'President of the High Authority of the ECSC']], by: 'the European Council, elected by the European Parliament', employer: 'European Commission', term: 5, chance: 0.04, who: (s, pol) => anyOf(s, EU_MEMBERS) && (pol.head || holds(s, 'euInstitutions', 'dg') && s.career.job?.intlPost === 'euCommissioner') },
+  natoDSG: { prof: 'nato', level: 'dsg', rank: 1, from: 1952, title: 'Deputy Secretary General of NATO', by: 'the Secretary General, with the Allies\' agreement', employer: 'NATO Headquarters (International Staff)', term: 4, chance: 0.03, who: (s, pol) => anyOf(s, NATO_MEMBERS) && (pol.level >= 4 || holds(s, 'nato', 'asg') || jobAt(s, 'foreignService', 9)) },
+  natoSG: { prof: 'nato', level: 'sg', rank: 2, heads: true, from: 1952, title: 'Secretary General of NATO', by: 'the North Atlantic Council, by consensus', employer: 'NATO Headquarters (International Staff)', term: 4, chance: 0.04, who: (s, pol) => anyOf(s, NATO_MEMBERS) && !cits(s).includes('US') && (pol.head || pol.level >= 5 || holds(s, 'nato', 'dsg')) },
+  oecdSG: { prof: 'oecd', level: 'sg', rank: 2, heads: true, from: 1948, title: 'Secretary-General of the OECD', then: [[1961, 'Secretary-General of the OEEC']], by: 'the Council of the member countries', employer: 'OECD Secretariat (Paris)', term: 5, chance: 0.02, who: (s, pol) => cits(s).some((c) => orgMember('oecd', c)) && (pol.level >= 5 || holds(s, 'oecd', 'director', 'dsg')) },
+  wtoDG: { prof: 'wto', level: 'dg', rank: 2, heads: true, from: 1948, title: 'Director-General of the World Trade Organization', then: [[1965, 'Executive Secretary of the GATT'], [1995, 'Director-General of the GATT']], by: 'the General Council, by consensus', employer: 'World Trade Organization (Geneva)', term: 4, chance: 0.015, who: (s, pol) => pol.level >= 5 || holds(s, 'wto', 'director', 'ddg') },
+  interpolSG: { prof: 'interpol', level: 'sg', rank: 2, heads: true, from: 1923, title: 'Secretary General of INTERPOL', then: [[1956, 'Secretary General of the International Criminal Police Commission']], by: 'the General Assembly', employer: 'INTERPOL General Secretariat (Lyon)', term: 5, chance: 0.03, who: (s) => holds(s, 'interpol', 'director', 'execDir') || ['police', 'statePolice', 'fbi'].includes(s.career.job?.professionId) && (s.career.job?.grade ?? 0) >= 10 },
+  commonwealthSG: { prof: 'commonwealthSec', level: 'sg', rank: 2, heads: true, from: 1965, title: 'Commonwealth Secretary-General', by: 'the Commonwealth Heads of Government', employer: 'Commonwealth Secretariat (Marlborough House, London)', term: 4, chance: 0.03, who: (s, pol) => cits(s).some((c) => orgMember('commonwealth', c)) && !cits(s).includes('GB') && (pol.level >= 5 || holds(s, 'commonwealthSec', 'director', 'dsg')) },
+  auChair: { prof: 'africanUnion', level: 'chair', rank: 3, heads: true, from: 1963, title: 'Chairperson of the African Union Commission', then: [[2002, 'Secretary-General of the Organisation of African Unity']], by: 'the Assembly of the Union', employer: 'African Union Commission (Addis Ababa)', term: 4, chance: 0.03, who: (s, pol) => cits(s).some((c) => orgMember('au', c)) && (pol.head || pol.level >= 5 || holds(s, 'africanUnion', 'commissioner', 'deputy')) },
+  auCommissioner: { prof: 'africanUnion', level: 'commissioner', rank: 1, from: 2002, title: 'Commissioner of the African Union', by: 'the Executive Council', employer: 'African Union Commission (Addis Ababa)', term: 4, chance: 0.04, who: (s, pol) => cits(s).some((c) => orgMember('au', c)) && (pol.level >= 4 || holds(s, 'africanUnion', 'director')) },
+  aseanSG: { prof: 'aseanSec', level: 'sg', rank: 2, heads: true, from: 1976, title: 'Secretary-General of ASEAN', by: 'the ASEAN Summit, by rotation among the members', employer: 'ASEAN Secretariat (Jakarta)', term: 5, chance: 0.03, who: (s, pol) => cits(s).some((c) => orgMember('asean', c)) && (pol.level >= 5 || holds(s, 'aseanSec', 'director', 'dsg') || jobAt(s, 'foreignService', 9)) },
+  oasSG: { prof: 'oas', level: 'sg', rank: 2, heads: true, from: 1890, title: 'Secretary General of the OAS', then: [[1948, 'Director General of the Pan American Union']], by: 'the General Assembly', employer: 'OAS General Secretariat (Washington, D.C.)', term: 5, chance: 0.02, who: (s, pol) => cits(s).some((c) => orgMember('oas', c)) && (pol.head || pol.level >= 5 || holds(s, 'oas', 'secretary', 'asg')) },
+  coeSG: { prof: 'councilOfEurope', level: 'sg', rank: 2, heads: true, from: 1949, title: 'Secretary General of the Council of Europe', by: 'the Parliamentary Assembly', employer: 'Council of Europe (Strasbourg)', term: 5, chance: 0.02, who: (s, pol) => cits(s).some((c) => orgMember('coe', c)) && (pol.level >= 5 || holds(s, 'councilOfEurope', 'dg', 'dsg')) },
+  bankHead: { prof: 'intlFinance', level: 'dmd', rank: 2, heads: true, from: 1946, title: 'President of the World Bank Group', by: 'the Board of Executive Directors', employer: null, term: 5, chance: 0.03, who: (s, pol) => (cits(s).includes('US') || anyOf(s, EU_MEMBERS)) && (pol.head || jobAt(s, 'intlFinance', 10) || jobAt(s, 'finance', 10)) },
+  intlJudge: { prof: 'intlJustice', level: 'deputyProsecutor', rank: 2, from: 1922, title: 'Judge of an international court', by: 'the UN General Assembly and Security Council (or the Assembly of States Parties)', employer: null, term: 9, chance: 0.03, who: (s) => Boolean(s.judiciary?.seat) || jobAt(s, 'law', 9) || jobAt(s, 'intlJustice', 10) },
 };
 
 export function postTitle(id, state) {
   if (id === 'bankHead' && !cits(state).includes('US')) return 'Managing Director of the IMF';
-  return TOP_POSTS[id].title;
+  const t = TOP_POSTS[id];
+  const y = yearNow(state);
+  return t.then?.find(([until]) => y < until)?.[1] ?? t.title;
 }
+/** Does the post exist in the year being played? */
+const postExists = (t, y) => y >= (t.from ?? 0) && y < (t.until ?? Infinity);
 
 /** An appointee takes the seat: whoever held that rung retires. */
 function vacateSeat(state, job) {
@@ -189,11 +217,14 @@ function offerTopPosts(ctx) {
   const age = state.character.age;
   if (age < 40 || age > 72 || state.politics?.office || state.prompts.some((p) => p.type === 'intlOrgs.appointment')) return;
   const job = state.career.job;
-  if (job?.intlTerm) return;
+  // On an appointed term: only a higher post in the same organisation (a USG made Secretary-General).
+  const held = job?.intlTerm ? TOP_POSTS[job.intlPost] : null;
   const pol = political(state);
+  const y = yearNow(state);
   for (const [id, t] of Object.entries(TOP_POSTS)) {
-    if (job?.intlPost === id) continue;
-    if (!t.who(state, pol) || !rng.chance(t.chance)) continue;
+    if (job?.intlPost === id || !postExists(t, y)) continue;
+    if (held && !(t.prof === held.prof && (t.rank ?? 0) > (held.rank ?? 0))) continue;
+    if (!t.who(state, pol) || !rng.chance(t.chance * (held ? 2 : 1))) continue;
     const employer = t.employer ?? rng.pick(getProfession(t.prof).employers);
     const name = id === 'bankHead' ? (cits(state).includes('US') ? 'World Bank Group' : 'International Monetary Fund') : employer;
     ctx.prompt({
@@ -495,8 +526,8 @@ export const IntlOrgsModule = {
       job.intlPost = data.post;
       job.intlTerm = state.character.age + t.term;
       vacateSeat(state, job);
-      // You head the organization now: nobody else sits above you in it.
-      const org = state.orgs?.byId?.[job.employer.orgId];
+      // Heading the organization: nobody else sits above you in it.
+      const org = t.heads ? state.orgs?.byId?.[job.employer.orgId] : null;
       if (org) {
         if (org.head) delete org.people?.[org.head];
         org.head = null;

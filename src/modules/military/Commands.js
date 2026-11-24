@@ -30,6 +30,7 @@ import { serviceLevel, budgetAt } from '../politics/Budgets.js';
 import { pastTenure } from './Separation.js';
 import { forceSizeOf } from '../world/NationalForces.js';
 import { eraYear } from '../world/Eras.js';
+import { NATO_MEMBERS, memberIn } from '../content/packs/careers-intl-orgs.js';
 
 const FAMILY = { army: 'ground', guard: 'ground', marines: 'marines', navy: 'naval', coastguard: 'naval', airforce: 'air', spaceforce: 'space' };
 export const familyOf = (svc) => FAMILY[svc?.branch] ?? null;
@@ -230,8 +231,38 @@ const SCALE_POSTS = {
 };
 const NATIONAL_STAFF = ['Assistant Chief of Staff, Defence headquarters', 'Director of Operations, Defence headquarters', 'Defence Attaché to an allied capital', 'Director of Plans, the Ministry of Defence'];
 
+/**
+ * NATO's commands, for the senior officers of member forces (grade 8 = three stars, 9 = four).
+ * Supreme Allied Commander Europe has always been an American general; Atlantic (1952–2003) an
+ * American admiral; Transformation American until 2009 and French since; the Deputy SACEUR British
+ * or German; the Military Committee chaired by any ally's officer.
+ */
+export function natoPostFor(svc, r, y = eraYear()) {
+  const cc = svc.nation ?? 'US';
+  if (y < 1951 || svc.grade < 8 || !memberIn(NATO_MEMBERS, cc, y) || !r.chance(0.3)) return null;
+  const family = familyOf(svc);
+  const posts = [];
+  if (svc.grade === 9) {
+    if (cc === 'US' && ['ground', 'air'].includes(family)) posts.push(['Supreme Allied Commander Europe', 'Allied Command Operations (SHAPE)']);
+    if (cc === 'US' && family === 'naval' && y >= 1952) posts.push(y < 2003 ? ['Supreme Allied Commander Atlantic', 'Allied Command Atlantic (Norfolk)'] : y < 2009 ? ['Supreme Allied Commander Transformation', 'Allied Command Transformation (Norfolk)'] : null);
+    if (cc === 'FR' && y >= 2009) posts.push(['Supreme Allied Commander Transformation', 'Allied Command Transformation (Norfolk)']);
+    if (['GB', 'DE'].includes(cc)) posts.push(['Deputy Supreme Allied Commander Europe', 'Allied Command Operations (SHAPE)']);
+    if (y >= 1963 && cc !== 'US') posts.push(['Chairman of the NATO Military Committee', 'NATO Headquarters']);
+  } else {
+    posts.push(y < 2004 ? ['Commander-in-Chief', r.pick(['Allied Forces Northern Europe', 'Allied Forces Southern Europe', 'Allied Forces Central Europe'])] : ['Commander', r.pick(['Allied Joint Force Command Brunssum', 'Allied Joint Force Command Naples'])]);
+    if (cc === 'GB' && y >= 1992 && family === 'ground') posts.push(['Commander', 'the Allied Rapid Reaction Corps']);
+    if (y >= 2012) posts.push(family === 'air' ? ['Commander', 'Allied Air Command (Ramstein)'] : family === 'naval' ? ['Commander', 'Allied Maritime Command (Northwood)'] : ['Commander', 'Allied Land Command (Izmir)']);
+  }
+  const ok = posts.filter(Boolean);
+  if (!ok.length) return null;
+  const [title, unit] = r.pick(ok);
+  return { title, unit, size: 'a NATO command', nato: true };
+}
+
 /** The command (or none) a board can offer at this grade, for this officer's corps and force. */
 export function commandFor(svc, r) {
+  const nato = natoPostFor(svc, r);
+  if (nato) return nato;
   const spec = SPECIALTY_POSTS[svc.specialty];
   const family = familyOf(svc);
   // Before the modern US forces (no airborne divisions or combatant commands), and abroad: the force's own formations, at its scale.

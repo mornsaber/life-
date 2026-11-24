@@ -79,7 +79,7 @@ export const JOB_FIELDS = {
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
   intel: { label: 'Intelligence', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   empire: { label: 'Empire & the Colonies', icon: '🌍', ids: ['colonialService', 'colonialPolice', 'colonialTroops', 'colonialMedical', 'gurkhaContingent'] },
-  intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
+  intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy', 'oecd', 'wto', 'interpol', 'commonwealthSec', 'africanUnion', 'aseanSec', 'oas', 'councilOfEurope'] },
   holySee: { label: 'Faith & the Church', icon: '⛪', ids: ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc', 'romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
 };
 

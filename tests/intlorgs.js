@@ -18,6 +18,11 @@ import { styledName } from '../src/modules/world/Honours.js';
 import { OFFICES } from '../src/modules/politics/Offices.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { foreignAwardsYear } from '../src/modules/world/ForeignAwards.js';
+import { ladderFor } from '../src/modules/career/Ladder.js';
+import { TOP_POSTS, postTitle } from '../src/modules/world/IntlOrgs.js';
+import { orgMember } from '../src/modules/content/packs/careers-intl-orgs.js';
+import { natoPostFor } from '../src/modules/military/Commands.js';
+import { setEraYear } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -97,6 +102,65 @@ const tests = {
     assert.ok(state.career.job.intlTerm > state.character.age);
     year(engine, state, 10);
     assert.notEqual(state.career.job?.title, 'Secretary General of NATO', 'the term ends');
+  },
+  'the UN Secretariat climbs in order: ASG, then the appointed USG, DSG and Secretary-General'() {
+    const lad = ladderFor(getProfession('unSecretariat'), 'enterprise');
+    const g = (id) => lad.find((l) => l.id === id).grade;
+    assert.ok(g('d2') < g('asg') && g('asg') < g('usg') && g('usg') < g('dsg') && g('dsg') < g('sg'));
+    assert.ok(['usg', 'dsg', 'sg'].every((id) => lad.find((l) => l.id === id).appointed));
+    assert.equal(TOP_POSTS.unSG.level, 'sg');
+    assert.equal(TOP_POSTS.usg.level, 'usg');
+  },
+  'an Under-Secretary-General can be made Secretary-General during the term'() {
+    const { engine, state } = life({ countryId: 'NO' }, 11);
+    year(engine, state, 50);
+    const ctx = engine.context();
+    const appoint = MODULES.find((m) => m.id === 'intlOrgs').resolvers.appointment;
+    appoint({ ...ctx, rng: always(ctx.rng) }, { post: 'usg', employer: 'United Nations Secretariat (New York)' }, 'accept');
+    assert.equal(state.career.job.levelId, 'usg');
+    assert.ok(!state.career.job.headOf, 'a USG does not run the Secretariat');
+    // The yearly offers: only posts above the one held.
+    state.prompts = [];
+    const r = always(ctx.rng);
+    MODULES.find((m) => m.id === 'intlOrgs').onAgeUp({ ...ctx, rng: r });
+    const offer = state.prompts.find((p) => p.type === 'intlOrgs.appointment');
+    assert.ok(offer && ['unDSG', 'unSG'].includes(offer.data.post), offer?.data?.post);
+    appoint({ ...ctx, rng: always(ctx.rng) }, { post: 'unSG', employer: 'United Nations Secretariat (New York)' }, 'accept');
+    assert.equal(state.career.job.levelId, 'sg');
+    assert.match(state.career.job.title, /Secretary-General of the United Nations/);
+  },
+  'posts and bodies of their day: the League, the OEEC, the OAU, the Pan American Union'() {
+    const { state } = life({ countryId: 'NO', startYear: 1900 }, 3);
+    setEraYear(1930);
+    try {
+      assert.equal(postTitle('unSG', { character: { birthYear: 1900, age: 30 } }), 'Secretary-General of the League of Nations');
+      assert.equal(postTitle('auChair', { character: { birthYear: 1940, age: 30 } }), 'Secretary-General of the Organisation of African Unity');
+    } finally { setEraYear(null); }
+    assert.ok(state);
+    assert.equal(orgMember('au', 'NG', 1970), true);
+    assert.equal(orgMember('au', 'NG', 1950), false, 'not before independence and the OAU');
+    assert.equal(orgMember('commonwealth', 'ZA', 1980), false, 'out of the Commonwealth 1961–94');
+    assert.equal(orgMember('coe', 'RU', 2023), false, 'expelled in 2022');
+    assert.equal(orgMember('oecd', 'US', 1955), false, 'the OEEC was European');
+  },
+  'new organisations take their own members: the Commonwealth, ASEAN, the Council of Europe'() {
+    for (const id of ['oecd', 'wto', 'interpol', 'commonwealthSec', 'africanUnion', 'aseanSec', 'oas', 'councilOfEurope']) assert.ok(getProfession(id), id);
+    const gb = life({ countryId: 'GB' }, 4).state; graduate(gb); gb.character.age = 30;
+    assert.doesNotMatch(applicationEligibility(gb, 'commonwealthSec').reason ?? '', /Commonwealth/);
+    const ie = life({ countryId: 'IE' }, 4).state; graduate(ie); ie.character.age = 30;
+    assert.match(applicationEligibility(ie, 'commonwealthSec').reason ?? '', /Commonwealth/, 'Ireland left in 1949');
+    assert.match(applicationEligibility(ie, 'aseanSec').reason ?? '', /ASEAN/);
+  },
+  'NATO commands for the senior officers of member forces'() {
+    const r = { chance: () => true, pick: (a) => a[0] };
+    setEraYear(1990);
+    try {
+      assert.equal(natoPostFor({ branch: 'army', grade: 9 }, r).title, 'Supreme Allied Commander Europe');
+      assert.equal(natoPostFor({ branch: 'navy', grade: 9 }, r).title, 'Supreme Allied Commander Atlantic');
+      assert.equal(natoPostFor({ nation: 'GB', branch: 'army', grade: 9 }, r).title, 'Deputy Supreme Allied Commander Europe');
+      assert.equal(natoPostFor({ nation: 'SE', branch: 'army', grade: 9 }, r), null, 'Sweden joined in 2024');
+      assert.equal(natoPostFor({ nation: 'FR', branch: 'army', grade: 7 }, r), null, 'two stars: national commands');
+    } finally { setEraYear(null); }
   },
   'the Order of Malta: Catholics join, profess vows as Fra, and can be elected Grand Master'() {
     const { engine, state } = life({ countryId: 'MT' }, 12);

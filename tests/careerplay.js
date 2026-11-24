@@ -105,6 +105,8 @@ const tests = {
       engine.dispatch('careerStory.pushProject');
       state.prompts = [];
       engine.ageUp();
+      // Stay in the job: offers from elsewhere are turned down unread.
+      state.prompts = state.prompts.filter((q) => !/offer|headhunter|recruit|jobMarket|interview/i.test(q.type));
       solve(engine, state);
       if (state.career.job !== job) break;
     }

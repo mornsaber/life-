@@ -67,11 +67,37 @@ export const DUTY_STATIONS = {
   'Gendarmerie Corps of Vatican City State': { hq: ['Vatican City', 'Vatican City'] },
   'Roman Curia': { hq: ['Vatican City', 'Vatican City'] },
   'Secretariat of State — Diplomatic Service of the Holy See': { hq: ['Vatican City', 'Vatican City'], field: [['Washington, D.C.', 'United States'], ['Paris', 'France'], ['Berlin', 'Germany'], ['Madrid', 'Spain'], ['Manila', 'Philippines'], ['Nairobi', 'Kenya'], ['Brasília', 'Brazil'], ['New Delhi', 'India'], ['Kyiv', 'Ukraine'], ['Beirut', 'Lebanon'], ['Geneva', 'Switzerland'], ['Canberra', 'Australia'], ['Ottawa', 'Canada'], ['Mexico City', 'Mexico'], ['Kinshasa', 'DR Congo'], ['Damascus', 'Syria'], ['Jerusalem', 'Israel'], ['Seoul', 'South Korea']] },
+  'United Nations Office at Vienna': { hq: ['Vienna', 'Austria'], field: [['New York', 'United States'], ['Geneva', 'Switzerland']] },
+  'United Nations Office at Nairobi': { hq: ['Nairobi', 'Kenya'], field: [['New York', 'United States'], ['Addis Ababa', 'Ethiopia']] },
+  'Office for the Coordination of Humanitarian Affairs (OCHA)': { hq: ['New York', 'United States'], field: [['Geneva', 'Switzerland'], ['Juba', 'South Sudan'], ['Sana\'a', 'Yemen'], ['Gaza', 'Palestine'], ['Port-au-Prince', 'Haiti']] },
+  'Office of the High Commissioner for Human Rights (OHCHR)': { hq: ['Geneva', 'Switzerland'], field: [['New York', 'United States'], ['Bangkok', 'Thailand'], ['Kyiv', 'Ukraine']] },
+  'UN Economic and Social Commission for Asia and the Pacific (ESCAP)': { hq: ['Bangkok', 'Thailand'] },
+  'UN Economic Commission for Africa (ECA)': { hq: ['Addis Ababa', 'Ethiopia'] },
+  'NATO Support and Procurement Agency': { hq: ['Luxembourg', 'Luxembourg'] },
+  'NATO Defense College': { hq: ['Rome', 'Italy'] },
+  'Supreme Headquarters Allied Powers Europe (SHAPE)': { hq: ['Mons', 'Belgium'] },
+  'NATO Parliamentary Assembly (International Secretariat)': { hq: ['Brussels', 'Belgium'] },
+  'OECD Secretariat (Paris)': { hq: ['Paris', 'France'] },
+  'International Energy Agency': { hq: ['Paris', 'France'] },
+  'Nuclear Energy Agency': { hq: ['Paris', 'France'] },
+  'World Trade Organization (Geneva)': { hq: ['Geneva', 'Switzerland'] },
+  'INTERPOL General Secretariat (Lyon)': { hq: ['Lyon', 'France'], field: [['Singapore', 'Singapore'], ['Buenos Aires', 'Argentina'], ['Nairobi', 'Kenya'], ['Bangkok', 'Thailand']] },
+  'INTERPOL Global Complex for Innovation (Singapore)': { hq: ['Singapore', 'Singapore'], field: [['Lyon', 'France']] },
+  'Commonwealth Secretariat (Marlborough House, London)': { hq: ['London', 'United Kingdom'] },
+  'African Union Commission (Addis Ababa)': { hq: ['Addis Ababa', 'Ethiopia'], field: [['Mogadishu', 'Somalia'], ['Juba', 'South Sudan'], ['Bamako', 'Mali']] },
+  'the Pan-African Parliament (Midrand)': { hq: ['Midrand', 'South Africa'] },
+  'the African Union Mission in Somalia': { hq: ['Mogadishu', 'Somalia'] },
+  'ASEAN Secretariat (Jakarta)': { hq: ['Jakarta', 'Indonesia'] },
+  'OAS General Secretariat (Washington, D.C.)': { hq: ['Washington, D.C.', 'United States'], field: [['Port-au-Prince', 'Haiti'], ['Bogotá', 'Colombia'], ['Tegucigalpa', 'Honduras']] },
+  'the Inter-American Commission on Human Rights': { hq: ['Washington, D.C.', 'United States'] },
+  'the Pan American Health Organization': { hq: ['Washington, D.C.', 'United States'] },
+  'Council of Europe (Strasbourg)': { hq: ['Strasbourg', 'France'] },
+  'the Registry of the European Court of Human Rights': { hq: ['Strasbourg', 'France'] },
   'Grand Magistry of the Sovereign Order of Malta': { hq: ['Rome', 'Italy'], field: [['Vienna', 'Austria'], ['Paris', 'France'], ['Brussels', 'Belgium'], ['New York', 'United States'], ['Valletta', 'Malta'], ['Nairobi', 'Kenya'], ['Beirut', 'Lebanon']] },
 };
 
 /** Field stations where staff face real danger (a yearly chance of an incident). */
-export const HARDSHIP = ['Juba', 'Bangui', 'Goma', 'Bamako', 'Kabul', 'Sana\'a', 'Mogadishu', 'Damascus', 'Aleppo', 'Gaza', 'Maiduguri', 'Port-au-Prince', 'Erbil', 'Kyiv', 'Lviv', 'Yangon', 'Kakuma', 'Naqoura'];
+export const HARDSHIP = ['Juba', 'Mogadishu', 'Tegucigalpa', 'Bangui', 'Goma', 'Bamako', 'Kabul', 'Sana\'a', 'Mogadishu', 'Damascus', 'Aleppo', 'Gaza', 'Maiduguri', 'Port-au-Prince', 'Erbil', 'Kyiv', 'Lviv', 'Yangon', 'Kakuma', 'Naqoura'];
 
 /* The careers themselves (INTL_ORG_PROFESSIONS) live in content/packs/careers-intl-orgs.js. */
 

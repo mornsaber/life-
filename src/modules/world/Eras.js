@@ -151,6 +151,7 @@ export const PROFESSION_FROM = {
   occupationalTherapy: 1920, speechPathology: 1925, airTrafficControl: 1930, ems: 1970, privateEms: 1960, paratransit: 1975,
   dispatch: 1968, tsa: 2002, travelNursing: 1980, emergencyManagement: 1979, atf: 1972, dea: 1973, fbi: 1908,
   nato: 1949, unSecretariat: 1920, unAgencies: 1919, euInstitutions: 1952, intlFinance: 1945, intlJustice: 1922, maltaRelief: 1953, icrc: 1863,
+  oecd: 1948, wto: 1948, interpol: 1923, commonwealthSec: 1965, africanUnion: 1963, aseanSec: 1976, oas: 1890, councilOfEurope: 1949,
   caseOfficer: 1947, sigint: 1952, intelligence: 1947, nuclearEng: 1945, aerospaceEng: 1940, petroleumEng: 1915,
   flightAttendant: 1930, aviation: 1920, charterAviation: 1925, communityCollege: 1920, nationalLab: 1943, environmental: 1970,
   oig: 1978, privateMilitary: 1990, borderPatrol: 1924, federalPrisons: 1930, usss: 1865, caregiving: 1965, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915, ministry: 1883,
@@ -1402,6 +1403,19 @@ const RENAMES = [
   [/\bBundestag\b/g, 1949, (y) => (y >= 1871 ? 'Reichstag' : 'Landtag')],
   [/Member of the Landtag/g, 1946, (y) => (y >= 1919 ? 'Member of the Landtag' : 'Member of the state Diet (Landtag)')],
   [/United Nations Secretariat/g, 1946, () => 'League of Nations Secretariat'],
+  [/\bOECD Secretariat\b/g, 1961, () => 'OEEC Secretariat'],
+  [/\bSecretary-General of the OECD\b/g, 1961, () => 'Secretary-General of the OEEC'],
+  [/\bWorld Trade Organization Secretariat\b/g, 1995, () => 'GATT Secretariat'],
+  [/\bINTERPOL General Secretariat\b/g, 1956, () => 'International Criminal Police Commission'],
+  [/\bAfrican Union Commission\b/g, 2002, () => 'OAU General Secretariat'],
+  [/\bCommissioner of the African Union\b/g, 2002, () => 'Assistant Secretary-General of the OAU'],
+  [/\bDeputy Chairperson of the OAU General Secretariat\b/g, 2002, () => 'Assistant Secretary-General of the OAU'],
+  [/\bChairperson of the OAU General Secretariat\b/g, 2002, () => 'Secretary-General of the OAU'],
+  [/\bOrganization of American States\b/g, 1948, () => 'Pan American Union'],
+  [/\bSecretary General of the OAS\b/g, 1948, () => 'Director General of the Pan American Union'],
+  [/\bAssistant Secretary General of the OAS\b/g, 1948, () => 'Assistant Director of the Pan American Union'],
+  [/\bSupreme Headquarters Allied Powers Europe \(SHAPE\)/g, 1967, () => 'Supreme Headquarters Allied Powers Europe (SHAPE, Rocquencourt)'],
+  [/\bNATO Support and Procurement Agency\b/g, 2012, () => 'NATO Maintenance and Supply Agency'],
   [/UN Agencies, Funds &(?:amp;)? Programmes/g, 1946, () => 'League of Nations Technical Organisations'],
   [/EU Institutions \(European Civil Service\)/g, 1993, (y) => (y < 1958 ? 'The European Coal and Steel Community' : 'The European Communities (European Civil Service)')],
   [/Order of Malta — Malteser International/g, 2005, () => 'Order of Malta — Relief Service'],
@@ -1434,6 +1448,7 @@ const RENAMES = [
   [/\bCommunity Corrections Bureau\b/g, 1970, () => 'Parole Bureau'],
   [/\b(High-Risk Supervision|Sex Offender) Unit\b/g, 1985, () => 'Special Supervision Unit'],
   [/\bSex Offender Investigations Team\b/g, 1994, () => 'Warrants Team'], // sex-offender registration (the Jacob Wetterling Act) from 1994
+  [/\bClimate Model(l)?ing Group\b/g, 1975, (y) => (y >= 1950 ? 'Numerical Weather Prediction Group' : 'Dynamical Meteorology Group')], // climate models from the late 1960s
   [/\bSecurity Operations Bureau\b/g, 1960, () => 'Custody Bureau'],
   [/\bSecret Service Protective Operations\b/g, 1950, () => 'Secret Service White House Detail'],
   [/\bHospital Police & Security\b/g, 1965, () => 'Hospital Watchmen'],
@@ -1622,12 +1637,24 @@ const PERIOD_EMPLOYERS = {
   euInstitutions: [[1958, ['the High Authority of the European Coal and Steel Community (Luxembourg)', 'the Common Assembly of the ECSC (Secretariat)', 'the Court of Justice of the ECSC']],
     [1993, ['the Commission of the European Communities', 'the European Parliament (Secretariat)', 'the Council of the European Communities (General Secretariat)', 'the Court of Justice of the European Communities']]],
   maltaRelief: [[2005, ['the Order of Malta\'s relief service (Malteser Hilfsdienst)', 'the Order of Malta\'s hospitals']]],
+  oecd: [[1961, ['the OEEC Secretariat (Château de la Muette, Paris)', 'the European Productivity Agency']], [1974, ['OECD Secretariat (Paris)', 'the European Nuclear Energy Agency']]],
+  wto: [[1995, ['the GATT Secretariat (Geneva)']]],
+  interpol: [[1946, ['the International Criminal Police Commission (Vienna)']], [1956, ['the International Criminal Police Commission (Paris)']], [1989, ['the INTERPOL General Secretariat (Saint-Cloud, Paris)']]],
+  africanUnion: [[2002, ['the OAU General Secretariat (Addis Ababa)', 'the OAU Liberation Committee (Dar es Salaam)']]],
+  oas: [[1910, ['the International Bureau of the American Republics (Washington, D.C.)']], [1948, ['the Pan American Union (Washington, D.C.)']]],
+  councilOfEurope: [[1959, ['Council of Europe (Strasbourg)']]],
 };
 /** Employers founded later than the career they belong to. */
 const EMPLOYER_FROM = {
   UNICEF: 1946, 'UNHCR (the UN Refugee Agency)': 1950, 'World Food Programme': 1961, 'World Health Organization': 1948, UNDP: 1965, 'International Atomic Energy Agency': 1957,
   'International Criminal Court': 2002, 'European External Action Service': 2010, 'European Central Bank': 1998, 'NATO Communications and Information Agency': 2012,
   'UN peace operations (Department of Peace Operations)': 1948, 'United Nations Office at Geneva': 1946, 'Court of Justice of the European Union': 2009,
+  'United Nations Office at Vienna': 1980, 'United Nations Office at Nairobi': 1996, 'Office for the Coordination of Humanitarian Affairs (OCHA)': 1991, 'Office of the High Commissioner for Human Rights (OHCHR)': 1993,
+  'UN Economic and Social Commission for Asia and the Pacific (ESCAP)': 1947, 'UN Economic Commission for Africa (ECA)': 1958,
+  'NATO Support and Procurement Agency': 1958, 'NATO Defense College': 1951, 'Supreme Headquarters Allied Powers Europe (SHAPE)': 1951, 'NATO Parliamentary Assembly (International Secretariat)': 1955,
+  'International Energy Agency': 1974, 'Nuclear Energy Agency': 1958, 'INTERPOL Global Complex for Innovation (Singapore)': 2015,
+  'the Pan-African Parliament (Midrand)': 2004, 'the African Union Mission in Somalia': 2007, 'the Inter-American Commission on Human Rights': 1959, 'the Pan American Health Organization': 1902,
+  'the Registry of the European Court of Human Rights': 1959,
 };
 /** A career's employers in the year being played. */
 export function periodEmployers(professionId, employers) {

@@ -58,7 +58,7 @@ const tests = {
     assert.doesNotMatch(html, /Run for Office|Where You Stand/);
   },
   'a promotion can put a cadre on the government side: mayor, then governor'() {
-    const { engine, state, ctx } = life({}, 3);
+    const { engine, state, ctx } = life({}, 6); // a life that reaches 35
     year(engine, state, 35);
     member(state, 3);
     state.cpc.record = 90; // a strong record, so the promotion odds clear the rigged dice

@@ -41,7 +41,7 @@ const COMMON = {
 };
 /** Rare posts a relative is seldom in (one of a few hundred people, or a world body). */
 const RARE = new Set(['swissGuard', 'romanCuria', 'holySeeDiplomacy', 'vaticanGendarmerie', 'moc', 'jesuits', 'spaceIndustry', 'gurkhaContingent', 'maltaDiplomacy', 'maltaRelief',
-  'privateMilitary', 'caseOfficer', 'sigint', 'intelligence', 'nato', 'intlJustice', 'intlFinance', 'euInstitutions', 'unSecretariat', 'unAgencies', 'icrc', 'usss', 'airTrafficControl', 'meteorology', 'nuclearEng', 'aiOps']);
+  'privateMilitary', 'caseOfficer', 'sigint', 'intelligence', 'nato', 'intlJustice', 'intlFinance', 'euInstitutions', 'unSecretariat', 'unAgencies', 'icrc', 'oecd', 'wto', 'interpol', 'commonwealthSec', 'africanUnion', 'aseanSec', 'oas', 'councilOfEurope', 'usss', 'airTrafficControl', 'meteorology', 'nuclearEng', 'aiOps']);
 
 /** Work most women did before the 1960s: in service, the mills, shops, offices, schools and wards. */
 const WOMENS_WORK = new Set(['domesticService', 'millWork', 'retail', 'typingPool', 'switchboard', 'telegraph', 'education', 'nursing', 'childcare', 'caregiving', 'culinary', 'hospitality', 'cosmetology', 'library', 'agriculture', 'manufacturing', 'socialWork', 'clergy', 'legalSupport']);

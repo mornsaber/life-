@@ -39,7 +39,7 @@ export const EMPIRE = {
 export const INTL = {
   id: 'intl',
   name: 'International Service',
-  professions: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'],
+  professions: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy', 'oecd', 'wto', 'interpol', 'commonwealthSec', 'africanUnion', 'aseanSec', 'oas', 'councilOfEurope'],
   use: [{ courses: PUBLIC_SERVICE.courses }],
   courses: [
     { id: 'unLanguage', name: 'a UN language proficiency examination', icon: '🗣️', from: 1946, minGrade: 3, cost: 0, passRate: 0.7, perf: 4 },
