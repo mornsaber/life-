@@ -14,6 +14,7 @@ import { localAgency } from '../modules/world/LocalAgencies.js';
 import { eraYear, PRESENT, getEraState } from '../modules/world/Eras.js';
 import { colonialRuler } from '../modules/world/ColonialForces.js';
 import { PACKS } from '../modules/world/packs/index.js';
+import { branchOf } from '../modules/military/MilitaryEngine.js';
 const GOLD = '#d4a017';
 const SILVER = '#c9ced6';
 const svg = (w, body, h = 34) => `<svg class="insignia-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${body}</svg>`;
@@ -365,12 +366,18 @@ function navalInsignia(kind, n, nation, branch) {
 }
 
 /** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern; naval branches wear sleeve lace. */
-export function militaryInsignia(code, nation = null, { branch = null } = {}) {
+export function militaryInsignia(code, nation = null, { branch = null, title = null } = {}) {
   // A colony's force wears its ruler's badges of rank (the King's African Rifles wear British pips).
   nation = (nation && colonialRuler(getEraState(), nation)) ?? nation;
   const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
   if (!m) return '';
   const n = Number(m[2]);
+  // A rank of its period (a Landsman, a Jemadar, an Airman Third Class) wears its own badge; one whose
+  // title lives on in today's ladder at another grade wears the badge that title wears today.
+  if (title && eraYear() < PRESENT) {
+    const byTitle = periodTitleBadge(title, { prefix: m[1], n, nation, branch });
+    if (byTitle !== undefined) return byTitle;
+  }
   const old = periodInsignia(m[1] === 'OR' || m[1] === 'E' ? 'E' : m[1] === 'W' ? 'W' : 'O', n, nation, branch);
   if (old !== undefined) return old;
   if (nation === 'RU' && !NAVAL_BRANCHES.includes(branch) && (m[1] === 'OF' || m[1] === 'O')) {
@@ -433,9 +440,11 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
  */
 const bullionEpaulette = (n) => {
   const heavy = n >= 4;
+  const device = n === 2 ? `<rect x="11" y="18" width="12" height="2" fill="${SILVER}"/>` : n === 3 ? `<rect x="11" y="16.5" width="12" height="2" fill="${SILVER}"/><rect x="11" y="20.5" width="12" height="2" fill="${SILVER}"/>`
+    : n === 4 ? `<text x="17" y="23" font-size="8" text-anchor="middle" fill="${SILVER}">✶</text>` : n === 5 ? `<text x="17" y="23" font-size="8" text-anchor="middle" fill="${SILVER}">♛</text>` : n === 6 ? `<text x="13" y="23" font-size="7" text-anchor="middle" fill="${SILVER}">♛</text><text x="21" y="23" font-size="7" text-anchor="middle" fill="${SILVER}">✶</text>` : '';
   const fringe = Array.from({ length: heavy ? 9 : 6 }, (_, i) => `<rect x="${(heavy ? 5 : 8) + i * (heavy ? 3 : 3.4)}" y="25" width="${heavy ? 2.2 : 1.4}" height="${heavy ? 12 : 8}" rx="1" fill="${GOLD}"/>`).join('');
   const starsOn = n >= 7 ? Array.from({ length: Math.min(3, n - 6) }, (_, i) => `<text x="${(n - 6 === 1 ? 17 : n - 6 === 2 ? 13 : 10) + i * 7}" y="19" font-size="7" text-anchor="middle" fill="${SILVER}">★</text>`).join('') : '';
-  return svg(34, `<rect x="12" y="2" width="10" height="14" rx="3" fill="${GOLD}" opacity=".85"/><ellipse cx="17" cy="20" rx="13" ry="6" fill="${GOLD}"/><ellipse cx="17" cy="20" rx="9" ry="3.5" fill="#7a5b10"/>${starsOn}${fringe}`, 40);
+  return svg(34, `<rect x="12" y="2" width="10" height="14" rx="3" fill="${GOLD}" opacity=".85"/><ellipse cx="17" cy="20" rx="13" ry="6" fill="${GOLD}"/><ellipse cx="17" cy="20" rx="9" ry="3.5" fill="#7a5b10"/>${starsOn}${device}${fringe}`, 40);
 };
 /** A Red Army collar tab: crimson with the badges of rank. */
 const collarTab = (shape, count) => {
@@ -525,6 +534,65 @@ const PERIOD_ARMY = {
   },
 };
 PERIOD_ARMY.HU = PERIOD_ARMY.AT;
+
+/* --- badges by period title ----------------------------------------- */
+const stripTitle = (t) => String(t).replace(/^Acting /, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+/** A naval warrant officer's thin gold lace (from 1918; buttons before, drawn the same). */
+const thinLace = (n = 1) => svg(36, Array.from({ length: n }, (_, i) => `<rect x="3" y="${12 + i * 6}" width="30" height="2.4" fill="${GOLD}"/>`).join(''));
+/** The royal arms of a first-class warrant officer (and a fleet chief petty officer). */
+const royalArms = () => svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">⚜</text>`);
+/** A petty officer's rate badge of the sailing navy: an anchor, with chevrons for the senior rates. */
+const anchorBadge = (k = 0, color = GOLD) => svg(34, `<text x="17" y="16" font-size="14" text-anchor="middle" fill="${color}">⚓</text>${Array.from({ length: k }, (_, i) => `<path d="M6 ${24 + i * 5} L17 ${18 + i * 5} L28 ${24 + i * 5}" fill="none" stroke="${color}" stroke-width="2.4"/>`).join('')}`, 40);
+/** Ranks that no longer exist, by title: [pattern, (ctx) => badge]. Checked before today's ladder. */
+const PERIOD_TITLE_BADGES = [
+  [/^(Landsman|Ordinary Seaman|Apprentice Seaman|Seaman Second Class|Seaman First Class|Matros 2nd Class|Matros 1st Class|Krasnoflotets|Krasnoarmeyets|Musketier|Nitōhei|Ittōhei|Nitō Hei|Ittō Hei|Jōtō Hei|Jōtōhei|Sepoy|Worker|Auxiliary)\b/, () => ''],
+  [/^(Coxswain|Quartermaster|Boatswain's Mate|Kvartirmeyster|Botsmanmat)$/, () => anchorBadge(1)],
+  [/^(Master-at-Arms|Botsman|Senior Botsman)$/, () => anchorBadge(2)],
+  [/^(Gunner|Boatswain|Master|Deckoffizier|Konduktor|Heisōchō)\b|^(Chief )?Warrant Officer$/, ({ naval, y }) => (naval && y < 1949 ? thinLace(1) : undefined)],
+  [/^Fleet Chief Petty Officer$/, () => royalArms()],
+  [/^(Regimental|Garrison) Sergeant Major$/, ({ cw }) => (cw ? royalArms() : chevrons(3, 3))],
+  [/^Battalion Sergeant Major$/, () => chevrons(3, 2)],
+  [/^Quartermaster Sergeant$/, () => chevrons(3, 1)],
+  [/^Sergeant Major$/, ({ cw, y }) => (cw && y < 1881 ? chevrons(4) : undefined)],
+  [/^Colour Sergeant$/, () => svg(34, `<text x="17" y="9" font-size="8" text-anchor="middle" fill="${GOLD}">♛</text>${[0, 1, 2].map((k) => `<path d="M4 ${17 + k * 5} L17 ${11 + k * 5} L30 ${17 + k * 5}" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linejoin="round"/>`).join('')}`, 40)],
+  [/^Jemadar$/, () => pips(1, false, GOLD)],
+  // A WRNS officer's lace was blue, with a diamond in place of the curl.
+  [/^(Third|Second|First|Chief) Officer$|^Superintendent$|^Commandant$/, ({ naval, n }) => (naval ? navalLace(Math.max(1, n - 1), '', false, '#4a7fd4') : undefined)],
+  [/^Brigadier-General$/, () => swordBaton()],
+  [/^Colonel-Commandant$/, () => pips(3, true)],
+  [/^Airman (Third|Second|First) Class$/, ({ title }) => chevrons({ Third: 1, Second: 2, First: 3 }[/(Third|Second|First)/.exec(title)[1]], 0, 'star', SILVER)],
+  [/^(Kaptenarmus|Feldfebel|Zauryad-Praporshchik|Podpraporshchik)$/, () => undefined],
+  // An Imperial Japanese Navy rating: an anchor and cherry blossom, with chevrons for petty officers.
+  [/Heisō|Heichō \(Leading Seaman\)/, ({ title }) => anchorBadge(/Jōtō Heisō/.test(title) ? 3 : /Ittō Heisō/.test(title) ? 2 : /Nitō Heisō/.test(title) ? 1 : 0)],
+];
+/** An American airman before the Air Force had ranks of its own (to 1952): the Army's stripes. */
+const usAirArmyStripes = (n) => ['', chevrons(1), chevrons(2), chevrons(3), chevrons(3, 1), chevrons(3, 2), chevrons(3, 3), chevrons(3, 3, 'diamond'), chevrons(3, 3)][Math.max(0, n - 1)] ?? chevrons(3, 3);
+
+function periodTitleBadge(rawTitle, { prefix, n, nation, branch }) {
+  const title = stripTitle(rawTitle);
+  const y = eraYear();
+  const naval = NAVAL_BRANCHES.includes(branch);
+  const cw = COMMONWEALTH.includes(nation ?? '');
+  const enlisted = prefix === 'E' || prefix === 'OR';
+  if (enlisted && branch === 'airforce' && !nation && y < 1952) return usAirArmyStripes(n);
+  for (const [re, draw] of PERIOD_TITLE_BADGES) if (re.test(title)) { const b = draw({ title, y, naval, cw, n, nation }); if (b !== undefined) return b; }
+  // Art of its own for this period already (the Kaiser's tresse, Red Army collar tabs, epaulettes): keep it.
+  const kind = enlisted ? 'E' : prefix === 'W' ? 'W' : 'O';
+  if (periodInsignia(kind, n, nation, branch) !== undefined) return undefined;
+  // A title that lives on in today's ladder at another grade wears that grade's badge.
+  let ladder = [];
+  try { ladder = branchOf({ nation: nation ?? undefined, branch: branch ?? 'army', track: enlisted ? 'enlisted' : prefix === 'W' ? 'warrant' : 'officer' })?.[enlisted ? 'enlisted' : prefix === 'W' ? 'warrant' : 'officer'] ?? []; } catch { ladder = []; }
+  const at = ladder.findIndex((t) => stripTitle(t) === title);
+  if (at >= 0 && at !== n - 1) return militaryInsignia(`${prefix}-${at + 1}`, nation, { branch });
+  // The dominions and India wore Britain's badges under Britain's titles (Canada until 1968).
+  if (at < 0 && cw && nation !== 'GB') {
+    let gb = [];
+    try { gb = branchOf({ nation: 'GB', branch: branch ?? 'army', track: enlisted ? 'enlisted' : 'officer' })?.[enlisted ? 'enlisted' : 'officer'] ?? []; } catch { gb = []; }
+    const g = gb.findIndex((t) => stripTitle(t) === title);
+    if (g >= 0) return militaryInsignia(`${prefix}-${g + 1}`, 'GB', { branch });
+  }
+  return undefined;
+}
 
 /** Historical insignia for a rank (kind E/W/O, grade n), or undefined to use today's. */
 export function periodInsignia(kind, n, nation, branch) {

@@ -32,6 +32,7 @@ import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } fro
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
+import { womensService, womensTitle, womenMayServe } from './WomensServices.js';
 import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
 import { yearNow, diplomaExpected, degreesOptional } from '../world/Eras.js';
 import { colonialBranchBlock } from '../world/ColonialForces.js';
@@ -204,7 +205,9 @@ const baseBranch = (svc) => (svc?.nation ? { ...BRANCHES[svc.branch], ...nationa
 /** A service as it was called in the year being played (the Red Army, the Wehrmacht, the Army Air Forces). */
 export const branchOf = (svc) => {
   const b = baseBranch(svc);
-  const name = b ? periodBranch(svc?.nation, svc?.branch, b.name) : null;
+  // A woman serves in her corps' name while there is one (the ATS, the WAVES, the WRNS).
+  const corps = svc?.female ? womensService(svc.nation ?? 'US', svc.branch) : null;
+  const name = b ? corps?.name ?? periodBranch(svc?.nation, svc?.branch, b.name) : null;
   return b && name !== b.name ? { ...b, name } : b;
 };
 /** The branch a recruit would join where they live. */
@@ -243,7 +246,8 @@ export function rankOf(svc) {
   // Five stars (Wartime.js) sit above the table; an acting rank says so.
   if (svc.fiveStar) return { code: `${prefix}-${svc.grade + 2}`, title: fiveStarTitle(svc), grade: svc.grade, max: titles.length - 1 };
   // A Gurkha private is a Rifleman.
-  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : periodRank(svc.nation, svc.branch, svc.track, svc.grade, titles[svc.grade] ?? titles.at(-1) ?? (svc.track === 'enlisted' ? 'Private' : 'Officer'));
+  const corpsTitle = svc.female ? womensTitle(svc.nation ?? 'US', svc.branch, svc.track, svc.grade) : null;
+  const title = corpsTitle ?? (svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : periodRank(svc.nation, svc.branch, svc.track, svc.grade, titles[svc.grade] ?? titles.at(-1) ?? (svc.track === 'enlisted' ? 'Private' : 'Officer')));
   return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${title}`, grade: svc.grade, max: titles.length - 1 };
 }
 
@@ -385,6 +389,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
   if (state.military.service) return { ok: false, reason: 'Already serving' };
+  if (state.character.gender === 'female' && !womenMayServe(isAbroad(state) ? countryOf(state).id : 'US', branchId, yearNow(state))) return { ok: false, reason: 'Women aren\'t enlisted yet (the nursing services aside)' };
   // A retiree isn't a recruit: they come back only by recall (see military.recall).
   if (retiredFrom(state)) return { ok: false, reason: 'Retired: only a recall brings you back' };
   if (state.military.history.some((h) => ['dishonorable', 'bcd', 'oth'].includes(h.discharge))) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
@@ -525,6 +530,7 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   const svc = {
     branch,
     ...(nation ? { nation } : {}),
+    ...(state.character.gender === 'female' ? { female: true } : {}),
     ...(conscript ? { conscript: true } : {}),
     track,
     component,

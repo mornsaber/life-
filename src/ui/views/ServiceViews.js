@@ -300,7 +300,7 @@ function campaignsCard(state, svc) {
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
-    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li>${militaryInsignia(h.rankCode, h.nation ?? null, { branch: h.branch })} <b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
+    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li>${militaryInsignia(h.rankCode, h.nation ?? null, { branch: h.branch, title: h.rankTitle })} <b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
@@ -310,11 +310,12 @@ export function militaryView(state) {
   const branch = branchOf(svc);
   const rank = rankOf(svc);
   const outlook = promotionOutlook(svc);
-  const titles = branch[svc.track];
+  // The ladder in the titles of the day (period ranks, a women's corps).
+  const titles = branch[svc.track].map((_, i) => rankOf({ ...svc, grade: i, acting: false, fiveStar: false }).title);
   const hasBachelor = meetsEducation(state, { level: 'bachelor' });
   return `${kingmakerCard(state)}${card(branch.name, `
     <div class="job-head">
-      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null, { branch: svc.branch }) })}
+      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null, { branch: svc.branch, title: rank.title }) })}
       <div class="job-meta">
         <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip({ officer: 'Officer', warrant: 'Warrant Officer' }[svc.track] ?? 'Enlisted')} ${svc.direct ? chip(`🎓 Direct commission · ${esc(DIRECT_COMMISSIONS[svc.direct].name)}`, 'green') : ''} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
         ${kv([
@@ -337,7 +338,7 @@ export function militaryView(state) {
     </div>
     ${meter(svc.eval, { label: '📋 Evaluation' })}
     <p class="promo ${outlook.eligible ? 'ready' : ''}">${outlook.eligible ? `🌟 Board-eligible for ${esc(titles[svc.grade + 1])}` : `🪜 Next grade: ${esc(outlook.reason)}`}${flagNote(svc)}</p>
-    ${ladder(titles.map((t, i) => { const code = gradeCode(svc, svc.track, i); return { title: t, sub: code, badge: militaryInsignia(code, svc.nation ?? null, { branch: svc.branch }) }; }), svc.grade, { compact: true })}
+    ${ladder(titles.map((t, i) => { const code = gradeCode(svc, svc.track, i); return { title: t, sub: code, badge: militaryInsignia(code, svc.nation ?? null, { branch: svc.branch, title: t }) }; }), svc.grade, { compact: true })}
     <div class="action-grid">
       ${button('🏃 Extra PT', 'military.pt', { hint: '+Fitness, +Eval' })}
       ${button('🫡 Volunteer for Duty', 'military.extraDuty', { hint: 'Once/yr, +Eval' })}
