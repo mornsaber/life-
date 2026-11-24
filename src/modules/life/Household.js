@@ -92,7 +92,9 @@ export function householdTick(ctx) {
   // A hard year: nothing over the bare minimum, and the cash gone.
   const hard = f.cash < 0 && (y < 1965 || countryWageFactor(state) < 0.35);
   if (hard) hh.hard = y;
-  if (hard && !state.prompts.some((p) => p.type === 'household.hard') && sideRng(state, 0x4a).chance(0.6)) hardYear(ctx, y);
+  // Not every lean year needs a decision: one every few years, the rest just hurt.
+  const last = state.householdHardAge ?? -99;
+  if (hard && state.character.age - last >= 3 && !state.prompts.some((p) => p.type === 'household.hard') && sideRng(state, 0x4a).chance(0.6)) { state.householdHardAge = state.character.age; hardYear(ctx, y); }
 }
 
 function hardYear(ctx, y) {

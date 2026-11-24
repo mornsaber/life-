@@ -26,7 +26,18 @@ import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION 
 import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
-import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
+import { isAbroad, US_ONLY, countryOf as homeCountryOf, isCitizen, COUNTRIES as ALL_COUNTRIES } from '../world/Countries.js';
+import { colonyHere } from '../world/Eras.js';
+/**
+ * The country whose forces you join: your own, or the empire's whose province you live in (a
+ * Bessarabian enlists in the Russian army, a Bosnian in the Ottoman). Its subjects count as its citizens.
+ */
+export function serviceCountryOf(state) {
+  const arm = colonyHere(state)?.armyOf;
+  return arm && ALL_COUNTRIES[arm] ? ALL_COUNTRIES[arm] : homeCountryOf(state);
+}
+const countryOf = serviceCountryOf;
+const subjectOf = (state) => serviceCountryOf(state).id !== homeCountryOf(state).id;
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
@@ -374,7 +385,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (!b) return { ok: false, reason: isAbroad(state) ? `${countryOf(state).name} has no such branch` : 'Unknown branch' };
   // Permanent residents may enlist in the US, Canada and Australia; the French Foreign Legion takes anyone.
   const prOk = residencyOf(state)?.status === 'permanent' && ['US', 'CA', 'AU'].includes(countryOf(state).id);
-  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !prOk && !b.openToForeigners) {
+  if (!subjectOf(state) && !isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !prOk && !b.openToForeigners) {
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
   // A colony has its own army (and seldom anything else): world/ColonialForces.js.

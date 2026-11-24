@@ -23,7 +23,8 @@ export const CAUSES = {
   abolition: { name: 'Abolish slavery', icon: '⛓️', allies: ['editorial'], from: 1800, until: 1866, where: ['US', 'GB', 'FR', 'BR'] },
   temperance: { name: 'Temperance', icon: '🚱', allies: ['party'], from: 1826, until: 1934 },
   chartism: { name: 'The People\'s Charter', icon: '📜', allies: ['labor'], from: 1838, until: 1858, where: ['GB'] },
-  suffrage: { name: 'Votes for women', icon: '🗳️', allies: ['editorial'], from: 1848, until: 1929 },
+  // From Seneca Falls (1848) in America and Britain; elsewhere when a movement of its own began.
+  suffrage: { name: 'Votes for women', icon: '🗳️', allies: ['editorial'], from: 1848, until: 1929, fromHere: { RU: 1905, MD: 1905, UA: 1905, FR: 1876, DE: 1890, IT: 1900, ES: 1918, JP: 1911, IN: 1917, CN: 1911, BR: 1910 } },
   eightHours: { name: 'The eight-hour day', icon: '⏰', allies: ['labor'], from: 1866, until: 1938 },
   homeRule: { name: 'Irish Home Rule', icon: '☘️', allies: ['party'], from: 1870, until: 1922, where: ['IE', 'GB'] },
   civilRights: { name: 'Civil rights', icon: '✊🏿', allies: ['editorial'], from: 1954, until: 1969, where: ['US'] },
@@ -43,7 +44,7 @@ export const VICTORIES = {
 };
 export const victoryYear = (cause, cc) => VICTORIES[cause]?.[cc] ?? VICTORIES[cause]?.['*'] ?? null;
 /** The causes of the year and the country (not one already won here). */
-export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && !(c.from > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
+export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && !((c.fromHere?.[state.character.countryId ?? 'US'] ?? c.from) > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
 
 /**
  * Protest tactics. arrest: chance of arrest; influence: what it builds;

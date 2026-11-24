@@ -15,7 +15,7 @@
 const POUND = 1 / 4.8665;
 export const CURRENCY_HISTORY = {
   // Today's currencies that were on gold before 1914 (money of the day, then today's value).
-  GB: [[1914, 'GBP', '£', 'pound sterling', null, POUND]], RU: [[1917, 'RUB', '₽', 'rouble', null, 1.94]], JP: [[1914, 'JPY', '¥', 'yen', null, 2.0]],
+  GB: [[1914, 'GBP', '£', 'pound sterling', null, POUND]], RU: [[1917, 'RUB', 'rub. ', 'rouble', null, 1.94]], JP: [[1914, 'JPY', '¥', 'yen', null, 2.0]],
   IN: [[1914, 'INR', 'Rs ', 'rupee', null, 3.0]], SE: [[1914, 'SEK', 'kr ', 'krona', null, 3.73]], DK: [[1914, 'DKK', 'kr ', 'krone', null, 3.73]],
   NO: [[1914, 'NOK', 'kr ', 'krone', null, 3.73]], CH: [[1914, 'CHF', 'Fr. ', 'franc', null, 5.18]], CA: [[1914, 'CAD', 'C$', 'dollar', null, 1]],
   FR: [[1960, 'FRF', '₣', 'old franc', 655.957, 5.18], [2002, 'FRF', '₣', 'French franc', 6.55957]],

@@ -9,6 +9,7 @@
  *
  * Person fields added here: circle, away, owes { amount, sinceAge }.
  */
+import { yearNow } from '../world/Eras.js';
 import { yearlyCount, isIncarcerated, netWorth } from '../../core/State.js';
 import { living, ageOf, partnerOf, clampRel } from './People.js';
 import { makePerson } from './PeopleEngine.js';
@@ -141,7 +142,7 @@ const HELP = [
   { id: 'crisis', icon: '📞', title: 'A 2 A.M. Call', text: (f) => `${f.firstName} calls in the middle of the night. They're not okay, and they don't know who else to call.` },
   { id: 'moving', icon: '📦', title: 'Moving Day', text: (f) => `${f.firstName} is moving and needs a hand with the heavy stuff this weekend.` },
   { id: 'sick', icon: '🏥', title: 'Bad News', text: (f) => `${f.firstName} was diagnosed with cancer and starts chemo next month.` },
-  { id: 'wedding', icon: '💐', title: 'Wedding Party', text: (f) => `${f.firstName} is getting married and wants you in the wedding party (travel, outfit and the bachelor/bachelorette weekend: ≈$1,500).` },
+  { id: 'wedding', icon: '💐', title: 'Wedding Party', text: (f, d, y = 2026) => `${f.firstName} is getting married and wants you in the wedding party (${y >= 1980 ? 'travel, outfit and the bachelor/bachelorette weekend: ≈$1,500' : 'the journey, a new outfit and a wedding present'}).` },
 ];
 
 function helpTick(ctx) {
@@ -160,7 +161,7 @@ function helpTick(ctx) {
     sick: [{ id: 'help', label: '🫶 Drive them to treatments' }, { id: 'refer', label: '💌 Send a card and a meal train' }, { id: 'no', label: '😶 Keep your distance' }],
     wedding: [{ id: 'help', label: '🥂 Of course — I\'m in', hint: '≈$1,500' }, { id: 'no', label: '🙅 Decline (just attend)' }],
   }[kind.id];
-  ctx.prompt({ type: 'friends.help', icon: kind.icon, title: kind.title, text: kind.text(friend, data), options, data });
+  ctx.prompt({ type: 'friends.help', icon: kind.icon, title: kind.title, text: kind.text(friend, data, yearNow(state)), options, data });
 }
 
 /** High-school and college reunions every ten years. */

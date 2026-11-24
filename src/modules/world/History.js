@@ -30,7 +30,7 @@ import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
 import { priceLevel } from './Countries.js';
 import { AUTOMATED_BY, leavingAge, setEraYear } from './Eras.js';
-import { PRESENT, PERIOD_THRONES, PERIOD_THRONE_YEARS, EVENT_THRONES, REPUBLIC_GAPS, republicGap, periodThrone, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
+import { PRESENT, PERIOD_THRONES, PERIOD_THRONE_YEARS, EVENT_THRONES, REPUBLIC_GAPS, republicGap, periodThrone, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, rulerCapital, landName, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
@@ -502,7 +502,7 @@ function colonyYear(ctx, cc) {
   if (warIn(state, cc)?.id === `independence.${cc}`) endWarNow(ctx, cc, 'ended in independence');
   const next = colonyStage(state, cc);
   if (mine) {
-    if (next) ctx.log(`${rulerName(st.ruler)}'s rule is over. ${cname(cc)} is now ${next.name}, ruled from ${RULER_CAPITAL[next.ruler] ?? 'abroad'}.`, '🏳️', 'milestone');
+    if (next) ctx.log(`${rulerName(st.ruler)}'s rule is over. ${cname(cc)} is now ${next.name}, ruled from ${rulerCapital(next.ruler, yearNow(state))}.`, '🏳️', 'milestone');
     else independence(ctx, cc, st, rec, rng);
   } else if (!next && !st.noMovement) news(ctx, `${cname(cc)} wins its independence`, '🏳️', 'world', 5);
 }
@@ -553,13 +553,15 @@ function movementPrompt(ctx) {
   const { state } = ctx;
   const st = colonyHere(state);
   if (!st || st.noMovement || state.character.age < 16 || state.legal?.incarceration || postingOf(state)?.home) return;
+  // National movements had their own decades: Bessarabia's after 1905, not under Alexander I.
+  if (yearNow(state) < (st.movementFrom ?? (st.war ? 0 : 1850))) return;
   const rec = (state.era.colonies[hereOf(state)] ??= { done: [], pressure: 0 });
   if (rec.asked != null && yearNow(state) - rec.asked < 4) return;
   if (!sideRng(state, 0x30c).chance(0.35)) return;
   rec.asked = yearNow(state);
   const ruler = rulerAdj(st.ruler);
   const job = state.career?.job;
-  ctx.prompt({ type: 'history.movement', icon: '✊', title: 'The Independence Movement', text: `The movement to end ${ruler} rule over ${cname(hereOf(state))} is growing: meetings at night, strikes, boycotts of ${ruler} goods. Some go to prison for it.`, options: [
+  ctx.prompt({ type: 'history.movement', icon: '✊', title: 'The Independence Movement', text: `The movement to end ${ruler} rule over ${landName(st, cname(hereOf(state)))} is growing: meetings at night, strikes, boycotts of ${ruler} goods. Some go to prison for it.`, options: [
     ...(rec.joined && state.character.age >= 21 ? [{ id: 'lead', label: '📣 Lead it', hint: 'Speeches, strategy, prison likely — and if it wins, the country', tone: 'danger' }] : []),
     { id: 'join', label: '✊ Join the movement', hint: 'Marches, organising, maybe prison' },
     { id: 'quiet', label: '🤫 Support it quietly', hint: 'Money and a spare room' },

@@ -78,7 +78,7 @@ export default {
     { id: 'vic.gaslight', title: 'Gaslight', when: { age: [8, 80], year: [1815, 1880] }, text: 'They\'ve put gas lamps in your street. The night isn\'t dark any more.', options: [
       { id: 'walk', label: '🌃 Walk out after dark', stat: { happiness: 4 }, log: 'You walked out under the new lamps, just because you could.' },
     ] },
-    { id: 'vic.penny', title: 'The Penny Post', when: { age: [12, 80], year: [1840, 1900] }, text: 'A letter costs only a penny now, anywhere in the country.', options: [
+    { id: 'vic.penny', title: 'The Penny Post', when: { age: [12, 80], year: [1840, 1900], country: ['GB', 'IE'] }, text: 'A letter costs only a penny now, anywhere in the country.', options: [
       { id: 'write', label: '✉️ Write to someone far away', skill: { writing: 2 }, stat: { happiness: 3 }, log: 'You wrote to a cousin who\'d moved away. Letters went back and forth for forty years.' },
       { id: 'cant', label: '🤷 Have a neighbour write for you', log: 'A neighbour who could write put down your words, and read the answer out when it came.' },
     ] },

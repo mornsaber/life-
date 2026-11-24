@@ -3,7 +3,7 @@
  * a crash or hyperinflation where you live, and what things cost then (economy/MoneyOfTheDay.js).
  */
 import { esc, card, chip, money } from '../Components.js';
-import { yearNow, PRESENT, periodCurrency } from '../../modules/world/Eras.js';
+import { yearNow, PRESENT, periodCurrency, moneyRulerOf } from '../../modules/world/Eras.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { BASKET, priceThen, decadeInflation, hyperHere, livingStandard } from '../../modules/economy/MoneyOfTheDay.js';
 
@@ -15,8 +15,9 @@ export function moneyDayCard(state) {
   const e = state.economy;
   if (!state.era || y >= PRESENT || !e) return '';
   const cc = state.character.countryId ?? 'US';
-  const c = COUNTRIES[cc];
-  const cur = c?.currency ? periodCurrency(cc, c.currency) : null;
+  const ruler = moneyRulerOf(cc);
+  const c = ruler && COUNTRIES[ruler]?.currency ? COUNTRIES[ruler] : COUNTRIES[cc];
+  const cur = c?.currency ? periodCurrency(c.id, c.currency) : null;
   const us = cc === 'US';
   const hyper = hyperHere(state);
   const rate = e.periodInflation ?? e.inflation;

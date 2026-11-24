@@ -159,7 +159,7 @@ export const MD = C('MD', 'Moldova', 'Moldovan', 'Chișinău', ['MDL', 'L'], 7.6
   gov: ['parliamentary', 'Parliament', 101, ['Party of Socialists', 'Party of Action and Solidarity (PAS)'], 'Prime Minister'], navy: false,
   tax: { flat: 0.12, vat: 0.2, corporate: 0.12, label: 'State Tax Service' },
   religion: { orthodoxChristian: 90, evangelical: 3, none: 7 },
-  ruled: [['RU', 'the Russian Empire (Bessarabia)', 1918, { from: 1812 }], ['RO', 'Bessarabia, a part of Romania', 1940, { noMovement: true, leader: 'the Romanian prefect' }], ['RU', 'a Soviet republic (Moldavia)', 'sovietCollapse']],
+  ruled: [['RU', 'the Russian Empire (Bessarabia)', 1918, { from: 1812, land: 'Bessarabia', movementFrom: 1905, leader: 'the Governor of Bessarabia' }], ['RO', 'Bessarabia, a part of Romania', 1940, { noMovement: true, land: 'Bessarabia', leader: 'the Romanian prefect' }], ['RU', 'a Soviet republic (Moldavia)', 'sovietCollapse', { land: 'Soviet Moldavia', movementFrom: 1988 }]],
   regimes: [[1991, 'semi', 1, 0], [2001, 'parl', 1, 0]], freeMovement: ['RO'],
 });
 

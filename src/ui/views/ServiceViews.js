@@ -38,7 +38,8 @@ import { branchOf, branchFor, retiredFrom, recallMaxAge } from '../../modules/mi
 import { tierOf } from '../../modules/military/SecondCareer.js';
 import { militaryInsignia, volunteerInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES, armyReserveIsGuard } from '../../modules/world/NationalForces.js';
-import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
+import { isAbroad, COUNTRIES } from '../../modules/world/Countries.js';
+import { serviceCountryOf as countryOf } from '../../modules/military/MilitaryEngine.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
 import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcContracts.js';
 import { reserveStanding, ssoEligibility } from '../../modules/military/MerchantReserve.js';

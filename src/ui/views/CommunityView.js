@@ -203,9 +203,9 @@ function neighborsCard(state) {
   const rows = c.neighbors.map((n) => `<li>${n.icon} <b>${esc(n.name)}</b> <small>${esc(n.household)} · ${esc(NEIGHBOR_TRAITS[n.trait].label)} · ${n.rel >= 70 ? '💚 close' : n.rel >= 45 ? '🙂 friendly' : n.rel >= 25 ? '😐 cool' : '😠 feuding'}${n.friend ? ' · friend' : ''}</small> ${button('☕ Visit', 'civic.visitNeighbor', { arg: n.id, variant: 'tiny', disabled: Boolean(state.yearly[`civic.visit.${n.id}`]) })}</li>`).join('');
   const w = c.watch;
   return card('Neighbors', `<ul class="history">${rows}</ul>
-    <h4 class="sub">Neighborhood watch</h4>
+    ${yearNow(state) >= 1972 ? `<h4 class="sub">Neighborhood watch</h4>
     <p class="fine">${w ? `${w.captain ? '🔦 Block captain' : '🔦 Member'} · ${w.years} yr` : 'Patrols, a phone tree and a sign at the end of the street.'}</p>
-    <div class="toggle-row">${w ? button('Leave the watch', 'civic.watchLeave', { variant: 'small ghost' }) : button('🔦 Join the watch', 'civic.watchJoin', { variant: 'small', disabled: state.character.age < 18 })}</div>`, { icon: '🏡' });
+    <div class="toggle-row">${w ? button('Leave the watch', 'civic.watchLeave', { variant: 'small ghost' }) : button('🔦 Join the watch', 'civic.watchJoin', { variant: 'small', disabled: state.character.age < 18 })}</div>` : ''}`, { icon: '🏡' });
 }
 
 function hoaCard(state) {

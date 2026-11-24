@@ -2,6 +2,8 @@
  * Home tab: residence & lease, credit gauge, listings with financing,
  * property portfolio (mortgage, HELOC, costs, tenants, renovations).
  */
+import { creditScoresExist, yearNow as yearOfLife } from '../../modules/world/Eras.js';
+import { isAbroad } from '../../modules/world/Countries.js';
 import { homeInventory, gadgetsWithin } from '../../modules/life/HomeGadgets.js';
 import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
 import { REGIONS } from '../../modules/life/Regions.js';
@@ -200,7 +202,7 @@ export function homeView(state) {
   const rentals = h.properties.filter((p) => rentableUnits(p) > 0).length;
   const worth = h.properties.reduce((n, p) => n + p.value, 0);
   return `${residence(state)}${gadgetsCard(state)}${titleCard(state)}
-    ${card('Credit', `${creditGauge(h.credit.score)}${kv([['On-time payments', h.credit.onTime], ['Derogatory marks', h.credit.events.length ? h.credit.events.map((e) => `${e.type} (age ${e.age})`).join(', ') : 'None']])}<p class="fine">Built from on-time rent and mortgage payments; hurt by late payments, evictions, foreclosures, bankruptcy and credit-card debt. Marks fade after 3–10 years.</p>`, { icon: '📊' })}
+    ${creditScoresExist(state) || !isAbroad(state) && yearOfLife(state) >= 1989 ? card('Credit', `${creditGauge(h.credit.score)}${kv([['On-time payments', h.credit.onTime], ['Derogatory marks', h.credit.events.length ? h.credit.events.map((e) => `${e.type} (age ${e.age})`).join(', ') : 'None']])}<p class="fine">Built from on-time rent and mortgage payments; hurt by late payments, evictions, foreclosures, bankruptcy and credit-card debt. Marks fade after 3–10 years.</p>`, { icon: '📊' }) : ''}
     ${selfBuild(state)}${listings(state)}
     ${h.properties.length ? `${rentals ? card('Landlording', `<p class="muted">${rentals} rental propert${rentals > 1 ? 'ies' : 'y'}.</p>${h.empire?.company ? '' : button(h.manager ? '🧑‍💼 Property manager: ON (10% of rents)' : '🧑‍💼 Hire a property manager', 'housing.toggleManager', { variant: h.manager ? 'small on' : 'small', hint: 'Handles tenants, evictions and vacancies' })}${empireBlock(state)}`, { icon: '🔑' }) : ''}${h.properties.map((p) => propertyCard(state, p)).join('')}` : card('Portfolio', empty('You don\'t own any property yet.'), { icon: '🏘️' })}
     ${h.properties.length > 1 ? `<p class="fine">Portfolio: ${h.properties.length} properties worth ${money(worth)}.</p>` : ''}`;

@@ -25,7 +25,7 @@
 import { SERVICE_ABROAD, SERVICE_TERMS } from './ServiceTerms.js';
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
-import { eraCountryName, eraCountryFlag, periodCurrency } from './Eras.js';
+import { eraCountryName, eraCountryFlag, periodCurrency, moneyRulerOf } from './Eras.js';
 import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
@@ -452,7 +452,9 @@ function formatLocal(usd, currency) {
 /** Convert "$12,345", "$1.2M", "$45K" in display text into the country's currency. */
 export function localizeMoney(text, country) {
   if (!country || country.id === 'US') return text;
-  const cur = periodCurrency(country.id, country.currency);
+  const ruler = moneyRulerOf(country.id);
+  const mc = ruler && COUNTRIES[ruler]?.currency ? COUNTRIES[ruler] : country;
+  const cur = periodCurrency(mc.id, mc.currency);
   return text.replace(/(-?)\$(\d[\d,]*(?:\.\d+)?)([KMBkmb])?(?![A-Za-z0-9])/g, (m, sign, num, suffix) => {
     const n = Number(num.replace(/,/g, ''));
     if (!Number.isFinite(n)) return m;

@@ -126,7 +126,7 @@ export function techNeeded(content) {
   return hit;
 }
 /** Can this content happen in this year? (Today, everything can.) */
-export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNeeded(content) || hasTech(state, techNeeded(content));
+export const fitsEra = (state, content) => yearNow(state) >= PRESENT || (!(content?.from > yearNow(state)) && (!techNeeded(content) || hasTech(state, techNeeded(content))));
 
 /* ------------------------------------------------------------------ */
 /* Jobs: when they exist, and when women could do them                 */
@@ -278,7 +278,10 @@ export const republicGap = (cc, year) => (REPUBLIC_GAPS[cc] ?? []).some(([from, 
 /* ------------------------------------------------------------------ */
 
 const RULER = { DK: 'Danish', RO: 'Romanian', HT: 'Haitian', BR: 'Brazilian', ID: 'Indonesian', AT: 'Austrian', ZA: 'South African', NZ: 'New Zealand', ET: 'Ethiopian', HU: 'Hungarian', CO: 'Colombian', ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
-export const RULER_CAPITAL = { DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Rio de Janeiro', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Peking', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Constantinople', AU: 'Canberra', PK: 'Karachi', MY: 'Kuala Lumpur', DE: 'Berlin' };
+/** Where an empire was ruled from, by year: St Petersburg until 1918, Constantinople until 1923, Kyoto before 1869… */
+const CAPITAL_THEN = { RU: [[1712, 'Moscow'], [1918, 'St Petersburg']], TR: [[1923, 'Constantinople']], JP: [[1869, 'Kyoto']], CN: [[1928, 'Peking'], [1949, 'Nanking']], BR: [[1960, 'Rio de Janeiro']], AU: [[1927, 'Melbourne']], PK: [[1959, 'Karachi'], [1967, 'Rawalpindi']], IT: [[1865, 'Turin'], [1871, 'Florence']], NZ: [[1865, 'Auckland']], US: [[1800, 'Philadelphia']], DE: [[1871, 'Berlin']], TZ: [[1996, 'Dar es Salaam']], NG: [[1991, 'Lagos']] };
+export const rulerCapital = (cc, y) => CAPITAL_THEN[cc]?.find(([until]) => y < until)?.[1] ?? RULER_CAPITAL[cc] ?? 'abroad';
+export const RULER_CAPITAL = { DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Brasília', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Beijing', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Ankara', AU: 'Canberra', PK: 'Islamabad', MY: 'Kuala Lumpur', DE: 'Berlin' };
 export const RULER_NAME = { DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
 const S = (ruler, name, until, o = {}) => ({ ruler, name, until, ...o });
 const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', noMovement: true });
@@ -333,7 +336,7 @@ export const COLONIES = {
   KR: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General', from: 1910 })], KP: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General', from: 1910 })],
   TW: [S('CN', 'Taiwan prefecture of the Qing Empire', 1895, { noMovement: true, leader: 'the Qing governor' }), S('JP', 'Taiwan under Japanese rule', 1945, { leader: 'the Governor-General' })],
   FI: [S('SE', 'the eastern half of the Swedish realm', 1809, { noMovement: true }), S('RU', 'the Grand Duchy of Finland, under the Tsar', 1917, { leader: 'the Governor-General' })], PL: [S('RU', 'Russian Poland', 1918)],
-  UA: [S('RU', 'Ukraine, ruled from Moscow', 'sovietCollapse')],
+  UA: [S('RU', 'the Russian Empire (Ukraine)', 1918, { land: 'Ukraine', movementFrom: 1900 }), S('RU', 'Soviet Ukraine', 'sovietCollapse', { from: 1922, land: 'Ukraine' })],
   EE: [S('RU', 'the Russian Empire (Estonia)', 1918), S('RU', 'a Soviet republic (Estonia)', 'sovietCollapse', { from: 1940 })],
   LV: [S('RU', 'the Russian Empire (Latvia)', 1918), S('RU', 'a Soviet republic (Latvia)', 'sovietCollapse', { from: 1940 })],
   LT: [S('RU', 'the Russian Empire (Lithuania)', 1918), S('RU', 'a Soviet republic (Lithuania)', 'sovietCollapse', { from: 1940 })],
@@ -354,11 +357,18 @@ export function colonyStage(state, cc) {
     if ((rec?.done ?? []).includes(i)) continue;
     const st = stages[i];
     if (st.from && y < st.from) return null;
-    return { ...st, index: i };
+    return { ...st, index: i, armyOf: st.armyOf ?? (LAND_EMPIRES.includes(st.ruler) ? st.ruler : null) };
   }
   return null;
 }
 export const colonyHere = (state) => colonyStage(state, state.character.countryId ?? 'US');
+/**
+ * Empires that ruled their lands as provinces of one state: their subjects served in the empire's
+ * army (a Bessarabian in the Russian army, a Bosnian in the Ottoman), not a colonial force of their own.
+ */
+export const LAND_EMPIRES = ['RU', 'AT', 'TR', 'HU', 'DE', 'RO', 'RS', 'CN', 'ET'];
+/** The land's own name inside its ruler's (Bessarabia, in "the Russian Empire (Bessarabia)"). */
+export const landName = (st, fallback) => st?.land ?? st?.name?.match(/\(([^)]+)\)/)?.[1] ?? fallback;
 /** Whose pattern a colonial uniform follows: the ruler of your colony, or your own country posted out. */
 export const insigniaCountry = (state, profession) => (profession?.colonial ? colonyHere(state)?.ruler ?? state.character.countryId ?? 'US' : state.character.countryId ?? 'US');
 /** The territories a country rules in the year being played. */
@@ -565,7 +575,7 @@ export function eraLayer(state) {
     const st = colonyStage(state, cc);
     if (!st) continue;
     if (st.ruler === 'RU' && out.RU?.kind === 'totalitarian') { out[cc] = { ...out.RU, name: `${st.name}, a Soviet republic ruled from Moscow` }; continue; }
-    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${RULER_CAPITAL[st.ruler] ?? 'abroad'}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
+    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${rulerCapital(st.ruler, y)}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
   }
   // Your own city's state, where it wasn't yet (or no longer) the country's: Bavaria, the Two Sicilies, East Germany.
   const here = state.character?.countryId ?? 'US';
@@ -1283,6 +1293,8 @@ export function periodRentName(state, id, name) {
 let ERA_STATE = null;
 /** The life being played, so a country's name (Countries.js) reads as it did that year. Set by History. */
 export const setEraState = (state) => { ERA_STATE = state?.era && state.era.start < PRESENT ? state : null; };
+/** Whose money a land used in the year being played: a province of an empire used the empire's (roubles in Bessarabia, lei under Romania). */
+export const moneyRulerOf = (cc) => (ERA_STATE && (ERA_STATE.character?.countryId ?? 'US') === cc ? colonyStage(ERA_STATE, cc)?.armyOf ?? null : null);
 /** A country's name in the year being played, or its name today. */
 export const eraCountryName = (cc, base) => (ERA_STATE ? periodCountryName(ERA_STATE, cc, base) : base);
 export const getEraState = () => ERA_STATE;
@@ -1621,6 +1633,11 @@ const RENAMES = [
   [/\bJakarta\b/g, 1942, () => 'Batavia'],
   [/\bHarare\b/g, 1982, () => 'Salisbury'],
   [/\bKinshasa\b/g, 1966, () => 'Léopoldville'],
+  // Bessarabia: Russian names under the Tsars and the Soviets, Romanian ones between the wars (1918–40).
+  [/\bChișinău Stock Exchange\b/g, 1994, (y) => (y < 1918 ? 'St Petersburg Exchange' : y < 1940 ? 'Bucharest Stock Exchange' : 'State Savings Bank')],
+  [/\bChișinău\b/g, 1991, (y) => (y >= 1918 && y < 1940 ? 'Chișinău' : 'Kishinev')],
+  [/\bBălți\b/g, 1991, (y) => (y >= 1918 && y < 1940 ? 'Bălți' : 'Beltsy')],
+  [/\bCahul\b/g, 1991, (y) => (y >= 1918 && y < 1940 ? 'Cahul' : 'Kagul')],
   // Capitals built later, under the names of what stood there before.
   [/\bNaypyidaw\b/g, 2005, () => 'Pyinmana'],
   [/\bAstana\b/g, 1998, (y) => (y >= 1992 ? 'Akmola' : y >= 1961 ? 'Tselinograd' : 'Akmolinsk')],

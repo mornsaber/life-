@@ -2,6 +2,7 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
+import { regimeHere } from '../../modules/world/Regimes.js';
 import { INITIATIVES } from '../../modules/politics/Statecraft.js';
 import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
@@ -223,10 +224,12 @@ function politicsParts(state) {
   const allRows = order.map((id) => [id, rowsFor(id)]);
   const openRows = allRows.filter(([id]) => openIds.has(id)).map(([, r]) => r).join('');
   const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
+  // Where nobody is elected (an autocracy, a colony), the offices of a republic aren't on offer at all.
+  const noVoting = regimeHere(state)?.elections === 'none';
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  const ladderCard = oneParty(state) ? '' : card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' });
+  const ladderCard = noVoting && !openRows ? card('No Elections', `<p class="muted">There are no elections here: ${esc(regimeHere(state)?.leader ?? 'the government')} appoints the officials. Influence comes from patrons, the court and the bureaucracy.</p>`, { icon: '🗳️' }) : oneParty(state) ? '' : card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' });
   return {
     current, campaign, ladderCard,
     history: card('Political History', `${styleNote(state)}${history}${results}`, { icon: '🗂️' }),
@@ -243,6 +246,9 @@ export function politicsView(state) {
 
 /** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */
 export function chamberView(state) {
+  // A land ruled from abroad has no parliament of its own: its laws come from the empire's capital.
+  const reg = regimeHere(state);
+  if (reg?.kind === 'colony') return card('No Legislature Here', `<p class="muted">${esc(reg.name ?? 'This land')}: laws are made far away, and ${esc(reg.leader ?? 'the governor')} governs by decree. There is no chamber to sit in.</p>`, { icon: '🏛️' });
   const seat = state.politics?.office;
   const note = seat ? '' : `<p class="fine" style="margin:4px 2px 10px">🏛️ You hold no seat: this is the chamber as it stands. ${state.character.age >= 18 ? 'Stand for office from the Campaign tab, or join a party from the Party tab.' : 'You can stand for office from 18.'}</p>`;
   return `${note}${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;

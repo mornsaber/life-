@@ -98,7 +98,8 @@ const ANGLO = [...BRIT, 'US'];
  */
 export const CLUBS = {
   friendly: { name: 'Friendly society (the Oddfellows)', icon: '🤝', from: 1810, until: 1948, countries: [...ANGLO, 'DE', 'FR', 'NL', 'BE', 'DK', 'SE'], minAge: 16, dues: 40, perk: 'sick', desc: 'A few pennies a week: sick pay if you can\'t work, and money to bury you.' },
-  masons: { name: 'Masonic lodge', icon: '📐', from: 1717, countries: null, gender: 'male', minAge: 21, dues: 150, perk: 'network', desc: 'Ritual, charity and dinners; a brother in every trade.' },
+  // Banned in the Russian Empire (1822–1905) and the Soviet Union, in Austria (1795–1918), under Mussolini, Hitler, Franco and Salazar.
+  masons: { name: 'Masonic lodge', icon: '📐', from: 1717, countries: null, banned: { RU: [[1822, 1906], [1922, 1991]], MD: [[1822, 1906], [1940, 1990]], UA: [[1822, 1906], [1922, 1991]], AT: [[1795, 1918], [1938, 1945]], IT: [[1925, 1945]], DE: [[1935, 1945]], ES: [[1940, 1979]], PT: [[1935, 1974]], HU: [[1920, 1989]], PL: [[1938, 1989]], CN: [[1949, 9999]], IR: [[1979, 9999]] }, gender: 'male', minAge: 21, dues: 150, perk: 'network', desc: 'Ritual, charity and dinners; a brother in every trade.' },
   temperance: { name: 'Temperance society', icon: '🚱', from: 1826, until: 1940, countries: [...ANGLO, 'SE', 'NO', 'FI', 'DK'], minAge: 10, dues: 5, perk: 'pledge', desc: 'Sign the pledge: no drink, and meetings with hymns and lectures.' },
   wi: { name: 'Women\'s Institute', icon: '🫙', from: 1897, countries: BRIT, gender: 'female', minAge: 16, dues: 15, perk: 'friends', fromHere: { GB: 1915, IE: 1910, AU: 1922, NZ: 1921, CA: 1897, ZA: 1930 }, desc: 'Jam, talks, campaigns and company.' },
   womensClub: { name: 'Women\'s club', icon: '☕', from: 1890, countries: ['US'], gender: 'female', minAge: 18, dues: 30, perk: 'friends', desc: 'Lectures, libraries and reform campaigns.' },
@@ -121,6 +122,7 @@ export function clubEligibility(state, id) {
   if (state.era && y < from) return { ok: false, reason: `Founded in ${from}` };
   if (state.era && c.until && y >= c.until) return { ok: false, reason: 'Past its day' };
   if (c.countries && !c.countries.includes(here)) return { ok: false, reason: 'Not here' };
+  if (state.era && (c.banned?.[here] ?? []).some(([a, b]) => y >= a && y < b)) return { ok: false, reason: 'Banned here' };
   const age = state.character.age;
   if (age < c.minAge) return { ok: false, reason: `From age ${c.minAge}` };
   if (c.maxAge && age > c.maxAge) return { ok: false, reason: 'For children' };
