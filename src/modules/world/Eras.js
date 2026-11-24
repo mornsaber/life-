@@ -807,6 +807,19 @@ const OLD_TITLES = [
   [/\bCertified Registered Nurse Anesthetist\b/, 'Nurse Anaesthetist', 1956], [/\bNurse Anaesthetist\b/, 'Theatre Sister', 1920], [/\bRegistered Nurse\b/, 'Trained Nurse', 1920],
   [/\bLube Technician\b/, 'Garage Hand', 1960], [/\bIT Support Technician\b/, 'Office Machine Mechanic', 1980], [/\bData Entry Clerk\b/, 'Clerk', 1965],
   [/\bSurvey Technician\b/, "Surveyor's Assistant", 1960], [/\bVisual Merchandiser\b/, 'Window Dresser', 1960], [/\bStore Manager\b/, 'Shopkeeper', 1900], [/\bAssistant Store Manager\b/, 'Head Shopman', 1900], [/\bInstrument Operator\b/, 'Chainman', 1920],
+  // Uniformed civilian ladders (tools/ranks-civil.mjs): prisons, jails, marshals, troopers, wardens.
+  [/\bSenior Patrol Officer\b/, 'Senior Patrolman', 1975], [/\bCriminal Investigator\b/, 'Detective', 1970], [/\bMajor Crimes Investigator\b/, 'Senior Detective', 1970],
+  [/\bof Corrections\b/, 'of Prisons', 1970], [/\bSenior Correctional Officer\b/, 'Senior Guard', 1970], [/\bCorrectional Officer\b/, 'Prison Guard', 1970], [/\bCorrections\b/, 'Prison', 1970],
+  [/\bGang Intelligence Officer\b/, 'Security Officer', 1980], [/\bClassification Specialist\b/, 'Records Clerk', 1960], [/\bReentry Program Coordinator\b/, 'Discharge Officer', 1990],
+  [/\bComplex Warden\b/, 'Senior Warden', 1990], [/\bRegional Deputy Director\b/, 'Deputy Superintendent of Prisons', 1960], [/\bSentence Manager\b/, 'Welfare Officer', 2000], [/\bSecurity Intelligence Officer\b/, 'Security Officer', 1985],
+  [/\bSenior Detention Officer\b/, 'Head Jailer', 1975], [/\bDetention Officer\b/, 'Jailer', 1975], [/\bDetention (Sergeant|Lieutenant)\b/, 'Jail $1', 1975],
+  [/\bCourt Security Deputy\b/, 'Court Bailiff', 1980], [/\bFugitive (Task Force|Squad) Inspector\b/, 'Fugitive Deputy', 1980], [/\bFugitive Squad Officer\b/, 'Warrant Officer', 1980],
+  [/\bBORTAC Tactical Unit Agent\b/, 'Mounted Patrol Inspector', 1984], [/\bBorder Patrol Agent\b/, 'Patrol Inspector', 1970], [/\bPatrol Agent\b/, 'Patrol Inspector', 1970], [/\bBorder Tactical Team Officer\b/, 'Rummage Officer', 1985],
+  [/\bBehaviou?ral Analyst\b/, 'Detective Inspector', 1972], [/\bWildlife Crimes? Investigator\b/, 'Game Inspector', 1970], [/\bWarden Pilot\b/, 'Mounted Warden', 1950],
+  [/\bHelitack Captain\b/, 'Lookout Captain', 1960], [/\bHeavy Fire Equipment Operator \(dozer\)/, 'Fire Crew Teamster', 1940], [/\bFire Watch Technician\b/, 'Fire Watchman', 1980],
+  [/\bRecruit \(AFP College\)/, 'Recruit', 1979], [/\bSenior Federal Agent\b/, 'Detective Senior Constable', 1979], [/\bFederal Agent\b/, 'Detective Constable', 1979],
+  [/\bBorder Officer\b/, 'Customs Officer', 2008], [/\bBorder Supervisor\b/, 'Customs Supervisor', 2008], [/\bDirector of Compliance\b/, 'Chief Fisheries Inspector', 1985],
+  [/\bHeavy Equipment Operator\b/, 'Steam Roller Driver', 1930], [/\bSteam Roller Driver\b/, 'Teamster', 1880], [/\bChief Building Official\b/, 'Building Inspector', 1970],
   [/\bPolice Officer\b/, 'Patrolman', 1975], [/\bPolice Recruit\b/, 'Probationary Patrolman', 1975], [/\bFirefighter\b/, 'Fireman', 1975],
   [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bCDL Driver Trainee\b/, 'Driver\'s Mate', 1986], [/\bCDL /, '', 1986], [/\bPatrolman\b/, 'Constable', 1890], [/\bProbationary Patrolman\b/, 'Probationary Constable', 1890], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
   [/\bChief Executive Officer\b/, 'Managing Director', 1975], [/\bAdministrative Assistant\b/, 'Secretary', 1985], [/\bSanitation Worker\b/, 'Dustman', 1980],
@@ -839,9 +852,9 @@ const OLD_RANKS = [
   ['US', 'marines', 'enlisted', 1, 'Private', 1958], ['US', 'marines', 'enlisted', 2, 'Private First Class', 1958], ['US', 'marines', 'officer', 9, 'Major General', 1945],
   // Britain: ensigns until 1871, brigadier-generals until 1922, colour-sergeants before warrant officers.
   ['GB', 'army', 'officer', 0, 'Ensign', 1871], ['GB', 'army', 'officer', 0, 'Sub-Lieutenant', 1877], ['GB', 'army', 'officer', 6, 'Brigadier-General', 1922], ['GB', 'army', 'officer', 6, 'Colonel-Commandant', 1928],
-  ['GB', 'army', 'enlisted', 6, 'Sergeant Major', 1881], ['GB', 'army', 'enlisted', 5, 'Colour Sergeant', 1915], ['GB', 'army', 'enlisted', 7, 'Regimental Sergeant Major', 1915], ['GB', 'army', 'enlisted', 8, 'Regimental Sergeant Major', 2015],
+  ['GB', 'army', 'enlisted', 6, 'Sergeant Major', 1881], ['GB', 'army', 'enlisted', 5, 'Colour Sergeant', 1915], 
   ['GB', 'navy', 'officer', 1, 'Mate', 1861], ['GB', 'navy', 'enlisted', 0, 'Ordinary Seaman', 1999], ['GB', 'navy', 'enlisted', 1, 'Able Seaman', 1999], ['GB', 'navy', 'enlisted', 2, 'Leading Seaman', 1999],
-  ['GB', 'navy', 'enlisted', 6, 'Chief Petty Officer', 1970], ['GB', 'navy', 'enlisted', 5, 'Chief Petty Officer', 2004],
+   ['GB', 'navy', 'enlisted', 5, 'Chief Petty Officer', 2004],
   // Russia: the Tsar's army, the Red Army's commanders without ranks, the commanders' ranks of 1935–40.
   ['RU', 'army', 'officer', 0, 'Praporshchik (Ensign)', 1917], ['RU', 'army', 'officer', 1, 'Podporuchik', 1917], ['RU', 'army', 'officer', 2, 'Poruchik', 1917], ['RU', 'army', 'officer', 3, 'Shtabs-Kapitan', 1917],
   ['RU', 'army', 'officer', 4, 'Major', 1884], ['RU', 'army', 'officer', 4, 'Kapitan', 1917], ['RU', 'army', 'officer', 5, 'Podpolkovnik', 1917], ['RU', 'army', 'officer', 6, 'Polkovnik', 1917],
@@ -854,7 +867,6 @@ const OLD_RANKS = [
   ['RU', 'army', 'officer', 0, 'Lieutenant', 1937], ['RU', 'army', 'officer', 5, 'Major', 1939],
   ['RU', 'army', 'enlisted', 0, 'Krasnoarmeyets (Red Army Man)', 1946], ['RU', 'army', 'enlisted', 1, 'Krasnoarmeyets (Red Army Man)', 1940], ['RU', 'army', 'enlisted', 2, 'Otdelyonny (Section Leader)', 1940],
   ['RU', 'army', 'enlisted', 3, 'Pomkomvzvoda (Deputy Platoon Leader)', 1940], ['RU', 'army', 'enlisted', 6, 'Starshina', 1972], ['RU', 'army', 'enlisted', 7, 'Starshina', 1981], ['RU', 'army', 'enlisted', 8, 'Starshina', 1981],
-  ['RU', 'navy', 'officer', 9, 'Admiral of the Fleet', 1917], ['RU', 'navy', 'officer', 3, 'Lieutenant', 1917],
   // Germany: no brigadier-generals before the Bundeswehr; a general "of the infantry" and a Generaloberst.
   ['DE', 'army', 'officer', 6, 'Generalmajor', 1956], ['DE', 'army', 'officer', 7, 'Generalleutnant', 1956], ['DE', 'army', 'officer', 8, 'General der Infanterie', 1956], ['DE', 'army', 'officer', 9, 'Generaloberst', 1956],
   ['DE', 'army', 'officer', 0, 'Sekondeleutnant', 1899], ['DE', 'army', 'officer', 1, 'Premierleutnant', 1899],
@@ -871,10 +883,50 @@ const OLD_RANKS = [
   ['US', 'army', 'enlisted', 6, 'Technical Sergeant', 1948], ['US', 'army', 'enlisted', 7, 'Master Sergeant', 1958], ['US', 'army', 'enlisted', 8, 'First Sergeant', 1958],
   ['US', 'navy', 'enlisted', 0, 'Apprentice Seaman', 1948], ['US', 'navy', 'enlisted', 1, 'Seaman Second Class', 1948], ['US', 'navy', 'enlisted', 2, 'Seaman First Class', 1948],
   ['US', 'navy', 'enlisted', 7, 'Chief Petty Officer', 1958], ['US', 'navy', 'enlisted', 8, 'Chief Petty Officer', 1958], ['US', 'navy', 'officer', 6, 'Commodore', 1950],
-  ['US', 'airforce', 'enlisted', 0, 'Private', 1952], ['US', 'airforce', 'enlisted', 1, 'Private First Class', 1952], ['US', 'airforce', 'enlisted', 3, 'Airman First Class', 1976],
-  ['US', 'airforce', 'enlisted', 8, 'Master Sergeant', 1958], ['US', 'marines', 'enlisted', 3, 'Corporal', 1958],
+  ['US', 'airforce', 'enlisted', 0, 'Private', 1952], ['US', 'airforce', 'enlisted', 1, 'Private First Class', 1952], 
+   ['US', 'marines', 'enlisted', 3, 'Corporal', 1958],
   ['GB', 'army', 'enlisted', 0, 'Private', 1920], ['GB', 'airforce', 'officer', 0, 'Pilot Officer', 9999],
+  // Second pass (tools/ranks.mjs): the ladders before each reform, by country. Sorted by year below.
+  ['US', 'army', 'enlisted', 0, 'Private', 1968], ['US', 'army', 'enlisted', 1, 'Private', 1968], ['US', 'army', 'enlisted', 5, 'Quartermaster Sergeant', 1920], ['US', 'army', 'enlisted', 6, 'First Sergeant', 1920], ['US', 'army', 'enlisted', 7, 'Battalion Sergeant Major', 1920], ['US', 'army', 'enlisted', 8, 'Regimental Sergeant Major', 1920],
+  ['US', 'navy', 'enlisted', 0, 'Landsman', 1917], ['US', 'navy', 'enlisted', 1, 'Ordinary Seaman', 1917], ['US', 'navy', 'enlisted', 2, 'Seaman', 1917], ['US', 'navy', 'enlisted', 3, 'Coxswain', 1885], ['US', 'navy', 'enlisted', 4, 'Quartermaster', 1885], ['US', 'navy', 'enlisted', 5, "Boatswain's Mate", 1885], ['US', 'navy', 'enlisted', 6, 'Master-at-Arms', 1893], ['US', 'navy', 'enlisted', 7, 'Master-at-Arms', 1893], ['US', 'navy', 'enlisted', 8, 'Boatswain (Warrant Officer)', 1893],
+  ['US', 'navy', 'officer', 6, 'Commodore', 1899], ['US', 'navy', 'officer', 6, 'Rear Admiral (lower nine)', 1943], ['US', 'navy', 'officer', 6, 'Rear Admiral (lower half)', 1985, 1950],
+  ['US', 'airforce', 'enlisted', 1, 'Airman Third Class', 1967], ['US', 'airforce', 'enlisted', 2, 'Airman Second Class', 1967], ['US', 'airforce', 'enlisted', 3, 'Airman First Class', 1967], ['US', 'airforce', 'enlisted', 2, 'Corporal', 1952], ['US', 'airforce', 'enlisted', 3, 'Sergeant', 1952], ['US', 'airforce', 'enlisted', 3, 'Sergeant', 1976], ['US', 'airforce', 'enlisted', 7, 'Master Sergeant (First Sergeant)', 1958], ['US', 'airforce', 'enlisted', 8, 'Master Sergeant (Sergeant Major)', 1958],
+  ['US', 'marines', 'enlisted', 2, 'Private', 1917], ['US', 'marines', 'enlisted', 6, 'First Sergeant', 1898], ['US', 'marines', 'enlisted', 5, 'Quartermaster Sergeant', 1923], ['US', 'marines', 'enlisted', 7, 'First Sergeant', 1923],
+  ['US', 'marines', 'officer', 6, 'Colonel', 1874], ['US', 'marines', 'officer', 7, 'Colonel', 1874], ['US', 'marines', 'officer', 8, 'Colonel', 1874], ['US', 'marines', 'officer', 9, 'Colonel Commandant', 1874], ['US', 'marines', 'officer', 7, 'Brigadier General', 1908], ['US', 'marines', 'officer', 8, 'Brigadier General', 1908], ['US', 'marines', 'officer', 9, 'Brigadier General', 1908], ['US', 'marines', 'officer', 8, 'Major General', 1942],
+  ['GB', 'army', 'enlisted', 6, 'Regimental Sergeant Major (Warrant Officer)', 1915], ['GB', 'army', 'enlisted', 7, 'Regimental Sergeant Major', 2015], ['GB', 'army', 'enlisted', 8, 'Garrison Sergeant Major', 2015],
+  ['GB', 'navy', 'enlisted', 0, 'Landsman', 1853], ['GB', 'navy', 'enlisted', 1, 'Ordinary Seaman', 1853], ['GB', 'navy', 'enlisted', 2, 'Able Seaman', 1853], ['GB', 'navy', 'enlisted', 4, 'Quartermaster', 1853], ['GB', 'navy', 'enlisted', 5, "Boatswain's Mate", 1853], ['GB', 'navy', 'enlisted', 6, 'Gunner (Warrant Officer)', 1853], ['GB', 'navy', 'enlisted', 7, 'Boatswain (Warrant Officer)', 1853], ['GB', 'navy', 'enlisted', 8, 'Master (Warrant Officer)', 1853],
+  ['GB', 'navy', 'enlisted', 6, 'Warrant Officer', 1949], ['GB', 'navy', 'enlisted', 7, 'Chief Warrant Officer', 1949], ['GB', 'navy', 'enlisted', 8, 'Chief Warrant Officer', 1949], ['GB', 'navy', 'enlisted', 6, 'Chief Petty Officer', 1970], ['GB', 'navy', 'enlisted', 7, 'Chief Petty Officer', 1970], ['GB', 'navy', 'enlisted', 8, 'Chief Petty Officer', 1970], ['GB', 'navy', 'enlisted', 6, 'Fleet Chief Petty Officer', 1986], ['GB', 'navy', 'enlisted', 7, 'Fleet Chief Petty Officer', 1986], ['GB', 'navy', 'enlisted', 8, 'Fleet Chief Petty Officer', 1986], ['GB', 'navy', 'enlisted', 7, 'Warrant Officer', 2015], ['GB', 'navy', 'enlisted', 8, 'Warrant Officer', 2015],
+  ['GB', 'airforce', 'enlisted', 0, 'Aircraftman 2nd Class', 1951], ['GB', 'airforce', 'enlisted', 1, 'Aircraftman 1st Class', 1951], ['GB', 'airforce', 'enlisted', 2, 'Leading Aircraftman', 1951], ['GB', 'airforce', 'enlisted', 7, 'Warrant Officer', 1946], ['GB', 'airforce', 'enlisted', 8, 'Warrant Officer', 1996],
+  ['GB', 'airforce', 'officer', 0, 'Second Lieutenant', 1919], ['GB', 'airforce', 'officer', 1, 'Lieutenant', 1919], ['GB', 'airforce', 'officer', 2, 'Captain', 1919], ['GB', 'airforce', 'officer', 3, 'Major', 1919], ['GB', 'airforce', 'officer', 4, 'Lieutenant Colonel', 1919], ['GB', 'airforce', 'officer', 5, 'Colonel', 1919], ['GB', 'airforce', 'officer', 6, 'Brigadier-General', 1919], ['GB', 'airforce', 'officer', 7, 'Major-General', 1919], ['GB', 'airforce', 'officer', 8, 'Lieutenant-General', 1919], ['GB', 'airforce', 'officer', 9, 'General', 1919],
+  ['GB', 'marines', 'enlisted', 5, 'Quartermaster Sergeant', 1915], ['GB', 'marines', 'enlisted', 6, 'Sergeant Major', 1915], ['GB', 'marines', 'officer', 6, 'Colonel-Commandant', 1928],
+  ['DE', 'army', 'enlisted', 0, 'Musketier', 1919], ['DE', 'army', 'enlisted', 1, 'Gefreiter', 1919], ['DE', 'army', 'enlisted', 2, 'Gefreiter (Kapitulant)', 1919], ['DE', 'army', 'enlisted', 3, 'Unteroffizier', 1919], ['DE', 'army', 'enlisted', 4, 'Sergeant', 1919], ['DE', 'army', 'enlisted', 5, 'Vizefeldwebel', 1919], ['DE', 'army', 'enlisted', 6, 'Feldwebel', 1919], ['DE', 'army', 'enlisted', 7, 'Offizierstellvertreter', 1919], ['DE', 'army', 'enlisted', 8, 'Feldwebelleutnant', 1919],
+  ['DE', 'army', 'enlisted', 3, 'Unteroffizier', 1956], ['DE', 'army', 'enlisted', 4, 'Unterfeldwebel', 1956], ['DE', 'army', 'enlisted', 5, 'Feldwebel', 1956], ['DE', 'army', 'enlisted', 6, 'Oberfeldwebel', 1956], ['DE', 'army', 'enlisted', 7, 'Stabsfeldwebel', 1956], ['DE', 'army', 'enlisted', 8, 'Hauptfeldwebel (Spieß)', 1956],
+  ['DE', 'navy', 'enlisted', 1, 'Obermatrose', 1919], ['DE', 'navy', 'enlisted', 2, 'Obermatrose', 1919], ['DE', 'navy', 'enlisted', 3, 'Obermatrose', 1919], ['DE', 'navy', 'enlisted', 4, 'Maat', 1919], ['DE', 'navy', 'enlisted', 5, 'Obermaat', 1919], ['DE', 'navy', 'enlisted', 6, 'Bootsmann', 1919], ['DE', 'navy', 'enlisted', 7, 'Oberbootsmann', 1919], ['DE', 'navy', 'enlisted', 8, 'Deckoffizier', 1919],
+  ['DE', 'navy', 'enlisted', 1, 'Matrosengefreiter', 1956], ['DE', 'navy', 'enlisted', 2, 'Matrosenobergefreiter', 1956], ['DE', 'navy', 'enlisted', 3, 'Matrosenhauptgefreiter', 1956], ['DE', 'navy', 'enlisted', 5, 'Obermaat', 1956], ['DE', 'navy', 'enlisted', 6, 'Bootsmann', 1956], ['DE', 'navy', 'enlisted', 7, 'Oberbootsmann', 1956], ['DE', 'navy', 'enlisted', 8, 'Stabsoberbootsmann', 1956],
+  ['DE', 'airforce', 'enlisted', 3, 'Unteroffizier', 1956], ['DE', 'airforce', 'enlisted', 4, 'Unterfeldwebel', 1956], ['DE', 'airforce', 'enlisted', 5, 'Feldwebel', 1956], ['DE', 'airforce', 'enlisted', 6, 'Oberfeldwebel', 1956], ['DE', 'airforce', 'enlisted', 7, 'Stabsfeldwebel', 1956], ['DE', 'airforce', 'enlisted', 8, 'Hauptfeldwebel (Spieß)', 1956],
+  ['DE', 'airforce', 'officer', 6, 'Generalmajor', 1956], ['DE', 'airforce', 'officer', 7, 'Generalleutnant', 1956], ['DE', 'airforce', 'officer', 8, 'General der Flieger', 1956], ['DE', 'airforce', 'officer', 9, 'Generaloberst', 1956],
+  ['FR', 'army', 'officer', 6, 'Maréchal de camp', 1848, 1814], ['FR', 'army', 'officer', 7, 'Lieutenant général', 1848, 1814],
+  ['RU', 'army', 'enlisted', 7, 'Zauryad-Praporshchik', 1917], ['RU', 'army', 'enlisted', 8, 'Zauryad-Praporshchik', 1917], ['RU', 'army', 'enlisted', 5, 'Kaptenarmus', 1880], ['RU', 'army', 'enlisted', 6, 'Feldfebel', 1880], ['RU', 'army', 'enlisted', 7, 'Feldfebel', 1880], ['RU', 'army', 'enlisted', 8, 'Feldfebel', 1880],
+  ['RU', 'navy', 'enlisted', 0, 'Matros 2nd Class', 1917], ['RU', 'navy', 'enlisted', 1, 'Matros 1st Class', 1917], ['RU', 'navy', 'enlisted', 2, 'Kvartirmeyster', 1917], ['RU', 'navy', 'enlisted', 3, 'Botsmanmat', 1917], ['RU', 'navy', 'enlisted', 4, 'Botsman', 1917], ['RU', 'navy', 'enlisted', 5, 'Senior Botsman', 1917], ['RU', 'navy', 'enlisted', 6, 'Konduktor', 1917], ['RU', 'navy', 'enlisted', 7, 'Konduktor', 1917], ['RU', 'navy', 'enlisted', 8, 'Konduktor', 1917],
+  ['RU', 'navy', 'enlisted', 0, 'Krasnoflotets (Red Fleet Man)', 1940], ['RU', 'navy', 'enlisted', 1, 'Krasnoflotets (Red Fleet Man)', 1940], ['RU', 'navy', 'enlisted', 6, "Chief Ship's Starshina", 1972], ['RU', 'navy', 'enlisted', 7, "Chief Ship's Starshina", 1972], ['RU', 'navy', 'enlisted', 8, "Chief Ship's Starshina", 1972],
+  ['RU', 'navy', 'officer', 0, 'Michman', 1917], ['RU', 'navy', 'officer', 1, 'Leytenant', 1917], ['RU', 'navy', 'officer', 2, 'Leytenant', 1917], ['RU', 'navy', 'officer', 3, 'Kapitan-Leytenant', 1917], ['RU', 'navy', 'officer', 4, 'Kapitan 2nd Rank', 1917], ['RU', 'navy', 'officer', 5, 'Kapitan 2nd Rank', 1917], ['RU', 'navy', 'officer', 6, 'Kapitan 1st Rank', 1917], ['RU', 'navy', 'officer', 7, 'Kontr-Admiral', 1917], ['RU', 'navy', 'officer', 8, 'Vitse-Admiral', 1917], ['RU', 'navy', 'officer', 9, 'Admiral', 1917],
+  ['JP', 'army', 'enlisted', 0, 'Nitōhei (Private 2nd Class)', 1945], ['JP', 'army', 'enlisted', 1, 'Ittōhei (Private 1st Class)', 1945], ['JP', 'army', 'enlisted', 2, 'Jōtōhei (Superior Private)', 1945], ['JP', 'army', 'enlisted', 3, 'Heichō (Lance Corporal)', 1945], ['JP', 'army', 'enlisted', 4, 'Gochō (Corporal)', 1945], ['JP', 'army', 'enlisted', 5, 'Gunsō (Sergeant)', 1945], ['JP', 'army', 'enlisted', 6, 'Sōchō (Sergeant Major)', 1945], ['JP', 'army', 'enlisted', 7, 'Jun-i (Warrant Officer)', 1945], ['JP', 'army', 'enlisted', 8, 'Jun-i (Warrant Officer)', 1945],
+  ['JP', 'navy', 'enlisted', 0, 'Nitō Hei (Seaman 2nd Class)', 1945], ['JP', 'navy', 'enlisted', 1, 'Ittō Hei (Seaman 1st Class)', 1945], ['JP', 'navy', 'enlisted', 2, 'Jōtō Hei (Superior Seaman)', 1945], ['JP', 'navy', 'enlisted', 3, 'Heichō (Leading Seaman)', 1945], ['JP', 'navy', 'enlisted', 4, 'Nitō Heisō (Petty Officer 2nd Class)', 1945], ['JP', 'navy', 'enlisted', 5, 'Ittō Heisō (Petty Officer 1st Class)', 1945], ['JP', 'navy', 'enlisted', 6, 'Jōtō Heisō (Chief Petty Officer)', 1945], ['JP', 'navy', 'enlisted', 7, 'Heisōchō (Warrant Officer)', 1945], ['JP', 'navy', 'enlisted', 8, 'Heisōchō (Warrant Officer)', 1945],
+  ['JP', 'navy', 'officer', 0, 'Shōi (Ensign)', 1945], ['JP', 'navy', 'officer', 1, 'Chūi (Lieutenant JG)', 1945], ['JP', 'navy', 'officer', 2, 'Tai-i (Lieutenant)', 1945], ['JP', 'navy', 'officer', 3, 'Shōsa (Lieutenant Commander)', 1945], ['JP', 'navy', 'officer', 4, 'Chūsa (Commander)', 1945], ['JP', 'navy', 'officer', 5, 'Taisa (Captain)', 1945],
+  ['IT', 'army', 'enlisted', 8, 'Maresciallo Maggiore', 2017], ['IT', 'navy', 'enlisted', 8, 'Capo di 1ª classe (scelto)', 2017], ['IT', 'airforce', 'enlisted', 8, 'Maresciallo di 1ª classe', 2017], ['IT', 'army', 'officer', 9, "Generale d'Armata", 1946],
+  ['IN', 'army', 'enlisted', 0, 'Sepoy', 2022], ['IN', 'navy', 'enlisted', 0, 'Seaman 2nd Class', 2022], ['IN', 'airforce', 'enlisted', 0, 'Aircraftman', 2022], ['IN', 'army', 'enlisted', 4, 'Jemadar', 1965],
+  ['CA', 'army', 'enlisted', 0, 'Private', 1968], ['CA', 'army', 'enlisted', 1, 'Lance Corporal', 1968], ['CA', 'army', 'enlisted', 2, 'Corporal', 1968], ['CA', 'army', 'enlisted', 3, 'Sergeant', 1968], ['CA', 'army', 'enlisted', 4, 'Staff Sergeant', 1968], ['CA', 'army', 'enlisted', 5, 'Warrant Officer Class 2', 1968], ['CA', 'army', 'enlisted', 6, 'Warrant Officer Class 1', 1968], ['CA', 'army', 'enlisted', 7, 'Regimental Sergeant Major', 1968], ['CA', 'army', 'enlisted', 8, 'Regimental Sergeant Major', 1968], ['CA', 'army', 'enlisted', 0, 'Private', 2016], ['CA', 'army', 'enlisted', 1, 'Private', 2016],
+  ['CA', 'army', 'officer', 6, 'Brigadier-General', 1922], ['CA', 'army', 'officer', 6, 'Colonel-Commandant', 1928], ['CA', 'army', 'officer', 6, 'Brigadier', 1968],
+  ['CA', 'navy', 'enlisted', 0, 'Ordinary Seaman', 1968], ['CA', 'navy', 'enlisted', 1, 'Able Seaman', 1968], ['CA', 'navy', 'enlisted', 2, 'Leading Seaman', 1968], ['CA', 'navy', 'enlisted', 3, 'Petty Officer 2nd Class', 1968], ['CA', 'navy', 'enlisted', 4, 'Petty Officer 1st Class', 1968], ['CA', 'navy', 'enlisted', 5, 'Chief Petty Officer 2nd Class', 1968], ['CA', 'navy', 'enlisted', 6, 'Chief Petty Officer 1st Class', 1968], ['CA', 'navy', 'enlisted', 7, 'Chief Petty Officer 1st Class', 1968], ['CA', 'navy', 'enlisted', 8, 'Chief Petty Officer 1st Class', 1968], ['CA', 'navy', 'enlisted', 0, 'Ordinary Seaman', 2020], ['CA', 'navy', 'enlisted', 1, 'Able Seaman', 2020], ['CA', 'navy', 'enlisted', 2, 'Leading Seaman', 2020], ['CA', 'navy', 'enlisted', 3, 'Master Seaman', 2020],
+  ['CA', 'navy', 'officer', 0, 'Midshipman', 1968],
+  ['CA', 'airforce', 'enlisted', 0, 'Aircraftman 2nd Class', 1968], ['CA', 'airforce', 'enlisted', 1, 'Aircraftman 1st Class', 1968], ['CA', 'airforce', 'enlisted', 2, 'Leading Aircraftman', 1968], ['CA', 'airforce', 'enlisted', 3, 'Corporal', 1968], ['CA', 'airforce', 'enlisted', 4, 'Sergeant', 1968], ['CA', 'airforce', 'enlisted', 5, 'Flight Sergeant', 1968], ['CA', 'airforce', 'enlisted', 6, 'Warrant Officer Class 2', 1968], ['CA', 'airforce', 'enlisted', 7, 'Warrant Officer Class 1', 1968], ['CA', 'airforce', 'enlisted', 8, 'Warrant Officer Class 1', 1968], ['CA', 'airforce', 'enlisted', 0, 'Private', 2015], ['CA', 'airforce', 'enlisted', 1, 'Private', 2015],
+  ['CA', 'airforce', 'officer', 0, 'Pilot Officer', 1968], ['CA', 'airforce', 'officer', 1, 'Flying Officer', 1968], ['CA', 'airforce', 'officer', 2, 'Flight Lieutenant', 1968], ['CA', 'airforce', 'officer', 3, 'Squadron Leader', 1968], ['CA', 'airforce', 'officer', 4, 'Wing Commander', 1968], ['CA', 'airforce', 'officer', 5, 'Group Captain', 1968], ['CA', 'airforce', 'officer', 6, 'Air Commodore', 1968], ['CA', 'airforce', 'officer', 7, 'Air Vice-Marshal', 1968], ['CA', 'airforce', 'officer', 8, 'Air Marshal', 1968], ['CA', 'airforce', 'officer', 9, 'Air Chief Marshal', 1968],
+  ['AU', 'army', 'enlisted', 8, 'Regimental Sergeant Major', 1983], ['AU', 'army', 'officer', 6, 'Brigadier-General', 1922], ['AU', 'army', 'officer', 6, 'Colonel-Commandant', 1928],
+  ['AU', 'navy', 'enlisted', 5, 'Chief Petty Officer', 1970], ['AU', 'navy', 'enlisted', 6, 'Chief Petty Officer', 1970], ['AU', 'navy', 'enlisted', 7, 'Chief Petty Officer', 1970], ['AU', 'navy', 'enlisted', 8, 'Chief Petty Officer', 1970], ['AU', 'navy', 'enlisted', 6, 'Warrant Officer', 1993], ['AU', 'navy', 'enlisted', 7, 'Warrant Officer', 1993], ['AU', 'navy', 'enlisted', 8, 'Warrant Officer', 1993],
+  ['AU', 'airforce', 'enlisted', 8, 'Warrant Officer', 1983], ['AU', 'airforce', 'enlisted', 6, 'Warrant Officer', 2000], ['AU', 'airforce', 'enlisted', 7, 'Warrant Officer', 2000],
 ];
+// The title of the period being played is the earliest reform still to come: sort so find() picks it.
+OLD_RANKS.sort((a, b) => a[5] - b[5]);
 /** A rank title in the words of its year (the year being played). */
 /** Colonial forces (world/ColonialForces.js) name a colony's branches and ranks: set at load to avoid an import cycle. */
 let COLONIAL_HOOKS = null;
@@ -883,7 +935,7 @@ export function periodRank(nation, branch, track, index, title) {
   if (ERA_YEAR >= PRESENT) return title;
   const colonial = COLONIAL_HOOKS?.rank(nation, branch, track, index);
   if (colonial) return colonial;
-  const hit = OLD_RANKS.find(([n, b, t, i, , until]) => (n === (nation ?? 'US') || n === '*') && b === branch && t === track && i === index && ERA_YEAR < until);
+  const hit = OLD_RANKS.find(([n, b, t, i, , until, from]) => (n === (nation ?? 'US') || n === '*') && b === branch && t === track && i === index && ERA_YEAR < until && !(ERA_YEAR < (from ?? -Infinity)));
   return hit ? hit[4] : title;
 }
 /** A service's name in its day: the Red Army, the Kaiser's army, the Wehrmacht, the Grande Armée. [nation, branch, name, until] */
@@ -903,7 +955,7 @@ export function periodBranch(nation, branch, name) {
   return OLD_BRANCHES.find(([n, b, , until]) => n === (nation ?? 'US') && b === branch && ERA_YEAR < until)?.[2] ?? name;
 }
 /** When each branch existed: air forces from the 1910s–30s, the US Air Force from 1947, the Space Force from 2019. */
-const BRANCH_FROM = { US: { airforce: 1947, spaceforce: 2019, coastguard: 1915 }, GB: { airforce: 1918 }, CA: { airforce: 1924 }, AU: { airforce: 1921 }, NZ: { airforce: 1937 }, DE: { airforce: 1935 }, IN: { airforce: 1932 }, '*': { airforce: 1920, spaceforce: 2019 } };
+const BRANCH_FROM = { US: { airforce: 1947, spaceforce: 2019, coastguard: 1915 }, GB: { airforce: 1918 }, JP: { airforce: 1954 }, IT: { airforce: 1923 }, FR: { airforce: 1934 }, RU: { airforce: 1918 }, CA: { airforce: 1924 }, AU: { airforce: 1921 }, NZ: { airforce: 1937 }, DE: { airforce: 1935 }, IN: { airforce: 1932 }, '*': { airforce: 1920, spaceforce: 2019 } };
 export function branchExists(state, cc, branch) {
   const y = yearNow(state);
   const from = BRANCH_FROM[cc]?.[branch] ?? BRANCH_FROM['*'][branch];
@@ -1366,7 +1418,7 @@ const RENAMES = [
   [/\bLa Poste\b/g, 1991, () => 'les PTT'],
   [/Royal Mail Delivery Office/g, 1969, () => 'GPO Sorting Office'],
   [/U\.S\. Border Patrol/g, 1924, () => 'Mounted Guard of the Immigration Service'],
-  [/\bDepartment of Public Safety\b/g, 1910, () => 'Board of Police Commissioners'],
+  [/\b([A-Z][a-z]+(?: [A-Z][a-z]+)? )?Department of Public Safety\b/g, 1935, (y, st) => (st ? `${st}State Police` : y < 1910 ? 'Board of Police Commissioners' : 'Department of Public Safety')],
   [/\bState Crime Laboratory\b/g, 1935, () => 'State Bureau of Identification'],
   [/\bWitness Security Division\b/g, 1971, () => 'Court Security Division'],
   [/\bJudicial Security Division\b/g, 1980, (y) => (y >= 1950 ? 'Court Security Division' : 'Court Duty')],
@@ -1492,6 +1544,24 @@ const RENAMES = [
   [/\bDNA Unit\b/g, 1986, (y) => (y >= 1900 ? 'Serology Section' : 'Identification Section')],
   [/\b(Area|Approach) Control Center\b/g, 1936, () => 'Airfield'],
   [/\bSocial Security & VA Claims\b/g, 1946, (y) => (y >= 1935 ? 'Social Security & Veterans Claims' : 'Pension Claims')],
+  // Uniformed services under their names of the day.
+  [/AeroGuard ARFF Contractors/g, 1945, () => 'Underwriters\' Fire Patrol'],
+  [/\bARFF Crash Truck Driver\/Operator\b/g, 1965, () => 'Crash Tender Driver'], [/\bARFF\b/g, 1965, () => 'Crash Crew'],
+  [/\bAustralian Federal Police\b/g, 1979, (y) => (y >= 1960 ? 'Commonwealth Police' : 'Commonwealth Investigation Branch')],
+  [/\bAustralian Border Force\b/g, 2015, (y) => (y >= 1985 ? 'Australian Customs Service' : 'Department of Trade and Customs')],
+  [/\bUluru-Kata Tjuta National Park\b/g, 1993, (y) => (y >= 1958 ? 'Ayers Rock–Mount Olga National Park' : 'the Petermann Reserve')],
+  [/\bCanada Border Services Agency\b/g, 2003, () => 'Canada Customs'],
+  [/\bCorrectional Service Canada\b/g, 1979, () => 'Canadian Penitentiary Service'],
+  [/\bFire Rescue Victoria\b/g, 2020, (y) => (y >= 1891 ? 'Metropolitan Fire Brigade' : 'Melbourne Fire Brigades')],
+  [/\bCorrective Services\b/g, 1970, () => 'Penal Department'],
+  [/\bToronto Police Service\b/g, 1995, (y) => (y >= 1957 ? 'Metropolitan Toronto Police' : 'Toronto Police Department')],
+  [/\bBundespolizei\b/g, 2005, (y) => (y >= 1951 ? 'Bundesgrenzschutz' : 'Grenzpolizei')],
+  [/\b108 Emergency Response\b/g, 2005, () => 'Ambulance Service'],
+  [/\bBorder Security Force\b/g, 1965, (y) => (y >= 1947 ? 'State Armed Police (frontier)' : 'Frontier Constabulary')],
+  [/\bDepartment of Corrections\b/g, 1955, () => 'Board of Prisons'],
+  [/\bDetention Center\b/g, 1970, () => 'Jail'],
+  [/\bDepartment of Forestry & Fire Protection\b/g, 1930, () => 'State Forester\'s Office'],
+  [/\bFish & Wildlife Department\b/g, 1950, () => 'Fish & Game Commission'],
   // Places under the names of their day.
   [/\bChennai\b/g, 1996, () => 'Madras'],
   [/\bMumbai\b/g, 1995, () => 'Bombay'],

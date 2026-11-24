@@ -326,9 +326,21 @@ export function stepForAtLeast(state, job, minimum) {
 /* Job lifecycle                                                       */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A rank's name moves with the years: a Patrolman hired in 1960 is a Police Officer by 1980, a
+ * Fireman a Firefighter. Only while the title is still the one the ladder gave (a posting, an
+ * acting rank or a title some other system set is left alone).
+ */
+export function refreshPeriodTitle(job) {
+  if (!job?.titleRaw || job.title !== job.titleShown) return;
+  const t = periodTitle(job.titleRaw);
+  if (t !== job.title) job.title = job.titleShown = t;
+}
+
 export function applyLevel(job, level) {
   job.levelId = level.id;
-  job.title = periodTitle(job.titleMap?.[level.id] ?? level.title);
+  job.titleRaw = job.titleMap?.[level.id] ?? level.title;
+  job.title = job.titleShown = periodTitle(job.titleRaw);
   job.track = level.track;
   job.grade = level.grade;
   job.abilities = [...level.abilities];
