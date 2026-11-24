@@ -29,6 +29,7 @@ const SOUTH_ASIA = ['IN', 'PK', 'BD', 'LK', 'NP'];
 const ENG_PROF = /^(engineering|mechanicalEng|electricalEng|chemicalEng|aerospaceEng|petroleumEng|nuclearEng|structuralEng)$/;
 
 const cc = (state) => state.character.countryId ?? 'US';
+import { usedPrefix, outrankedBy } from './BoughtTitles.js';
 const fem = (state) => state.character.gender === 'female';
 const degrees = (state) => (state.education?.degrees ?? []).map((d) => d.type);
 const jobs = (state) => [state.career?.job, ...(state.career?.history ?? [])].filter(Boolean);
@@ -152,7 +153,18 @@ export function professionalTitle(state, { knight = false } = {}) {
 
 /** How people address you, when it differs from your written name. */
 export function addressOf(state) {
+  const c = state.character;
+  // A peer is Lord or Lady by the title (a duke Your Grace), whatever else they hold.
+  if (c.peerage) {
+    const f = fem(state);
+    if (c.peerage.rank === 'duke') return 'Your Grace';
+    if (!['GB', 'IE', 'AU', 'NZ', 'CA'].includes(c.peerage.cc ?? 'GB')) return c.style?.prefix ? `${c.style.prefix} ${c.lastName}` : null;
+    return `${f ? 'Lady' : 'Lord'} ${c.peerage.place ?? c.lastName}`;
+  }
   const p = state.character.style?.prefix;
+  // A bought title you use is how you're addressed (Count Hale, Laird Hale), unless a real one outranks it.
+  const bought = !p ? usedPrefix(state) : null;
+  if (bought && !outrankedBy(state)) return `${bought} ${c.lastName}`;
   // A knight or dame is Sir John, Dame Olivia, whatever else they are (a serving officer keeps the rank).
   if (/^(Sir|Dame)$/.test(p ?? '') && !state.military?.service) return `${p} ${state.character.firstName}`;
   return professionalTitle(state)?.address ?? null;

@@ -151,19 +151,24 @@ export function monSvg(a, { size = 140, title = 'Kamon' } = {}) {
   return `<svg class="arms-svg" viewBox="30 30 140 140" width="${size}" height="${size}" role="img" aria-label="${esc(title)}">${body}</svg>`;
 }
 
+/** A baronet's badge: argent, a sinister hand couped gules, on a small escutcheon in the centre chief. */
+const ulster = () => `<g transform="translate(100 82)"><path d="M-11 -11 H11 V2 Q11 12 0 16 Q-11 12 -11 2 Z" fill="#f1f1ee" stroke="#3a3a3a" stroke-width="1"/><text x="0" y="4" font-size="15" text-anchor="middle" dominant-baseline="central" fill="#c0242f">✋\uFE0E</text></g>`;
+/** A feudal baron's chapeau: a red cap of maintenance turned up ermine. */
+const chapeauSvg = (y = 58) => `<path d="M80 ${y + 10} Q80 ${y - 10} 100 ${y - 12} Q120 ${y - 10} 120 ${y + 10} Z" fill="#c0242f" stroke="#6b1018" stroke-width=".8"/><rect x="76" y="${y + 6}" width="48" height="8" rx="3" fill="#f4f1ea" stroke="#999" stroke-width=".6"/>${[84, 94, 104, 114].map((x) => `<text x="${x}" y="${y + 13}" font-size="6" text-anchor="middle" fill="#1d1d1d">⯆</text>`).join('')}`;
+
 /** The whole achievement. size: the drawn width in px. */
 export function armsSvg(a, { size = 180, title = 'Coat of arms' } = {}) {
   if (a.mon) return monSvg(a, { size: Math.round(size * 0.8), title });
   const id = ++uid;
   // With a circlet round the shield, the coronet and helm sit higher, above it.
   const lift = a.circlet ? 10 : 0;
-  const top = a.hat ? hat(a.hat) : a.coronet && a.helm ? helm(a.helm, a, -14 - lift) + coronet(a.coronet, 58 - lift, a.continental) : a.coronet ? coronet(a.coronet, 58 - lift, a.continental) : helm(a.helm, a, -lift);
+  const top = a.hat ? hat(a.hat) : a.coronet && a.helm ? helm(a.helm, a, -14 - lift) + coronet(a.coronet, 58 - lift, a.continental) : a.coronet ? coronet(a.coronet, 58 - lift, a.continental) : a.chapeau ? helm(a.helm, a, -16 - lift) + chapeauSvg(58 - lift) : helm(a.helm, a, -lift);
   const defs = `<defs><clipPath id="shield${id}"><path d="${SHIELD}"/></clipPath>${a.division !== 'plain' ? `<clipPath id="second${id}"><path d="${SECOND[a.division]}"/></clipPath><mask id="first${id}"><rect x="0" y="0" width="200" height="220" fill="#fff"/><path d="${SECOND[a.division]}" fill="#000"/></mask>` : ''}</defs>`;
   // The keys of Peter, gold and silver, crossed behind the shield.
   const key = (colour, flip) => `<g transform="${flip ? 'translate(200 0) scale(-1 1)' : ''}" stroke="${colour}" fill="none" stroke-width="4" stroke-linecap="round"><path d="M56 168 L146 60"/><circle cx="50" cy="175" r="8"/><path d="M140 67 L148 74 M133 75 L141 82"/></g>`;
   const keys = a.hat === 'tiara' ? key(GOLD, false) + key('#c9ced6', true) : '';
   return `<svg class="arms-svg" viewBox="0 8 200 204" width="${size}" height="${Math.round((size * 204) / 200)}" role="img" aria-label="${esc(title)}">${defs}
     ${behind(a.behind)}${keys}${supporters(a.supporters)}
-    <g clip-path="url(#shield${id})">${shieldBody(a, id)}</g><path d="${SHIELD}" fill="none" stroke="#3a3a3a" stroke-width="1.4"/>
+    <g clip-path="url(#shield${id})">${shieldBody(a, id)}${a.baronet ? ulster() : ''}</g><path d="${SHIELD}" fill="none" stroke="#3a3a3a" stroke-width="1.4"/>
     ${circlet(a.circlet, id)}${top}${badges(a.badges ?? [])}${motto(a.motto, id)}</svg>`;
 }

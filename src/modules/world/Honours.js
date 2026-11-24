@@ -17,7 +17,7 @@
  * state.character.style = { prefix: 'Sir' | 'Dame' | 'Lord' | 'Baroness' | ..., peerage: 'Baron Smith, of Leeds' }
  */
 import { usedPrefix, baronetLetters } from './BoughtTitles.js';
-import { withTitle } from './Titles.js';
+import { withTitle, professionalTitle } from './Titles.js';
 import { addHonor, netWorth, hasFelony } from '../../core/State.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -443,6 +443,9 @@ export function postNominals(state) {
   return [baronetLetters(state), ...[...supreme, ...orders, ...gallantry].map((h) => h.post)].concat(councilLetters(state), officeLetters(state), religiousPost(state)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
+/** A military rank to put before a higher style (a peer's, a bought title's), or null. */
+const militaryPrefix = (state) => { const t = professionalTitle(state); return t && /your rank/.test(t.why ?? '') ? t.prefix : null; };
+
 /** Your name with any title an honour gave you: Sir John Smith, Lord Smith, Cav. Maria Rossi. */
 export function styledName(state) {
   const c = state.character;
@@ -457,7 +460,11 @@ export function styledName(state) {
   const house = houseStyledName(state);
   if (house) return house;
   // Peers by their title, numbered when inherited: "The 7th Earl of Ashby", "Lord Kowalski".
-  if (c.peerage) return withOfficialStyle(state, numberedAddress(state));
+  if (c.peerage) {
+    const addr = numberedAddress(state);
+    const rank = militaryPrefix(state);
+    return withOfficialStyle(state, rank && !/^(His|Her) /.test(addr) ? `${rank} ${addr.replace(/^The /, 'the ')}` : addr);
+  }
   // A peer's heir uses the family's lesser title by courtesy.
   if (state.noble?.courtesyTitle && !state.noble.disclaimed) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${state.noble.courtesyTitle}`);
   // A title from a house that no longer reigns: "Mario Rossi, Conte di Valdora".
@@ -469,7 +476,7 @@ export function styledName(state) {
   const knight = /^(Sir|Dame)$/.test(s?.prefix ?? '');
   // A title bought and used (a papal count, or a "Laird" from a souvenir plot): world/BoughtTitles.js.
   const bought = !s?.prefix ? usedPrefix(state) : null;
-  const base = bought ? `${bought} ${c.firstName} ${c.lastName}` : !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
+  const base = bought ? `${militaryPrefix(state) ? `${militaryPrefix(state)} ` : ''}${bought} ${c.firstName} ${c.lastName}` : !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
       : knight ? withTitle(state, `${s.prefix} ${c.firstName} ${c.lastName}`, { knight: true })
         : `${s.prefix} ${c.firstName} ${c.lastName}`;
@@ -600,7 +607,8 @@ export const HonoursModule = {
       const c = state.character;
       // A knight who returns the insignia stops using "Sir" or "Dame" unless another knighthood remains.
       const stillKnight = state.honors.some((x) => x.source === 'order' && /^(Knight|Dame)/.test(x.name) && !/St John/.test(x.name));
-      if (['Sir', 'Dame'].includes(c.style?.prefix) && !stillKnight) c.style = { ...c.style, prefix: null };
+      // A baronet is Sir by his baronetcy, whatever orders he returns.
+      if (['Sir', 'Dame'].includes(c.style?.prefix) && !stillKnight && !c.baronetcy) c.style = { ...c.style, prefix: null };
       (state.honoursDeclined ??= []).push({ cc: h.country, tier: h.tier, name: h.name, age: c.age, public: true, returned: true });
       return ctx.log(`You returned the insignia of ${h.name} to ${h.from ?? 'the honours secretariat'}, with a letter explaining why.`, '📦', 'info');
     },

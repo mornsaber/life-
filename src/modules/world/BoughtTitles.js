@@ -53,13 +53,25 @@ export const usedPrefix = (state) => {
 /** Designations after the name: "Lord of the Manor of Ashby Parva", "Baron of Glenbuckie". */
 export const designations = (state) => titlesOf(state).filter((x) => TITLE_MARKET[x.kind]?.style).map((x) => TITLE_MARKET[x.kind].style(state, x.place));
 export const baronetLetters = (state) => (state.character.baronetcy ? 'Bt' : null);
+/**
+ * Sir or Dame, but never over a higher style: a peer stays Lord, a royal keeps theirs (a peer who is
+ * also a baronet or a knight shows it in the letters after the name, not in front).
+ */
+export function knightStyle(s, female) {
+  const c = s.character;
+  if (c.peerage || s.royal || (c.style?.prefix && !/^(Sir|Dame)$/.test(c.style.prefix))) return false;
+  c.style = { ...(c.style ?? {}), prefix: female ? 'Dame' : 'Sir' };
+  return true;
+}
+/** A bought title you use, unless a real title outranks it (then it stays in the drawer). */
+export const outrankedBy = (state) => (state.character.peerage ? 'your peerage' : state.royal ? 'your royal style' : /^(Sir|Dame)$/.test(state.character.style?.prefix ?? '') ? (state.character.baronetcy ? 'your baronetcy' : 'your knighthood') : state.character.style?.prefix ? 'your title' : null);
 
 /** A baronetcy: Sir/Dame (the rare baronetess), and the letters Bt. */
 export function createBaronetcy(ctx, how) {
   const { state } = ctx;
   if (state.character.baronetcy || state.character.peerage || state.royal) return false;
   state.character.baronetcy = { number: 1, since: yearNow(state), how };
-  if (!/^(Sir|Dame)$/.test(state.character.style?.prefix ?? '')) state.character.style = { ...(state.character.style ?? {}), prefix: fem(state) ? 'Dame' : 'Sir' };
+  knightStyle(state, fem(state));
   return true;
 }
 
@@ -143,7 +155,7 @@ export const BoughtTitlesModule = {
       if (optionId === 'no') return ctx.log('You showed the man the door. A month later his name was in a scandal.', '🙅', 'info');
       if (optionId === 'knight') {
         if (!ctx.spend(local(state, 600000), 'A donation to the party fund')) return;
-        state.character.style = { ...(state.character.style ?? {}), prefix: fem(state) ? 'Dame' : 'Sir' };
+        knightStyle(state, fem(state));
         return ctx.log('The knighthood was in the Birthday Honours, "for public services". Everybody knew.', '🗡️', 'honor');
       }
       if (!ctx.spend(local(state, 2400000), 'A donation to the party fund')) return;
@@ -158,7 +170,7 @@ export function inheritTitles(old, s, child, eldestSon, kids, addLog) {
   if (b) {
     if (eldestSon?.id === child.id) {
       s.character.baronetcy = { ...b, number: (b.number ?? 1) + 1, since: null };
-      s.character.style = { ...(s.character.style ?? {}), prefix: 'Sir' };
+      knightStyle(s, false);
       addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as the ${ordinal((b.number ?? 1) + 1)} baronet.`, '🛡️', 'milestone');
     } else if (!eldestSon) addLog(s, 'With no son to succeed, the baronetcy died out.', '🛡️', 'info');
   }

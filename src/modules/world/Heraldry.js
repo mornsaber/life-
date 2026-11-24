@@ -29,6 +29,7 @@
 import { RANKS } from './Peerage.js';
 import { repIn } from '../life/Reputation.js';
 import { priceLevel } from './Countries.js';
+import { titlesOf, TITLE_MARKET } from './BoughtTitles.js';
 
 export const TINCTURES = {
   or: { name: 'Or', hex: '#e2b52f', metal: true }, argent: { name: 'Argent', hex: '#f1f1ee', metal: true },
@@ -94,6 +95,8 @@ export function bearsArms(state) {
   if (state.royal) return { yes: true, why: 'the royal house' };
   if (state.character.peerage) return { yes: true, why: 'your peerage' };
   if (state.noble) return { yes: true, why: 'a titled family' };
+  if (state.character.baronetcy) return { yes: true, why: 'your baronetcy' };
+  if (titlesOf(state).some((t) => t.kind === 'feudal')) return { yes: true, why: 'your Scottish feudal barony (the Lord Lyon\'s grant)' };
   if (state.arms?.granted) return { yes: true, why: state.arms.granted.inherited ? 'arms inherited from your parent' : `${state.arms.granted.how === 'assume' ? 'arms you adopted' : `arms ${state.arms.granted.how === 'grant' ? 'granted by' : 'recorded with'} ${state.arms.granted.authority}`}` };
   if (state.holySee?.pope || state.holySee?.cardinal || state.community?.orders?.grade === 'bishop') return { yes: true, why: 'your office in the Church' };
   if (authorityFor(cc).how === 'mon') return { yes: true, why: 'the family kamon' };
@@ -168,6 +171,16 @@ export function armsOf(state) {
     legend.push(`🎩 The coronet of ${/^[aeiou]/i.test(RANKS[coronet]?.male ?? '') ? 'an' : 'a'} ${RANKS[coronet]?.[female ? 'female' : 'male'] ?? 'peer'}${peer?.kind === 'life' ? ' (a life peerage)' : ''}.`);
   }
 
+  // Titles beyond the peerage (world/BoughtTitles.js).
+  const owned = titlesOf(state);
+  const baronet = Boolean(c.baronetcy);
+  if (baronet) legend.push(`✋ The badge of a baronet on the shield: the red hand of Ulster${c.baronetcy.number > 1 ? `, borne by the ${c.baronetcy.number}${[, 'st', 'nd', 'rd'][(c.baronetcy.number % 100 >> 3 ^ 1) && c.baronetcy.number % 10] || 'th'} baronet` : ''}.`);
+  const chapeau = !coronet && owned.some((t) => t.kind === 'feudal');
+  if (chapeau) legend.push('🧢 A chapeau gules, turned up ermine: the Lord Lyon\'s mark of a Scottish feudal baron.');
+  if (!coronet && owned.some((t) => t.kind === 'papal')) { coronet = 'earl'; legend.push(`🎩 A count's coronet of nine pearls: a papal ${female ? 'countess' : 'count'}.`); }
+  if (owned.some((t) => t.kind === 'manor')) legend.push('📜 A lordship of the manor is property, not a dignity: it adds nothing to the arms.');
+  if (owned.some((t) => TITLE_MARKET[t.kind]?.fake)) legend.push('🎭 Novelty titles carry no arms: no herald recognises them.');
+
   // The helm, or the hat for clergy.
   let helm = 'esquire';
   let hat = null;
@@ -177,7 +190,7 @@ export function armsOf(state) {
   else if (clergy === 'priest' || clergy === 'deacon' || clergy === 'minister') { hat = 'priest'; helm = null; legend.push('🎓 A priest\'s black hat in place of a helm.'); }
   else if (royal) helm = 'royal';
   else if (peer || noble) helm = 'peer';
-  else if (knighted) { helm = 'knight'; legend.push(`⚔️ A knight's helm, visor open: ${female ? 'Dame' : 'Sir'} ${c.firstName}.`); }
+  else if (knighted || baronet) { helm = 'knight'; legend.push(`⚔️ A knight's helm, visor open: ${female ? 'Dame' : 'Sir'} ${c.firstName}${baronet && !knighted ? ', a baronet' : ''}.`); }
 
   // Orders: the highest becomes the circlet; the rest hang below as badges.
   const grand = orders.find((h) => /Garter/.test(h.name)) ?? orders.find((h) => GRAND.test(h.name));
@@ -220,8 +233,8 @@ export function armsOf(state) {
   if (mon) legend.unshift(royal ? '🌼 The chrysanthemum: the imperial crest.' : '⭕ The family kamon, in place of a shield.');
   if (legend.length === 1) legend.push('What you do with your life — titles, orders, decorations, high command, vice-regal office, the Church — will add to them.');
   // Continental nobles wear their own coronets of rank (a count's nine pearls, not an earl's leaves).
-  const continental = Boolean(coronet && !royal && cc !== 'GB' && !['IE', 'AU', 'NZ', 'CA'].includes(cc));
-  return { ...shield, female, coronet, continental, helm, hat, circlet, badges, supporters, behind, legend, mon, imperial: mon && Boolean(royal), armigerous: bears.yes, blazon: mon ? 'A kamon' : blazonOf(shield) };
+  const continental = Boolean(coronet && !royal && ((cc !== 'GB' && !['IE', 'AU', 'NZ', 'CA'].includes(cc)) || (!peer && !noble && owned.some((t) => t.kind === 'papal'))));
+  return { ...shield, female, coronet, continental, helm, hat, baronet, chapeau, circlet, badges, supporters, behind, legend, mon, imperial: mon && Boolean(royal), armigerous: bears.yes, blazon: mon ? 'A kamon' : blazonOf(shield) };
 }
 
 /** The shield in words: "Azure, a fess Or between three mullets Or"; "Per pale Or and Gules, a bend counterchanged". */

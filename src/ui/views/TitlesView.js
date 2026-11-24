@@ -6,7 +6,7 @@
 import { esc, money, button, card, kv } from '../Components.js';
 import { styledName, postNominals } from '../../modules/world/Honours.js';
 import { professionalTitle, addressOf } from '../../modules/world/Titles.js';
-import { TITLE_MARKET, titlesOf, marketNow } from '../../modules/world/BoughtTitles.js';
+import { TITLE_MARKET, titlesOf, marketNow, outrankedBy } from '../../modules/world/BoughtTitles.js';
 import { passportsOf, PASSPORT_LABEL } from '../../modules/world/Passports.js';
 import { CREDENTIALS } from '../../modules/credentials/CredentialRegistry.js';
 import { COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
@@ -34,7 +34,7 @@ export function titlesCard(state) {
     const def = TITLE_MARKET[x.kind];
     const name = def.style ? def.style(state, x.place) : `${def.prefix(state)} (${def.label.replace(/^an? /, '')})`;
     return `<li class="region-row"><span>${def.icon} <b>${esc(name)}</b> ${def.fake ? '<small class="muted">not recognised anywhere</small>' : ''}${x.exposed ? ' <small class="neg">exposed</small>' : ''}</span><small>bought ${x.year}${def.resale ? ` · worth ${money(x.value ?? x.paid)}` : ''}</small>
-      ${def.prefix ? button(x.used ? 'Stop using it' : 'Use it', 'boughtTitles.use', { arg: x.id, variant: 'tiny ghost' }) : ''}${button(def.resale ? 'Sell at auction' : 'Throw it away', 'boughtTitles.sell', { arg: x.id, variant: 'tiny ghost' })}</li>`;
+      ${def.prefix && x.used && outrankedBy(state) ? `<small class="muted">not used: ${esc(outrankedBy(state))} outranks it</small>` : ''}      ${def.prefix ? button(x.used ? 'Stop using it' : 'Use it', 'boughtTitles.use', { arg: x.id, variant: 'tiny ghost' }) : ''}${button(def.resale ? 'Sell at auction' : 'Throw it away', 'boughtTitles.sell', { arg: x.id, variant: 'tiny ghost' })}</li>`;
   }).join('');
   return card('Your Titles', `<ul class="history">${rows}</ul>
     ${kv([t?.why ? ['From', esc(t.why)] : null, b ? ['Baronetcy', `${b.number === 1 ? 'Created' : `The ${b.number}${b.number === 2 ? 'nd' : b.number === 3 ? 'rd' : 'th'} baronet`}${b.since ? ` in ${b.since}` : ''}${b.how === 'bought' ? ', bought from a broker' : ''} · passes to your eldest son`] : null].filter(Boolean))}
