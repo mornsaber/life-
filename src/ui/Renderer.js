@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { resumeView } from './views/ResumeView.js';
 import { titlesCard, titleMarketCard, walletCard } from './views/TitlesView.js';
 import { warHere } from '../modules/world/War.js';
 import { t as tr } from './i18n.js';
@@ -110,7 +111,7 @@ import { eraCountryName } from '../modules/world/Eras.js';
 /** Eight sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
   { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'world', label: 'The World', icon: '🌍' }, { id: 'goals', label: 'Goals', icon: '🎯' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }, { id: 'society', label: 'Society', icon: '🥂' }] },
-  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'licenses', label: 'Licenses & Certs', icon: '🪪' }] },
+  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'licenses', label: 'Licenses & Certs', icon: '🪪' }, { id: 'resume', label: 'Résumé', icon: '📄' }] },
   { id: 'court', label: 'Court', icon: '👑', when: (st) => hasCourt(st), tabs: [{ id: 'court', label: 'Court', icon: '👑' }, { id: 'succession', label: 'Succession', icon: '🌳' }, { id: 'household', label: 'Household', icon: '🎗️' }, { id: 'estates', label: 'Estates', icon: '🏰' }] },
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
@@ -138,6 +139,7 @@ export const GROUPS = {
       { head: 'Study & work', tab: 'sidework', label: 'Part-time Work', icon: '🕐', when: (st) => age(st) >= 16, sub: (st) => (st.career?.boardOffers?.length ? `${st.career.boardOffers.length} board invitation${st.career.boardOffers.length > 1 ? 's' : ''}` : st.career?.boards?.length ? `${st.career.boards.length} board seat${st.career.boards.length > 1 ? 's' : ''}` : 'Boards, teaching, gig work') },
       { head: 'Study & work', tab: 'business', label: 'Business', icon: '🏪', when: (st) => age(st) >= 14 || Boolean(st.business?.current), sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
       { head: 'Study & work', tab: 'gov', label: 'Public Service', icon: '🏛️', when: (st) => age(st) >= 16, sub: () => 'Government agencies and the civil service' },
+      { head: 'Study & work', tab: 'resume', label: 'Résumé', icon: '📄', when: (st) => age(st) >= 14, sub: (st) => (st.career.history?.length || st.career.job ? `${(st.career.history?.length ?? 0) + (st.career.job ? 1 : 0)} position${(st.career.history?.length ?? 0) + (st.career.job ? 1 : 0) === 1 ? '' : 's'} on it` : 'Your working record, one page') },
       { head: 'Study & work', tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', when: (st) => age(st) >= 15, sub: () => 'Qualifications that open jobs' },
       { head: 'Service & public life', tab: 'military', label: 'Military', icon: '🎖️', when: (st) => age(st) >= 15 || Boolean(st.military.service), sub: (st) => (st.military.service ? 'Serving' : 'Enlist or apply for a commission') },
       { head: 'Service & public life', tab: 'emergency', label: 'Emergency Services', icon: '🚨', when: (st) => age(st) >= 14, sub: () => 'Volunteer fire, rescue and reserves' },
@@ -297,6 +299,7 @@ export const VIEWS = {
   business: (state, ui) => businessView(state, ui) + venturesView(state, ui),
   community: communityView,
   garage: garageView,
+  resume: resumeView,
   property: propertyView,
   farm: farmView,
   gov: govView,

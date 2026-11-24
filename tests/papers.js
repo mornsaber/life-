@@ -75,6 +75,17 @@ const tests = {
     assert.ok(jobInsignia({ levelId: 'charge' }, PROFESSIONS.nursing, 'GB'));
     assert.ok(!jobInsignia({ levelId: 'charge' }, PROFESSIONS.nursing, 'US'));
   },
+  'a résumé from the working record: jobs with their years, newest first, headed as the country heads it'() {
+    const { state } = grown('GB', 1990, 40);
+    state.career.history.push({ professionId: 'retail', title: 'Sales Associate', employerName: 'Ashby & Sons', startAge: 20, endAge: 28, reason: 'Resigned for a new opportunity' });
+    state.career.job = { professionId: 'corporate', title: 'Office Manager', employer: { name: 'Hale Ltd' }, startAge: 28, grade: 3 };
+    const cv = VIEWS.resume(state, {});
+    assert.match(cv, /Curriculum Vitae/);
+    assert.ok(cv.lastIndexOf('Office Manager') < cv.search(/Shop Assistant|Sales Associate/), 'newest first (in the job titles of the day)');
+    assert.match(cv, /1970 – 1978/);
+    assert.match(cv, /1978 – present/);
+    assert.match(VIEWS.resume(grown('US', 1990, 40).state, {}), /Résumé/);
+  },
 };
 
 let failed = 0;

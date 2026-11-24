@@ -62,6 +62,8 @@ const T = {
   'Achievements': ['Exploits', 'Erfolge', 'Logros', '実績', 'उपलब्धियाँ'],
   'The World': ['Le monde', 'Die Welt', 'El mundo', '世界', 'दुनिया'],
   'World': ['Monde', 'Welt', 'Mundo', '世界', 'दुनिया'],
+  'Résumé': ['CV', 'Lebenslauf', 'Currículum', '履歴書', 'बायोडाटा'],
+  'Curriculum Vitae': ['Curriculum vitae', 'Lebenslauf', 'Currículum vítae', '履歴書', 'बायोडाटा'],
   'War': ['Guerre', 'Krieg', 'Guerra', '戦争', 'युद्ध'],
   'Study & work': ['Études et travail', 'Lernen und Arbeit', 'Estudios y trabajo', '学業と仕事', 'पढ़ाई और काम'],
   'Leisure & health': ['Loisirs et santé', 'Freizeit und Gesundheit', 'Ocio y salud', '余暇と健康', 'अवकाश और स्वास्थ्य'],
