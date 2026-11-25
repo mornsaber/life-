@@ -32,6 +32,7 @@ import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, st
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 import { rememberedRecord } from './Remembered.js';
 import { fameAfterRecord } from '../life/FameAfter.js';
+import { inheritedRivals } from '../life/WorldLegacies.js';
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { heirCitizenships } from '../world/Immigration.js';
@@ -443,6 +444,9 @@ export function buildHeirState(rng, old, childId) {
       fameAfter: fameAfterRecord(old),
     }],
   };
+  // A feud bitter enough passes to the next generation on both sides.
+  const feuds = inheritedRivals(old);
+  if (feuds.length) s.rivals = [...(s.rivals ?? []), ...feuds];
   // The city's underworld goes on; a mobster's child is known to the family.
   if (old.underworld) {
     const me = old.underworld.me;

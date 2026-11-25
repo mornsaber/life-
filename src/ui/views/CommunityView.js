@@ -3,6 +3,8 @@
  * and mentoring.
  */
 import { GIFTS, giftCheck, giftCost, marksHere } from '../../modules/life/Marks.js';
+import { worldLegaciesCard } from './WorldLegaciesCard.js';
+import { PLACES } from '../../modules/life/WorldLegacies.js';
 import { secretSocietiesCard } from './SecretSocietiesView.js';
 import { schismIssue } from '../../modules/community/Religions.js';
 import { faithDayCard } from './FaithDayCard.js';
@@ -204,7 +206,7 @@ function marksCard(state) {
   const y = yearNow(state);
   const here = marksHere(state);
   const gen = state.lineage?.generation ?? 1;
-  const list = here.map((m) => `<li>${GIFTS[m.kind]?.icon ?? (m.kind === 'statue' ? '🗿' : '🪧')} <b>${esc(m.title)}</b> <small class="muted">${m.year} · ${m.gen === gen ? 'yours' : `given by ${esc(m.by)}`}</small></li>`).join('');
+  const list = here.map((m) => `<li>${GIFTS[m.kind]?.icon ?? PLACES[m.kind.replace('place.', '')]?.icon ?? ({ statue: '🗿', 'place.cape': '🧭', milestone: '🏗️' })[m.kind] ?? '🪧'} <b>${esc(m.title)}</b> <small class="muted">${m.year} · ${m.gen === gen ? 'yours' : `given by ${esc(m.by)}`}</small></li>`).join('');
   const open = Object.keys(GIFTS).filter((k) => !giftCheck({ ...state, finances: { cash: Infinity } }, k)).map((k) => button(`${GIFTS[k].icon} ${GIFTS[k].name(y)}`, 'marks.give', { arg: k, variant: 'small', hint: money(giftCost(state, k)), disabled: Boolean(giftCheck(state, k)) })).join('');
   if (!list && !open) return '';
   return card('Your Mark on the Town', `${list ? `<ul class="history">${list}</ul>` : '<p class="muted">Nothing here has your name on it yet.</p>'}
@@ -297,5 +299,5 @@ function localCard(state) {
 }
 
 export function civicView(state) {
-  return `${marksCard(state)}${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
+  return `${marksCard(state)}${worldLegaciesCard(state)}${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
 }

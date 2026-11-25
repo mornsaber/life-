@@ -90,7 +90,7 @@ export function expeditionOptions(state) {
   const done = featsOf(state).expeditions.filter((e) => e.success).map((e) => e.id);
   return Object.entries(EXPEDITIONS).filter(([id, e]) => y >= e.from && y < e.until && !done.includes(id)).map(([id, e]) => {
     const late = y > e.first && e.later;
-    return { id, ...e, ...(late ? e.later : {}), firstYet: y <= e.first };
+    return { id, ...e, ...(late ? e.later : {}), firstYet: y <= e.first && !(state.era?.firsts ?? []).some((f) => f.id === id) };
   });
 }
 export function expeditionEligibility(state, id) {

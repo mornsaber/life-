@@ -49,3 +49,14 @@ family; most of `state.world` is rebuilt).
 8. **The local paper's name and politics** if you own it (Newspapers of the Day).
 9. **Monuments of a war** you fought in: your name on the town's memorial (or not).
 10. **A dynasty's seat** renamed after the family (Dynasty seat exists; naming would make it yours).
+
+## Built (life/WorldLegacies.js, "What Your Lives Leave" on the Community tab)
+
+All ten candidates: a railway halt (1830–1960), a ship or a frontier settlement named after you, and a
+cape for a first explorer (1); a hospital, college or newspaper that lives on with a family seat on its
+board (2), the paper's masthead and politics (8); the schools' curriculum as education minister or head of
+government, the church's rite as a bishop (3); firsts that stay the family's and Olympic world records that
+stand until broken (4); bitter feuds inherited as "the X family" (5); the gas lamps, railway, water, trams
+or electric light brought to town early (6); land enclosed, cleared, drained, irrigated or terraced, passed
+with the farm (7); the family's war dead on the town memorial (9); the family seat named by the country's
+custom (Hall, Château, Schloss, Villa, Hacienda, Ranch) (10).

@@ -71,3 +71,20 @@ Each a source with its own ladder of recognition:
 1 → 2 → 3, with 4 woven through, and 5 last (it builds on the epilogue and the dynasty). Each phase
 ships with an era audit across 1830, 1880, 1930, 1960, 2000 and 2020 in four countries (no medium before
 its day), and a test of the score's sources and reach.
+
+## Built
+
+- **Phase 1** — life/FameOfTheDay.js: media by year and country (radio and television dates per country),
+  reach capped by the media of the day, tier lines, brands, scandals, the chat show (lecture tour,
+  wireless, late-night show) and the intrusions (gossip columns, press photographers, paparazzi).
+- **Phase 2** — life/Works.js: novels, poems, paintings, compositions, plays, screenplays (from 1915),
+  judged by their day; prizes of their day and place (Prix de Rome, RA, Goncourt, Pulitzer, Booker,
+  Academy Award, Nobel); oratory; discoveries and expeditions counted as fame (`registerFameSource`).
+- **Phases 3 and 4** — life/FameUse.js: persona, publicist (press agent before 1950) and manager, lending
+  your name to a cause or a side, a foundation, rivals and feuds, children in the papers, fading and a
+  second act; press law by country and era (British libel, America after 1964, French privacy from 1970,
+  state presses) in the court odds.
+- **Phase 5** — life/FameAfter.js: the obituary's placement, reputation after death (a biography, a
+  film, rediscovered, reassessed, forgotten), the family name as a fame source, royalties while in
+  copyright (28 years before 1886, life + 50, life + 70 in the EU from 1995 and the US from 1998),
+  image licensing for an icon's estate in the US from 1985.
