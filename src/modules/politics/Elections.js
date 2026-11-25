@@ -22,6 +22,7 @@
  *   partisan, primary, funds, endorsements[], opponent, rivals[], focus{}, polls[],
  *   incumbent, attacks, ads, momentum }
  */
+import { raceCost } from './PoliticsOfTheDay.js';
 import { regimeOf } from '../world/Regimes.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear, prestige, randomName } from '../../core/State.js';
@@ -171,7 +172,7 @@ export function makeOpponent(state, officeId, rng, { vsIncumbent = false, player
     incumbent,
     quality,
     platform: platformFor(bloc, e, rng, incumbent || rng.chance(0.5)),
-    funds: Math.round(office.cost * rng.float(0.15, 0.4) * (0.6 + quality / 100) * (incumbent ? 1.5 : 1)),
+    funds: Math.round(raceCost(state, office) * rng.float(0.15, 0.4) * (0.6 + quality / 100) * (incumbent ? 1.5 : 1)),
     scandal: 0,
     weakness: rng.pick(['a lobbyist-funded junket', 'missed votes', 'a donor who went to prison', 'a business that went bankrupt', 'old posts online', 'a DUI decades ago', 'a lawsuit from former employees', 'nothing anyone has found']),
   };
@@ -189,7 +190,7 @@ export function makeRivals(state, officeId, rng, { open = true } = {}) {
     quality: Math.round(clamp(25 + office.level * 6 + rng.int(-12, 15), 10, 90)),
     // Primary challengers run to the base; a few run as the moderate.
     platform: Object.fromEntries(ISSUE_IDS.map((id) => [id, clamp(Math.round(e.median[id] * (rng.chance(0.25) ? 0.3 : 1.1) + rng.float(-0.5, 0.5)), -2, 2)])),
-    funds: Math.round(office.cost * rng.float(0.05, 0.25)),
+    funds: Math.round(raceCost(state, office) * rng.float(0.05, 0.25)),
   }));
 }
 
@@ -263,7 +264,7 @@ export function generalShare(state, officeId, c, { incumbent = false } = {}) {
   const fit = (distance(opp.platform, e, c?.focus) - distance(yours, e, c?.focus)) * (partisan ? 0.07 : 0.08);
   share += add(fit >= 0 ? 'Closer to the voters on the issues' : 'Further from the voters on the issues', fit);
   share += add('Candidate quality', clamp((candidateQuality(state, officeId) - opp.quality) / 450, -0.08, 0.08));
-  share += add('Money', moneyEdge(c?.funds ?? 0, opp.funds ?? 0, office.cost));
+  share += add('Money', moneyEdge(c?.funds ?? 0, opp.funds ?? 0, raceCost(state, office)));
   share += add('Endorsements', (c?.endorsements?.length ?? 0) * 0.012);
   if (incumbent) share += add('Incumbency', 0.03 + ((state.politics.office?.approval ?? 50) - 50) / 250);
   if (opp.incumbent) share += add(`${opp.name} is the incumbent`, -0.04);
@@ -287,7 +288,7 @@ export function primaryShare(state, officeId, c) {
     + (candidateQuality(state, officeId) - best.quality) / 250
     + partyBonus(state) * 2
     + (c.endorsements ?? []).filter((x) => ['party', 'activists', 'labor'].includes(x)).length * 0.03
-    + moneyEdge(c.funds ?? 0, best.funds ?? 0, office.cost) * 0.8
+    + moneyEdge(c.funds ?? 0, best.funds ?? 0, raceCost(state, office)) * 0.8
     + (c.incumbent ? 0.15 : 0)
     - (best.incumbent ? 0.12 : 0)
     - scandalDrag(state);

@@ -13,7 +13,7 @@
  *
  * state.era = { start, events: { [id]: { year, ended?, outcome? } }, colonies: { [cc]: { done: [stage…], since, pressure, joined, loyal } } }
  */
-import { PERIOD_RUNGS, COUNTRY_RUNGS } from './PeriodRungs.js';
+import { PERIOD_RUNGS, COUNTRY_RUNGS, PROFESSION_RUNGS } from './PeriodRungs.js';
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
@@ -862,17 +862,19 @@ const OLD_MULTI = OLD_TITLES.filter(([re]) => re.source.includes(' ')).map(([re,
 const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RUNG_RES = PERIOD_RUNGS.map(([modern, old, until]) => [new RegExp(`(?<!\\b[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)')}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g'), old, until, modern]);
 const rungRe = (modern) => new RegExp(`(?<!\\b[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)')}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g');
+const PROF_RES = Object.fromEntries(Object.entries(PROFESSION_RUNGS).map(([id, list]) => [id, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
 const COUNTRY_RES = Object.fromEntries(Object.entries(COUNTRY_RUNGS).map(([cc, list]) => [cc, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
-function periodRungs(t) {
+function periodRungs(t, professionId = null) {
+  for (const [re, old, until] of PROF_RES[professionId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
   for (const [re, old, until] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
   for (const [re, old, until] of RUNG_RES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
 }
-export function periodTitle(title, gender = getEraState()?.character?.gender) {
+export function periodTitle(title, gender = getEraState()?.character?.gender, professionId = null) {
   if (!title) return title;
   title = genderedTitle(title, gender);
   if (ERA_YEAR >= PRESENT) return title;
-  let t = periodRungs(title);
+  let t = periodRungs(title, professionId);
   for (const [re, old, until] of OLD_TITLES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
 }

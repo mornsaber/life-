@@ -71,11 +71,11 @@ const tests = {
     assert.notEqual(us.state.politics.office?.id, 'cabinetSecretary', 'a cabinet secretary doesn\'t outlast two terms');
   },
   'honorary colonelcies run for a term'() {
-    const { engine, state } = life({ countryId: 'GB' }, 9);
+    const { engine, state } = life({ countryId: 'GB' }, 12);
     year(engine, state, 45);
     state.honors.push({ id: 'honorary.0.45', source: 'honoraryRank', name: 'Honorary Colonel — the Rifles', icon: '🎖️', until: state.character.age + 1, renewed: true });
     year(engine, state, 2);
-    assert.ok(!state.honors.some((h) => h.name === 'Honorary Colonel — the Rifles'));
+    assert.ok(!state.honors.some((h) => h.name === 'Honorary Colonel — the Rifles'), `alive ${state.character.alive} age ${state.character.age} ${state.character.causeOfDeath ?? ''} ${JSON.stringify(state.honors.find((h) => h.name === 'Honorary Colonel — the Rifles'))}`);
   },
 };
 

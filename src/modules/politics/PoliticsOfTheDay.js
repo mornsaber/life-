@@ -150,3 +150,20 @@ export function campaignWords(state) {
     treat: !secretBallot(state),
   };
 }
+
+/** "Primary" in the words of the day: a party convention before direct primaries. */
+export const nomWord = (state, cap = false) => (cc(state) === 'US' && conventionEra(state) ? (cap ? 'Convention' : 'convention') : cap ? 'Primary' : 'primary');
+
+/**
+ * What a race costs in the money of its day, against today's figure: American campaigns before
+ * broadcast advertising cost a fraction of today's; an unreformed British election before the
+ * Corrupt Practices Act (1883) was ruinous (treating, transport, "head money"), and capped after.
+ */
+export function raceCostFactor(state) {
+  const y = yearNow(state);
+  const c = cc(state);
+  if (c === 'US') return y < 1920 ? 0.12 : y < 1952 ? 0.25 : y < 1975 ? 0.5 : y < 2000 ? 0.75 : 1;
+  if (c === 'GB' || c === 'IE') return y < 1883 ? 2.5 : 1;
+  return y < 1920 ? 0.3 : y < 1960 ? 0.5 : y < 1990 ? 0.8 : 1;
+}
+export const raceCost = (state, office) => Math.round((office?.cost ?? 0) * raceCostFactor(state));

@@ -649,7 +649,8 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
     division: divisionName(org, dept.id, job.professionId),
     supervisor,
     manager: manager && manager !== supervisor ? manager : null,
-    deptHead: deptHead !== supervisor && deptHead !== manager ? deptHead : null,
+    // An executive reporting straight to the head of the organisation doesn't also sit under the department head.
+    deptHead: deptHead !== supervisor && deptHead !== manager && supervisor !== orgHead && manager !== orgHead ? deptHead : null,
     orgHead: orgHead !== supervisor && orgHead !== manager ? orgHead : null,
     coworkers,
     reports,

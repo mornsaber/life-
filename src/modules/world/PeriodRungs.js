@@ -67,7 +67,6 @@ export const PERIOD_RUNGS = [
   ...R('Director of Sales', ['Sales Manager', 1970]),
   ...R('Front Office Manager', ['Chief Clerk', 1950]),
   ...R('Director of Rooms', ['Resident Manager', 1970]),
-  ...R('Area General Manager', ['District Manager', 1970]),
   // Music and the stage.
   ...R('Gigging Musician', ['Jobbing Musician', 1950]),
   ...R('Music Producer', ['Recording Manager', 1960]),
@@ -209,5 +208,20 @@ export const COUNTRY_RUNGS = {
     ...R('Senior Principal', ['First Class Clerk', 1920]),
     ...R('Director General', ['Assistant Under-Secretary', 1940]),
     ...R('Permanent Secretary', ['Permanent Under-Secretary', 1920]),
+    // No maritime academies: the cadet training ships (HMS Conway, HMS Worcester) until the colleges of the 1960s.
+    ...R('Maritime Academy (B.S. + license track)', ['Cadetship in a Nautical Training Ship', 1970]),
+    ...R('Maritime Academy Faculty & Staff', ['Nautical Training Ships', 1970]),
+    ...R('Licensed Instructor', ['Seamanship Instructor', 1970]),
   ],
+};
+
+/** Rungs whose old name depends on the line of work (a coal "Area General Manager" was a colliery agent). */
+export const PROFESSION_RUNGS = {
+  coalMining: [...R('Area General Manager', ['Colliery Agent', 1947]), ...R('Colliery Manager', ['Certificated Manager', 1872])],
+  hospitality: R('Area General Manager', ['District Manager', 1970]),
+  postal: [
+    ...R('Senior Plant Manager', ['Postal Inspector', 1971]), ...R('Area Manager', ['Division Superintendent of Mails', 1971]),
+    ...R('Area Vice President', ['Chief Post Office Inspector', 1971]), ...R('District Manager', ['Assistant Postmaster General', 1971]),
+  ],
+  maritimeFaculty: R('Professor of Marine Transportation', ['Instructor in Seamanship', 1950]),
 };

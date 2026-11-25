@@ -17,7 +17,7 @@ import { filingFor, settleDeposit } from './FilingFees.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear, prestige, yearlyCount, bumpYearly, criminalRecord } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
-import { campaignWords, secretBallot, endorsementNow } from './PoliticsOfTheDay.js';
+import { campaignWords, secretBallot, endorsementNow, nomWord, raceCost } from './PoliticsOfTheDay.js';
 import { runEligibility, voteShare, endorsementEligible } from './Campaigns.js';
 import { ISSUES, ISSUE_IDS, platformOf, setStance } from './Platform.js';
 import { executiveOf } from './Legislature.js';
@@ -51,12 +51,12 @@ function legacyElection(ctx) {
     const primary = voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08);
     if (primary <= 0.5) {
       p.recognition = Math.min(100, p.recognition + 3);
-      ctx.log(abroad ? `🗳️ Your party didn't select you as its candidate for ${office.name}.` : `🗳️ You lost the primary for ${office.name}.`, '📉', 'bad');
+      ctx.log(abroad ? `🗳️ Your party didn't select you as its candidate for ${office.name}.` : `🗳️ You lost the ${nomWord(state)} for ${office.name}.`, '📉', 'bad');
       ctx.stat('happiness', -6);
       p.everRan = true;
       return;
     }
-    ctx.log(abroad ? `🗳️ Your party selected you as its candidate for ${office.name}!` : `🗳️ You won the primary for ${office.name}!`, '🗳️', 'good');
+    ctx.log(abroad ? `🗳️ Your party selected you as its candidate for ${office.name}!` : `🗳️ You won the ${nomWord(state)} for ${office.name}!`, '🗳️', 'good');
   }
   const share = clamp(voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08), 0.02, 0.9);
   remember(state, c, 'general', share, share > 0.5, null);
@@ -84,11 +84,11 @@ function runPrimary(ctx, c) {
     p.campaign = null;
     p.recognition = Math.min(100, p.recognition + 3);
     ctx.stat('happiness', -7);
-    ctx.log(abroad(state) ? `🗳️ Your party chose ${rival?.name ?? 'another candidate'} over you as its candidate for ${office.name}.` : `🗳️ Primary night: ${rival?.name ?? 'a challenger'} beat you for the nomination for ${office.name} (you got ${pct(share)}). The base wanted someone else.`, '📉', 'bad');
-    if (c.incumbent && p.office?.id === c.officeId) ctx.emit('politics:leave', { reason: 'Lost the primary' });
+    ctx.log(abroad(state) ? `🗳️ Your party chose ${rival?.name ?? 'another candidate'} over you as its candidate for ${office.name}.` : `🗳️ ${nomWord(state) === 'convention' ? 'At the convention' : 'Primary night'}: ${rival?.name ?? 'a challenger'} beat you for the nomination for ${office.name} (you got ${pct(share)}${nomWord(state) === 'convention' ? ' of the delegates' : ''}). ${nomWord(state) === 'convention' ? 'The party bosses wanted someone else.' : 'The base wanted someone else.'}`, '📉', 'bad');
+    if (c.incumbent && p.office?.id === c.officeId) ctx.emit('politics:leave', { reason: `Lost the ${nomWord(state)}` });
     return;
   }
-  ctx.log(abroad(state) ? `🗳️ Your party selected you as its candidate for ${office.name}${rival ? ` over ${rival.name}` : ''}.` : `🗳️ Primary night: you won the nomination for ${office.name} with ${pct(share)}${rival ? `, beating ${rival.name}` : ''}.`, '🗳️', 'good');
+  ctx.log(abroad(state) ? `🗳️ Your party selected you as its candidate for ${office.name}${rival ? ` over ${rival.name}` : ''}.` : `🗳️ ${nomWord(state) === 'convention' ? 'At the convention' : 'Primary night'}: you won the nomination for ${office.name} with ${pct(share)}${nomWord(state) === 'convention' ? ' of the delegates' : ''}${rival ? `, beating ${rival.name}` : ''}.`, '🗳️', 'good');
   c.stage = 'general';
   c.rivals = [];
   generalPrompt(ctx, c);
@@ -194,7 +194,7 @@ export function campaignYear(ctx) {
   if (currentYear(state) < c.electionYear) {
     // The other side raises money too; there's news; there's a poll.
     const office = OFFICES[c.officeId];
-    c.opponent.funds += Math.round(office.cost * rng.float(0.15, 0.35) * (0.6 + c.opponent.quality / 100));
+    c.opponent.funds += Math.round(raceCost(state, office) * rng.float(0.15, 0.35) * (0.6 + c.opponent.quality / 100));
     c.momentum = (c.momentum ?? 0) * 0.5;
     takePoll(state, c, rng);
     if (rng.chance(0.75)) trailEvent(ctx, c);
@@ -224,7 +224,7 @@ function seatHolder(state, c, rng) {
   }
   const mine = state.civic?.party?.bloc;
   if (mine && ex.caucus === mine) {
-    c.rivals = [{ name: ex.name, quality: Math.min(95, c.opponent.quality + 12), platform: Object.fromEntries(ISSUE_IDS.map((id) => [id, Math.max(-2, Math.min(2, (mine === 'labor' ? -1 : 1) + rng.int(-1, 0) * (mine === 'labor' ? -1 : 1)))])), funds: Math.round(office.cost * 0.5), incumbent: true }, ...c.rivals.slice(0, 1)];
+    c.rivals = [{ name: ex.name, quality: Math.min(95, c.opponent.quality + 12), platform: Object.fromEntries(ISSUE_IDS.map((id) => [id, Math.max(-2, Math.min(2, (mine === 'labor' ? -1 : 1) + rng.int(-1, 0) * (mine === 'labor' ? -1 : 1)))])), funds: Math.round(raceCost(state, office) * 0.5), incumbent: true }, ...c.rivals.slice(0, 1)];
     c.stage = 'primary';
     c.challengingIncumbent = ex.name;
     return;
@@ -276,7 +276,7 @@ export const CampaignTrail = {
       p.warChest = 0;
       p.campaign = c;
       const opp = c.opponent;
-      ctx.log(`You declared for ${office.name} — election in ${c.electionYear}. ${opp.incumbent ? `You're taking on the incumbent, ${opponentLabel(state, opp)}.` : `The other side's likely nominee: ${opponentLabel(state, opp)}, ${opp.background}.`}${c.rivals.length ? ` First, a primary against ${c.rivals.map((r) => r.name).join(' and ')}.` : ''}`, office.icon, 'milestone');
+      ctx.log(`You declared for ${office.name} — election in ${c.electionYear}. ${opp.incumbent ? `You're taking on the incumbent, ${opponentLabel(state, opp)}.` : `The other side's likely nominee: ${opponentLabel(state, opp)}, ${opp.background}.`}${c.rivals.length ? ` First, the ${nomWord(state)} against ${c.rivals.map((r) => r.name).join(' and ')}.` : ''}`, office.icon, 'milestone');
       ctx.toast(`Running for ${office.name}`, 'good');
       // What is this campaign about? (Raises that issue in the race.)
       const e = electorateOf(state, officeId);
@@ -297,7 +297,7 @@ export const CampaignTrail = {
       if (!c || !once(ctx, 'politics.fundraise', 2, 'Your donor list is tapped out this year.')) return;
       const office = OFFICES[c.officeId];
       const network = (state.career.job?.grade ?? 0) * 0.04 + prestige(state) / 1000 + state.politics.recognition / 200;
-      const raised = Math.round(office.cost * rng.float(0.12, 0.3) * (0.6 + network));
+      const raised = Math.round(raceCost(state, office) * rng.float(0.12, 0.3) * (0.6 + network));
       c.funds += raised;
       ctx.stat('stress', 5);
       ctx.log(`You spent weeks dialing for dollars and raised ${money(raised)}.`, '📞');
@@ -353,7 +353,7 @@ export const CampaignTrail = {
       const c = state.politics.campaign;
       if (!c || c.legacy) return;
       const office = OFFICES[c.officeId];
-      const cost = Math.round(office.cost * 0.1);
+      const cost = Math.round(raceCost(state, office) * 0.1);
       if (c.funds < cost) return ctx.toast(`An ad buy costs ${money(cost)} — your war chest has ${money(c.funds)}.`, 'warn');
       if (!once(ctx, 'politics.ad', 3, 'Three ad flights a year is all the airtime there is.')) return;
       c.funds -= cost;
@@ -380,7 +380,7 @@ export const CampaignTrail = {
       const { state, rng } = ctx;
       const c = state.politics.campaign;
       if (!c || secretBallot(state)) return;
-      const cost = Math.round(OFFICES[c.officeId].cost * 0.1);
+      const cost = Math.round(raceCost(state, OFFICES[c.officeId]) * 0.1);
       if (c.funds < cost) return ctx.toast('Not enough in the war chest', 'warn');
       if (!once(ctx, 'politics.treat', 1, 'The taverns are already open on your account.')) return;
       c.funds -= cost;
@@ -415,7 +415,7 @@ export const CampaignTrail = {
       const { state, rng } = ctx;
       const c = state.politics.campaign;
       if (!c || c.legacy) return;
-      const cost = Math.round(OFFICES[c.officeId].cost * 0.05);
+      const cost = Math.round(raceCost(state, OFFICES[c.officeId]) * 0.05);
       if (c.funds < cost) return ctx.toast(`Opposition research costs ${money(cost)}.`, 'warn');
       if (!once(ctx, 'politics.oppo', 1, 'Your researchers are already digging.')) return;
       c.funds -= cost;
@@ -469,11 +469,11 @@ export const CampaignTrail = {
       const c = ctx.state.politics.campaign;
       if (!c) return;
       if (optionId === 'straw') {
-        c.funds += Math.round(OFFICES[c.officeId].cost * 0.3);
+        c.funds += Math.round(raceCost(state, OFFICES[c.officeId]) * 0.3);
         ctx.log('The straw donations poured in.', '💸', 'warn');
         ctx.emit('legal:offense', { offenseId: 'campaignFinance', context: 'straw donor scheme', discovery: 0.2, evidence: 0.8 });
       } else {
-        c.funds += Math.round(OFFICES[c.officeId].cost * 0.03);
+        c.funds += Math.round(raceCost(state, OFFICES[c.officeId]) * 0.03);
         ctx.log('You took the legal maximum and nothing more.', '✅');
       }
     },
@@ -491,7 +491,7 @@ export const CampaignTrail = {
       const won = score >= 55;
       state.politics.recognition = Math.min(100, state.politics.recognition + (won ? 8 : 2));
       if (won) {
-        c.funds += Math.round(OFFICES[c.officeId].cost * 0.05);
+        c.funds += Math.round(raceCost(state, OFFICES[c.officeId]) * 0.05);
         c.momentum = (c.momentum ?? 0) + 0.02;
         if (optionId === 'attack' && c.heldOppo && c.opponent) { c.opponent.scandal = (c.opponent.scandal ?? 0) + 1; c.heldOppo = false; }
       } else c.momentum = (c.momentum ?? 0) - 0.01;
@@ -526,7 +526,7 @@ export const CampaignTrail = {
           break;
         case 'attackAd':
           if (optionId === 'respond') {
-            const cost = Math.round(office.cost * 0.08);
+            const cost = Math.round(raceCost(state, office) * 0.08);
             if (c.funds >= cost) { c.funds -= cost; bump(0.005); ctx.log(`Your response ad (${money(cost)}) blunted the attack.`, '📺', 'good'); } else { bump(-0.02); ctx.log('You couldn\'t afford to answer it. It stuck.', '📺', 'warn'); }
           } else if (optionId === 'counter') { c.opponent.quality = Math.max(5, c.opponent.quality - 3); bump(-0.005); ctx.log('You hit back. It turned into a mud fight.', '🗡️'); }
           else { bump(-0.02); ctx.log('The attack ad went unanswered.', '🙄', 'warn'); }
@@ -537,7 +537,7 @@ export const CampaignTrail = {
             const prior = pf[data.issue];
             if (Math.sign(prior) !== Math.sign(data.side) && prior !== 0) { state.politics.credibility = Math.max(0, (state.politics.credibility ?? 70) - 8); ctx.log(`Signing contradicted what you've said on ${ISSUES[data.issue].name.toLowerCase()}. It's being called a flip-flop.`, '🔄', 'warn'); }
             pf[data.issue] = data.side;
-            c.funds += Math.round(office.cost * 0.06);
+            c.funds += Math.round(raceCost(state, office) * 0.06);
             bump(0.01);
             ctx.log(`You signed the pledge: "${ISSUES[data.issue].stances[data.side + 2]}." Their volunteers are knocking doors for you.`, '✍️', 'good');
           } else ctx.log('You declined to sign anyone\'s pledge.', '🙅');
@@ -548,11 +548,11 @@ export const CampaignTrail = {
           else { bump(-0.025); ctx.log('"No comment" ran for a week.', '🤐', 'warn'); }
           break;
         case 'volunteers':
-          if (optionId === 'data') { const cost = Math.round(office.cost * 0.05); if (c.funds >= cost) { c.funds -= cost; bump(0.02); ctx.log('Organisers, lists and an app: the volunteers knocked 40,000 doors.', '📊', 'good'); } else { bump(0.005); ctx.log('No money for organisers; half the volunteers drifted away.', '📊', 'warn'); } }
+          if (optionId === 'data') { const cost = Math.round(raceCost(state, office) * 0.05); if (c.funds >= cost) { c.funds -= cost; bump(0.02); ctx.log('Organisers, lists and an app: the volunteers knocked 40,000 doors.', '📊', 'good'); } else { bump(0.005); ctx.log('No money for organisers; half the volunteers drifted away.', '📊', 'warn'); } }
           else { bump(0.01); ctx.log('A packed rally, wall-to-wall coverage, and a sore throat.', '📣', 'good'); }
           break;
         case 'manager':
-          if (optionId === 'hire') { const cost = Math.round(office.cost * 0.1); if (c.funds >= cost) { c.funds -= cost; c.manager = true; bump(0.015); ctx.log('Your new campaign manager rebuilt the operation in a month.', '💼', 'good'); } else ctx.log('You couldn\'t afford them. They went to work for the other side.', '💼', 'warn'); }
+          if (optionId === 'hire') { const cost = Math.round(raceCost(state, office) * 0.1); if (c.funds >= cost) { c.funds -= cost; c.manager = true; bump(0.015); ctx.log('Your new campaign manager rebuilt the operation in a month.', '💼', 'good'); } else ctx.log('You couldn\'t afford them. They went to work for the other side.', '💼', 'warn'); }
           else { bump(rng.chance(0.5) ? 0.005 : -0.01); ctx.log('You stuck with your friend.', '🤝'); }
           break;
         case 'news':

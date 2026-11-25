@@ -47,6 +47,7 @@ export const AGENCIES = {
     borderPatrol: { name: 'UK Border Force', employers: ['Border Force — Heathrow', 'Border Force — Dover'] },
     federalPrisons: { name: 'HM Prison and Probation Service', employers: ['HMP Wandsworth', 'HMP Manchester'] },
     postal: { name: 'Royal Mail', employers: ['Royal Mail Delivery Office'] },
+    maritimeFaculty: { name: 'Nautical Training Ships', employers: ['the training ship HMS Conway', 'the Thames Nautical Training College (HMS Worcester)', 'the training ship Mercury'], titles: { instructor: 'Seamanship Instructor', professor: 'Navigation Master', trainingShipMaster: 'Chief Officer of the Training Ship', deptHead: 'Head Master', commandant: 'Chief Officer', superintendent: 'Captain-Superintendent', superintendent_cmd1: 'Staff Commander', superintendent_cmd2: 'Commander of the Ship', superintendent_cmd3: 'Deputy Captain-Superintendent' } },
     benefitsClaims: { name: 'Department for Work and Pensions', employers: ['Jobcentre Plus', 'The Pension Service'] },
     caseOfficer: { name: 'Secret Intelligence Service (MI6)', employers: ['SIS — Vauxhall Cross'] },
     sigint: { name: 'GCHQ', employers: ['GCHQ — Cheltenham'] },

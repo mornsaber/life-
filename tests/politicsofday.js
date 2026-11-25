@@ -12,7 +12,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { sync } from '../src/modules/world/History.js';
 import { periodText, periodTitle } from '../src/modules/world/Eras.js';
-import { officePay, standCheck, senateByLegislature, secretBallot, patronageBonus, meritHere, campaignWords, endorsementNow, neutralityBar } from '../src/modules/politics/PoliticsOfTheDay.js';
+import { raceCost, officePay, standCheck, senateByLegislature, secretBallot, patronageBonus, meritHere, campaignWords, endorsementNow, neutralityBar } from '../src/modules/politics/PoliticsOfTheDay.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc, year, age = 40) => {
@@ -73,6 +73,26 @@ const tests = {
     assert.match(periodTitle('Medical Resident'), /House Surgeon/);
     sync(life('US', 2020).state);
     assert.equal(periodTitle('Medical Resident'), 'Medical Resident');
+  },
+  'an 1880 campaign runs end to end: convention, posters, treating, costs of the day'() {
+    const { engine, state } = life('US', 1880, 35);
+    state.finances.cash = 1e6; state.character.residencySince = 0;
+    state.civic ??= {}; state.civic.party = { bloc: 'business', role: 'member' };
+    assert.ok(raceCost(state, { cost: 100000 }) < 20000);
+    for (let t = 0; t < 4 && !state.politics.campaign; t += 1) {
+      for (const id of ['stateRep', 'usRep', 'mayor']) { engine.dispatch('politics.run', id); if (state.politics.campaign) break; }
+      if (!state.politics.campaign) { state.prompts = []; engine.ageUp(); state.prompts = []; }
+    }
+    assert.ok(state.politics.campaign, 'running');
+    for (let i = 0; i < 4 && state.politics.campaign; i += 1) {
+      state.yearly = {};
+      for (const a of ['politics.fundraise', 'politics.canvass', 'politics.treat', 'politics.debate', 'politics.oppo']) engine.dispatch(a);
+      engine.dispatch('politics.ad', 'positive');
+      const html = VIEWS.politics(state, {});
+      assert.doesNotMatch(html, /TV ad|Primary projection/);
+      state.prompts = []; engine.ageUp(); state.prompts = [];
+    }
+    assert.ok(raceCost(life('GB', 1870).state, { cost: 100 }) > 100, 'unreformed British elections were dear');
   },
   'the politics tab renders in 1860 and 2000'() {
     for (const [cc, y] of [['GB', 1860], ['US', 1880], ['US', 2000]]) assert.ok(VIEWS.politics(life(cc, y).state, {}).length > 100);

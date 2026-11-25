@@ -3,6 +3,7 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { periodTitle } from '../../modules/world/Eras.js';
 import { workLifeCard } from '../../modules/career/WorkLife.js';
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { intlOrgsCard } from './IntlOrgsView.js';
@@ -354,9 +355,9 @@ function jobRow(state, p, extra = false) {
   const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
   return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
-      <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [${gradePrefix(p)}${p.levels[0].grade}] → ${esc(top.title)} [${gradePrefix(p)}${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
+      <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(periodTitle(p.levels[0].title, undefined, p.id))} [${gradePrefix(p)}${p.levels[0].grade}] → ${esc(periodTitle(top.title, undefined, p.id))} [${gradePrefix(p)}${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
         ${check.ok && (check.commute || check.note) ? `<small class="req">${check.commute ? `🚗 Commute to ${esc(check.commute.to)} · ${check.commute.minutes} min each way` : `📍 ${esc(check.note)}`}</small>` : ''}
-        ${check.ok ? `<small class="req">${oddsChip(odds)} Entry: ${esc(check.level.title)} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
+        ${check.ok ? `<small class="req">${oddsChip(odds)} Entry: ${esc(periodTitle(check.level.title, undefined, p.id))} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}${(() => { const c = lockingCredential(state, p); return c ? ` ${button('🪪 Get it', 'ui.go', { arg: `licenses|licFocus=${c}`, variant: 'tiny ghost' })}` : ''; })()}</span>`}
     </li>`;

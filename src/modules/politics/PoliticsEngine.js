@@ -20,7 +20,7 @@ import { OFFICES } from './Offices.js';
 import { SEAT_OFFICES, executiveOf } from './Legislature.js';
 import { voteShare, appointmentEligibility } from './Campaigns.js';
 import { CampaignTrail, campaignYear } from './CampaignTrail.js';
-import { officePay } from './PoliticsOfTheDay.js';
+import { officePay, raceCost } from './PoliticsOfTheDay.js';
 import { newCampaign, outsideCalendar, electorateOf, distance } from './Elections.js';
 import { platformOf, platformView, platformYear, recordStance, ISSUES, partyLine } from './Platform.js';
 import { currentYear } from '../../core/State.js';
@@ -285,7 +285,7 @@ export const PoliticsEngine = {
       const limited = office.termLimit && served >= office.termLimit;
       const onCalendar = !office.appointedBy && !outsideCalendar(state, o.id);
       // Appointed and indirectly chosen offices have no electorate to poll.
-      const projected = voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true });
+      const projected = voteShare(state, o.id, { funds: raceCost(state, office) * 0.6, endorsements: [] }, { incumbent: true });
       const reelectionPrompt = () => ctx.prompt({
         type: 'politics.reelection',
         icon: '🗳️',
@@ -423,7 +423,7 @@ export const PoliticsEngine = {
       // On the record: going against your own platform costs credibility.
       if (issue && side) recordStance(state, issue, side);
       if (opt.recognition) state.politics.recognition = Math.min(100, state.politics.recognition + opt.recognition);
-      if (opt.warChest) state.politics.warChest = (state.politics.warChest ?? 0) + Math.round(OFFICES[o.id].cost * opt.warChest);
+      if (opt.warChest) state.politics.warChest = (state.politics.warChest ?? 0) + Math.round(raceCost(state, OFFICES[o.id]) * opt.warChest);
       if (side < 0 && issue === 'labor') state.politics.laborVotes = (state.politics.laborVotes ?? 0) + 1;
       ctx.log(`${d.title}: ${opt.label.slice(2).trim()} (approval ${o.approval}%${delta ? `, ${delta > 0 ? '+' : ''}${delta}` : ''}).`, '🏛️');
     },
@@ -463,7 +463,7 @@ export const PoliticsEngine = {
       }
       // Party leaders and appointed-by-parliament offices: the old one-step vote.
       if (outsideCalendar(state, o.id)) {
-        const share = clamp(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) + rng.float(-0.07, 0.07), 0.05, 0.85);
+        const share = clamp(voteShare(state, o.id, { funds: raceCost(state, office) * 0.6, endorsements: [] }, { incumbent: true }) + rng.float(-0.07, 0.07), 0.05, 0.85);
         if (share > 0.5) {
           o.terms += 1;
           o.termYearsLeft = office.term;
@@ -478,7 +478,7 @@ export const PoliticsEngine = {
       }
       // A real race: a primary challenge if your base is restless, then the other party's nominee.
       const c = newCampaign(state, o.id, rng, { incumbent: true, electionYear: currentYear(state) + Math.max(0, o.termYearsLeft) });
-      c.funds += Math.round(office.cost * 0.4) + (state.politics.warChest ?? 0);
+      c.funds += Math.round(raceCost(state, office) * 0.4) + (state.politics.warChest ?? 0);
       state.politics.warChest = 0;
       state.politics.campaign = c;
       ctx.log(`You're running for re-election as ${office.name}. ${c.rivals.length ? `${c.rivals[0].name} is challenging you in the primary. ` : ''}The other side is running ${c.opponent.name}, ${c.opponent.background}.`, '🗳️');

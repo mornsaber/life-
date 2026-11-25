@@ -337,7 +337,7 @@ export function refreshPeriodTitle(job) {
   const level = p && levelById(p, job.levelId);
   if (job && !job.gradeSynced) { job.gradeSynced = true; if (level) { const g = gradeAt(level, job.employer?.size); if (g > job.grade) { job.grade = g; job.peakGrade = Math.max(job.peakGrade ?? 0, g); } } }
   if (!job?.titleRaw || job.title !== job.titleShown) return;
-  const t = periodTitle(job.titleRaw);
+  const t = periodTitle(job.titleRaw, undefined, job.professionId);
   if (t !== job.title) job.title = job.titleShown = t;
 }
 
@@ -356,7 +356,7 @@ export function logRung(state, job, kind) {
 export function applyLevel(job, level) {
   job.levelId = level.id;
   job.titleRaw = job.titleMap?.[level.id] ?? level.title;
-  job.title = job.titleShown = periodTitle(job.titleRaw);
+  job.title = job.titleShown = periodTitle(job.titleRaw, undefined, job.professionId);
   job.track = level.track;
   job.grade = gradeAt(level, job.employer?.size);
   job.abilities = [...level.abilities];
