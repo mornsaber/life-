@@ -233,7 +233,8 @@ export function probateAssets(state) {
 export function settleEstate(state) {
   const { assets, debts } = estateBalance(state);
   const plan = state.people?.plan ?? {};
-  const funeral = Math.min(assets, FUNERAL_COST);
+  // A burial club or friendly society paid for the funeral (life/ClassOfTheDay.js).
+  const funeral = state.classDay?.society ? 0 : Math.min(assets, FUNERAL_COST);
   const debtsPaid = Math.min(assets - funeral, debts);
   // A contested will costs the estate a few per cent more in lawyers.
   const probate = Math.min(assets - funeral - debtsPaid, Math.round(probateAssets(state) * (PROBATE_RATE + (willContested(state) ? 0.04 : 0))));

@@ -6,6 +6,7 @@ import { esc, money, button, card } from '../Components.js';
 import { yearNow } from '../../modules/world/Eras.js';
 import { PLACES, placeCheck, INSTITUTIONS, institutionCheck, institutionsHere, PAPER_LINES, CURRICULA, RITES, canSetCurriculum, isBishop, firstsOf, recordsOf, memorialsHere, earlyMilestones, improvementsNow, seatNames } from '../../modules/life/WorldLegacies.js';
 import { EXPEDITIONS } from '../../modules/career/Feats.js';
+import { CLASSES, classNow, originOf, welfareHere } from '../../modules/life/ClassOfTheDay.js';
 
 const rich = (state) => ({ ...state, finances: { ...state.finances, cash: Infinity } });
 const sub = (t, body) => (body ? `<h4 class="sub">${t}</h4>${body}` : '');
@@ -39,4 +40,25 @@ export function worldLegaciesCard(state) {
     ${sub('Improve the land', land ? `<div class="action-grid">${land}</div>` : '')}
     ${sub('What the schools teach', schools)}${sub('The rite of the church', rite)}${sub('Name the family seat', seat)}
     <p class="fine">All of this stays in the world for your heirs: they live with what you built.</p>`, { icon: '🗺️', summary: y ? '' : '' });
+}
+
+/** Class: where you started, where you are, and the friendly society. */
+export function classCard(state) {
+  if (state.character.age < 18) return '';
+  const c = state.classDay ?? {};
+  const y = yearNow(state);
+  const origin = originOf(state);
+  const now = classNow(state);
+  const rows = [
+    `<li>🏠 Born: <b>${esc(CLASSES[origin])}</b></li>`,
+    `<li>🪜 Now: <b>${esc(CLASSES[now])}</b>${now !== origin ? ' <small class="muted">(moved in your own lifetime)</small>' : ''}</li>`,
+    c.polished ? '<li>🎩 Elocution and a good tailor: most people can\'t place you</li>' : '',
+    c.society ? `<li>🤝 Member of ${esc(c.society.name)} since age ${c.society.since}</li>` : '',
+  ].join('');
+  const acts = [
+    !welfareHere(state) || c.society ? button(c.society ? '🤝 Leave the friendly society' : '🤝 Join a friendly society (sick pay, a decent funeral)', 'classDay.join', { variant: 'small' }) : '',
+    y < 1975 && !c.polished && ['working', 'lowerMiddle'].includes(origin) ? button('🎩 Elocution lessons', 'classDay.polish', { variant: 'small', hint: 'Doors open a little wider' }) : '',
+  ].join('');
+  return card('Class', `<ul class="history">${rows}</ul>${acts ? `<div class="action-grid">${acts}</div>` : ''}
+    <p class="fine">${y < 1970 ? 'The right accent and the right school still open the best doors: the diplomatic service, the bar, the City.' : 'Where you started still counts, but less than it did.'}</p>`, { icon: '🪜', summary: CLASSES[now] });
 }

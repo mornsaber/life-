@@ -3,7 +3,7 @@
  * and mentoring.
  */
 import { GIFTS, giftCheck, giftCost, marksHere } from '../../modules/life/Marks.js';
-import { worldLegaciesCard } from './WorldLegaciesCard.js';
+import { worldLegaciesCard, classCard } from './WorldLegaciesCard.js';
 import { PLACES } from '../../modules/life/WorldLegacies.js';
 import { secretSocietiesCard } from './SecretSocietiesView.js';
 import { schismIssue } from '../../modules/community/Religions.js';
@@ -299,5 +299,5 @@ function localCard(state) {
 }
 
 export function civicView(state) {
-  return `${marksCard(state)}${worldLegaciesCard(state)}${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
+  return `${classCard(state)}${marksCard(state)}${worldLegaciesCard(state)}${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
 }
