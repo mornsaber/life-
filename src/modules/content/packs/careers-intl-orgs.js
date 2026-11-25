@@ -27,6 +27,7 @@ import { citizenshipsOf } from '../../world/Countries.js';
 import { eraYear } from '../../world/Eras.js';
 import { sovereignIn } from '../../world/HistoricalData.js';
 import { euMemberIn } from '../../world/EuMembership.js';
+import { newStateMember } from '../../world/NewStates.js';
 
 /** EU and NATO members (citizenship gates). */
 /** Every country that has been in the EEC/EU (Britain 1973–2020); memberIn() says who was in, when. */
@@ -60,7 +61,7 @@ export const ORG_MEMBERS = {
 /** Was this country a member of that body (ORG_MEMBERS) in the year being played? */
 export function orgMember(org, cc, y = eraYear()) {
   const v = ORG_MEMBERS[org]?.[cc];
-  if (v == null) return false;
+  if (v == null) return newStateMember(org, cc, y);
   const spans = typeof v === 'number' ? [[v, null]] : Array.isArray(v[0]) ? v : [v];
   return spans.some(([from, until]) => y >= from && (until == null || y < until)) && sovereignIn(cc, y);
 }

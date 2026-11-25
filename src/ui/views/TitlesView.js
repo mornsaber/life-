@@ -14,6 +14,7 @@ import { REGIONS } from '../../modules/life/Regions.js';
 import { STATES } from '../../modules/life/States.js';
 import { yearNow } from '../../modules/world/Eras.js';
 import { flagImg } from '../Flags.js';
+import { euMemberIn } from '../../modules/world/EuMembership.js';
 
 const as = (state, cc) => ({ ...state, character: { ...state.character, countryId: cc } });
 
@@ -59,9 +60,7 @@ export function titleMarketCard(state) {
 /* The wallet                                                          */
 /* ------------------------------------------------------------------ */
 
-const EU = ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'GR', 'SE', 'DK', 'FI', 'PL', 'CZ', 'HU', 'SK', 'SI', 'HR', 'RO', 'BG', 'LT', 'LV', 'EE', 'LU', 'MT', 'CY'];
-const EU_JOINED = { DE: 1958, FR: 1958, IT: 1958, NL: 1958, BE: 1958, LU: 1958, DK: 1973, IE: 1973, GB: 1973, GR: 1981, ES: 1986, PT: 1986, AT: 1995, SE: 1995, FI: 1995, PL: 2004, CZ: 2004, HU: 2004, SK: 2004, SI: 2004, LT: 2004, LV: 2004, EE: 2004, MT: 2004, CY: 2004, RO: 2007, BG: 2007, HR: 2013 };
-const inEU = (cc, y) => (EU.includes(cc) || cc === 'GB') && y >= (EU_JOINED[cc] ?? 9999) && !(cc === 'GB' && y >= 2021);
+const inEU = (cc, y) => euMemberIn(cc, y);
 const DL_NAME = { DE: 'Führerschein', AT: 'Führerschein', FR: 'Permis de conduire', BE: 'Permis de conduire', IT: 'Patente di guida', ES: 'Permiso de conducción', PT: 'Carta de condução', NL: 'Rijbewijs', SE: 'Körkort', DK: 'Kørekort', NO: 'Førerkort', FI: 'Ajokortti', PL: 'Prawo jazdy', JP: '運転免許証', CN: '机动车驾驶证', KR: '운전면허증', BR: 'Carteira Nacional de Habilitação', MX: 'Licencia de Conducir', AR: 'Licencia de Conducir', IN: 'Driving Licence', GB: 'Driving Licence', IE: 'Driving Licence', AU: 'Driver Licence', NZ: 'Driver Licence', CA: "Driver's Licence", US: 'Driver License', RU: 'Водительское удостоверение' };
 const num = (state, salt) => { let h = 7; for (const ch of `${state.character.firstName}${state.character.lastName}${salt}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return String(h).padStart(10, '0').slice(0, 9); };
 

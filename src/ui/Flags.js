@@ -107,6 +107,7 @@ const DRAW = {
   spainRepublic: () => wrap(bands(['#C60B1E', '#FFC400', '#6C3082']), 'The tricolour of the Second Spanish Republic'),
   jerseyOld: () => wrap(`<rect width="${W}" height="${H}" fill="#fff"/><path d="M0,0 L60,45 M60,0 L0,45" stroke="#DF112D" stroke-width="7"/>`, 'The flag of Jersey (before the 1981 badge)'),
   stGeorge: () => wrap(`<rect width="${W}" height="${H}" fill="#fff"/><rect x="25" y="0" width="10" height="${H}" fill="#CE1124"/><rect x="0" y="17.5" width="${W}" height="10" fill="#CE1124"/>`, 'The St George\'s cross Guernsey flew before 1985'),
+  nzFern: () => wrap(`<rect width="${W}" height="${H}" fill="#00247D"/><path d="M0,0 L30,0 Q26,22 0,45 Z" fill="#000"/><path d="M6,40 Q16,24 22,4" fill="none" stroke="#fff" stroke-width="1.6"/>${[8, 12, 16, 20].map((t, i) => `<path d="M${6 + i * 4},${38 - i * 9} q-4,-2 -6,-1 M${6 + i * 4},${38 - i * 9} q3,-3 6,-2" stroke="#fff" stroke-width="1.4" fill="none"/>`).join('')}${[[44, 12], [38, 22], [50, 20], [44, 34]].map(([x, y]) => star(x, y, 2.6, '#CC142B').replace('/>', ' stroke="#fff" stroke-width="0.7"/>')).join('')}`, 'The silver fern flag of New Zealand'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };
 

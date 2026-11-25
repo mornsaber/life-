@@ -39,6 +39,7 @@
 import { ORDERS, CHIVALRY } from './Honours.js';
 import { yearNow, colonyHere, colonyStage, autonomyOf } from './Eras.js';
 import { COUNTRIES } from './Countries.js';
+import { newStateOf } from './NewStates.js';
 import { dominionMode as historyMode, statuteOverride, DOMINION_HONOURS as DOMINIONS } from '../politics/StatuteBook.js';
 
 const R = (...c) => c.map((x) => (Array.isArray(x) ? x : [x, 1]));
@@ -163,6 +164,13 @@ function britishOverseas(y, { colony = false } = {}) {
 }
 
 /** A country's own honours in a year (not counting what its people got from an empire). null: none. */
+/** The order a new state founds for itself: three grades, in its flag's colours. */
+function newOrder(cc) {
+  const short = (COUNTRIES[cc]?.name ?? cc).replace(/^the /, '');
+  const ribbon = ORDERS[cc]?.tiers?.[0]?.ribbon ?? [['#1f3a93', 1], ['#f5c518', 1], ['#1f3a93', 1]];
+  const g = (id, grade, min) => ({ id, name: `${grade} of the Order of ${short}`, post: `${grade[0]}O${short[0]}`, min, ribbon });
+  return { minAge: 35, order: `Order of ${short}`, tiers: [g('member', 'Member', 80), g('officer', 'Officer', 130), g('companion', 'Companion', 190)] };
+}
 function ownOrders(cc, y) {
   if (cc === 'GB') return britishLadder(y);
   if (cc === 'DE') return y < 1918 ? PRUSSIA : y < ORDER_FROM.DE ? null : ORDERS.DE;
@@ -193,6 +201,14 @@ export function honoursSystem(state) {
   const y = yearNow(state);
   const forGender = (l) => (l ? { ...l, tiers: l.tiers.filter((t) => !t.only || (state.character.gender === 'female' ? t.only.female : t.only.male)) } : l);
   const out = [];
+  // A territory this world made independent: the old sovereign's list for the first years (as the new
+  // Commonwealth states kept the British one), then an order of its own.
+  const made = newStateOf(cc);
+  if (made) {
+    if (y < made.year + 8 && made.of === 'GB') return [{ via: 'GB', ladder: forGender(britishOverseas(y)) }].filter((x) => x.ladder?.tiers?.length);
+    if (ORDERS[cc]?.tiers?.length && !/National Order of Merit/.test(ORDERS[cc].tiers[0].name)) return [{ via: cc, ladder: forGender(ORDERS[cc]) }];
+    return [{ via: cc, ladder: newOrder(cc) }];
+  }
   // A self-governing territory: its own honours, the sovereign's (British, Danish, American), or both.
   const auto = autonomyOf(state, cc);
   if (auto && auto.honours && auto.honours !== 'own') {

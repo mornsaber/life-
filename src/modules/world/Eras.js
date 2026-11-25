@@ -1160,6 +1160,9 @@ export const usStars = (y) => US_STARS.filter(([from]) => from <= y).at(-1)?.[1]
  * falls in this world, the red flag keeps flying.
  */
 export function periodFlag(state, cc) {
+  // A flag this world's people voted to change (New Zealand's fern, 2016).
+  const changed = state?.world?.flagChange?.[cc];
+  if (changed && yearNow(state) >= changed.year) return { id: changed.id };
   if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
   const y = yearNow(state);
   // Your own city's state flies its own flag (Bavaria's lozenges, the Transvaal's Vierkleur).
