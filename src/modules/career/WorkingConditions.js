@@ -22,6 +22,7 @@
 import { Random } from '../../core/Random.js';
 import { yearNow } from '../world/Eras.js';
 import { getProfession } from './JobTrees.js';
+import { statuteIn, statuteOverride, COMP_FROM, CASUAL_UNTIL } from '../politics/StatuteBook.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
 const at = (rows, y) => rows.find(([until]) => y < until)?.[1] ?? rows.at(-1)[1];
@@ -44,11 +45,18 @@ const HOLIDAYS = {
 /** Standard hours a week for a job here and now (offices and the professions a little shorter). */
 export function weekHours(state, job = state.career?.job) {
   if (!job) return 0;
-  const base = at(HOURS[cc(state)] ?? HOURS['*'], yearNow(state));
+  let base = at(HOURS[cc(state)] ?? HOURS['*'], yearNow(state));
+  // The 48-hour week is a law (StatuteBook): passed early it caps the week; repealed, the long week returns.
+  const capped = statuteIn(state, 'fortyEightHourWeek');
+  if (capped && base > 48) base = 48;
+  else if (!capped && base <= 48) base = 54;
   const office = ['federal', 'state', 'municipal', 'public'].includes(job.sector) || /finance|corporate|law|accounting|insurance|ministry|college|university|education/.test(job.professionId);
   return Math.round(office ? Math.max(35, base - 6) : base);
 }
-export const paidHolidays = (state) => at(HOLIDAYS[cc(state)] ?? HOLIDAYS['*'], yearNow(state));
+export const paidHolidays = (state) => {
+  if (!statuteIn(state, 'holidaysWithPay')) return 0;
+  return at(HOLIDAYS[cc(state)] ?? HOLIDAYS['*'], yearNow(state)) || 7;
+};
 export const saturdayWork = (state) => yearNow(state) < (cc(state) === 'US' ? 1940 : 1965);
 
 /** The danger in a trade: [yearly chance of a serious accident, disease id, yearly exposure chance, label]. */
@@ -61,9 +69,7 @@ const DANGER = {
 };
 const ASBESTOS = ['plumbing', 'trades', 'carpentry', 'merchantMarine', 'manufacturing', 'ironworking', 'docks'];
 const eraRisk = (y) => (y < 1880 ? 1.3 : y < 1914 ? 1 : y < 1950 ? 0.6 : y < 1980 ? 0.3 : 0.12);
-const COMP_FROM = { DE: 1884, GB: 1897, IE: 1897, FR: 1898, IT: 1898, US: 1911, JP: 1911, CA: 1914, AU: 1902, NZ: 1900, '*': 1920 };
-export const compensationHere = (state) => yearNow(state) >= (COMP_FROM[cc(state)] ?? COMP_FROM['*']);
-const CASUAL_UNTIL = { GB: 1967, IE: 1970, US: 1953, AU: 1967, '*': 1960 };
+export const compensationHere = (state) => statuteIn(state, 'workmensCompensation');
 const TRUCK = (state, job) => cc(state) === 'US' && yearNow(state) < 1945 && ['coalMining', 'agriculture'].includes(job.professionId);
 
 const cw = (state) => (state.conditions ??= { seen: {}, asbestos: 0, dust: 0, injuries: 0 });
@@ -126,7 +132,7 @@ export const WorkingConditionsModule = {
     }
     if (ASBESTOS.includes(job.professionId) && y >= 1930 && y < 1985) c.asbestos += 1;
     // Casual hiring at the docks.
-    if (job.professionId === 'docks' && y < (CASUAL_UNTIL[cc(state)] ?? CASUAL_UNTIL['*']) && rng.chance(0.5)) {
+    if (job.professionId === 'docks' && !statuteIn(state, 'dockDecasualisation') && rng.chance(0.5)) {
       ctx.spend(Math.round((job.salary ?? 20000) * rng.float(0.1, 0.3)), 'Days not taken on at the call', { allowDebt: true });
       if (once(state, 'callOn')) ctx.log(cc(state) === 'US' ? 'The shape-up: every morning you stand at the pier and the hiring boss picks his men. Some weeks he doesn\'t pick you.' : 'The call-on: twice a day at the dock gate, and some days the foreman doesn\'t call your name.', '⚓', 'warn');
     }

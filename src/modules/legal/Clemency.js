@@ -24,6 +24,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, prestige, SPENT_AFTER } from '../../core/State.js';
 import { OFFENSES } from './Offenses.js';
 import { stateOf } from '../life/Regions.js';
+import { statuteIn, statuteOverride, REHAB_FROM } from '../politics/StatuteBook.js';
 
 export const SEAL_COST = 1200;
 export const PARDON_WAIT = 5;
@@ -86,7 +87,8 @@ export function spentStatus(state, r) {
   const from = recordCountry(state, r);
   const rule = REHAB[legalSystem(from)] ?? REHAB.other;
   // No automatic rehabilitation before the law that brought it in.
-  if (yearNow(state) < (REHAB_FROM[from] ?? rule.from)) return null;
+  const law = statuteOverride(state, 'spentConvictions', from);
+  if (law === false || (law !== true && yearNow(state) < (REHAB_FROM[from] ?? rule.from))) return null;
   const prison = /(\d+) yr prison/.test(r.sentence ?? '') ? Number(r.sentence.match(/(\d+) yr prison/)[1]) : 0;
   if (prison > rule.maxPrison) return null;
   const years = r.severity === 'felony' ? (prison > 4 ? rule.long : rule.felony) : rule.misdemeanor;
@@ -98,7 +100,6 @@ export function spentStatus(state, r) {
  * sentence, and the longest prison term that can be spent at all.
  */
 /** When automatic rehabilitation began, where it differs from the legal system's own date. */
-const REHAB_FROM = { GB: 1975, IE: 2016, AU: 1990, NZ: 2004, CA: 1970, IN: 1975, ZA: 2009 };
 export const REHAB = {
   us: { from: 2018, misdemeanor: 7, felony: 10, long: 10, maxPrison: 4, law: 'a clean-slate law' },
   common: { from: 1975, misdemeanor: 2, felony: 4, long: 7, maxPrison: 10, law: 'the rehabilitation of offenders laws' },

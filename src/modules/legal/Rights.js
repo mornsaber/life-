@@ -23,25 +23,26 @@ import { statuteIn, SUFFRAGE_FROM, WIVES_OWN, DIVORCE_FROM, NO_FAULT_FROM, DECRI
 import { skinToneOf, personTone } from '../people/SkinTone.js';
 import { stateIdOf } from '../life/Regions.js';
 import { spouseOf } from '../people/People.js';
+import { statuteOverride, CIVIL_UNION_FROM, WOMEN_CREDIT_FROM } from '../politics/StatuteBook.js';
+export { CIVIL_UNION_FROM, WOMEN_CREDIT_FROM };
 
 const cc = (state) => state.character?.countryId ?? 'US';
 const historic = (state) => Boolean(state?.era) && yearNow(state) < PRESENT;
 const female = (state) => state.character.gender === 'female';
 
 /** The year a woman could get credit in her own name. */
-export const WOMEN_CREDIT_FROM = { US: 1974, GB: 1975, IE: 1976, CA: 1974, AU: 1984, NZ: 1977, FR: 1965, DE: 1958, IT: 1975, ES: 1975, PT: 1976, NL: 1957, BE: 1976, CH: 1988, AT: 1975, SE: 1921, NO: 1927, DK: 1925, JP: 1947, ZA: 1984, '*': 1975 };
 
 /** A reason a woman can't open credit here and now, or null. */
 export function womenCreditBlock(state) {
   if (!female(state) || !historic(state)) return null;
   const from = WOMEN_CREDIT_FROM[cc(state)] ?? WOMEN_CREDIT_FROM['*'];
-  if (yearNow(state) >= from) return null;
+  if (statuteIn(state, 'womensCredit')) return null;
   return spouseOf(state)
     ? null // in her husband's name, with his signature: see creditInHusbandsName
     : `Banks won't give credit to a single woman without a man to co-sign (until ${from})`;
 }
 /** A married woman's card or loan is in her husband's name before the equal-credit law. */
-export const creditInHusbandsName = (state) => female(state) && historic(state) && Boolean(spouseOf(state)) && yearNow(state) < (WOMEN_CREDIT_FROM[cc(state)] ?? WOMEN_CREDIT_FROM['*']);
+export const creditInHusbandsName = (state) => female(state) && historic(state) && Boolean(spouseOf(state)) && !statuteIn(state, 'womensCredit');
 
 /* ------------------------------------------------------------------ custody */
 const FATHERS_RIGHT_UNTIL = { GB: 1839, IE: 1839, US: 1850, CA: 1855, AU: 1860, NZ: 1860, FR: 1970, DE: 1958, IT: 1975, ES: 1981, PT: 1977, BE: 1974, NL: 1947, CH: 1978, JP: 1947, '*': 1900 };
@@ -93,13 +94,12 @@ export function mixedMarriageBlock(state, person) {
 }
 
 /* ------------------------------------------------------------- partnerships */
-export const CIVIL_UNION_FROM = { DK: 1989, NO: 1993, SE: 1995, IS: 1996, NL: 1998, FR: 1999, BE: 2000, DE: 2001, FI: 2002, NZ: 2005, GB: 2005, CH: 2007, CZ: 2006, SI: 2006, HU: 2009, AT: 2010, IE: 2011, BR: 2011, CO: 2007, UY: 2008, AU: 2009, US: 2000, IT: 2016, GR: 2015, CL: 2015, EE: 2016, CY: 2015, HR: 2014, MT: 2014, '*': 9999 };
 const sameSex = (state, person) => person && person.gender && person.gender === state.character.gender;
 /** 'marriage' | 'partnership' | null: what two men or two women can have here. */
 export function sameSexUnion(state) {
   if (!historic(state)) return 'marriage';
   if (statuteIn(state, 'sameSexMarriage')) return 'marriage';
-  return yearNow(state) >= (CIVIL_UNION_FROM[cc(state)] ?? 9999) ? 'partnership' : null;
+  return statuteIn(state, 'civilPartnerships') ? 'partnership' : null;
 }
 /** Why you can't marry this partner, or null. */
 export function marriageBlock(state, person) {
@@ -134,7 +134,8 @@ export function rightsSummary(state) {
   if (her) {
     const own = statuteIn(state, 'marriedWomensProperty');
     const credit = WOMEN_CREDIT_FROM[c] ?? WOMEN_CREDIT_FROM['*'];
-    rows.push({ icon: '👛', label: 'Your money', text: `${own ? 'A married woman owns her own property and wages.' : `Marry, and your property and wages become your husband's (until ${WIVES_OWN[c] ?? 'reform'}).`} ${historic(state) && y < credit ? `Credit needs a husband's signature (until ${credit}).` : 'You can get credit in your own name.'}`, bad: !own || (historic(state) && y < credit) });
+    const noCredit = historic(state) && !statuteIn(state, 'womensCredit');
+    rows.push({ icon: '👛', label: 'Your money', text: `${own ? 'A married woman owns her own property and wages.' : `Marry, and your property and wages become your husband's (until ${WIVES_OWN[c] ?? 'reform'}).`} ${noCredit ? `Credit needs a husband's signature${y < credit ? ` (until ${credit})` : ''}.` : 'You can get credit in your own name.'}`, bad: !own || noCredit });
   }
   const ban = mixedMarriageBan(state);
   const union = sameSexUnion(state);

@@ -19,6 +19,7 @@ import { Random } from '../../core/Random.js';
 import { yearNow, PRESENT } from '../world/Eras.js';
 import { REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
+import { statuteIn, statuteOverride, CANE_UNTIL } from '../politics/StatuteBook.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
 const sideRng = (state) => new Random((((state.world?.seed ?? 1) * 5807) ^ (state.character.age * 389 + 0x5c1)) >>> 0);
@@ -27,9 +28,8 @@ const SOUTH = ['AL', 'AR', 'FL', 'GA', 'LA', 'MS', 'NC', 'SC', 'TN', 'TX', 'VA',
 const BLOC = ['RU', 'UA', 'BY', 'PL', 'CZ', 'HU', 'RO', 'BG', 'DD', 'CN', 'VN', 'CU', 'KP'];
 
 /** The year corporal punishment ended in schools here (before it, the cane/strap was ordinary). */
-const CANE_UNTIL = { GB: 1987, IE: 1982, FR: 1887, SE: 1958, NO: 1936, DK: 1967, FI: 1914, JP: 1947, DE: 1973, AT: 1974, IT: 1928, NL: 1920, PL: 1783, RU: 1917, NZ: 1990, AU: 1995, CA: 2004, ZA: 1996, IN: 2009, KR: 2011, US: PRESENT };
 const IMPLEMENT = { GB: 'the cane', IE: 'the leather strap', US: 'the paddle', AU: 'the cane', NZ: 'the strap', CA: 'the strap', ZA: 'the cane', IN: 'the ruler', DE: 'the Rohrstock', AT: 'the Rohrstock', JP: 'the teacher\'s fist' };
-export const caneHere = (state) => yearNow(state) < (CANE_UNTIL[cc(state)] ?? 1980);
+export const caneHere = (state) => statuteIn(state, 'schoolCane');
 
 /** The exams you sat at the end of school, here and now. */
 export function leavingExam(state) {

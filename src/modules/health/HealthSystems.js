@@ -15,6 +15,8 @@
 import { yearNow } from '../world/Eras.js';
 import { countryOf, isAbroad, priceLevel } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
+import { statuteIn, statuteOverride, NATIONAL_HEALTH_FROM } from '../politics/StatuteBook.js';
+export { NATIONAL_HEALTH_FROM };
 
 /**
  *   wait        months for non-urgent specialist treatment in the public system
@@ -40,10 +42,9 @@ export const WAITLISTED = ['heartDisease', 'backInjury', 'arthritis', 'hearingLo
 const MLS = [[104000, 0], [121000, 0.01], [162000, 0.0125], [Infinity, 0.015]];
 
 /** When each country's national health system began. */
-export const NATIONAL_HEALTH_FROM = { DE: 1883, AT: 1888, JP: 1961, GB: 1948, FR: 1945, CA: 1966, AU: 1975, NZ: 1938, SE: 1955, NO: 1956, DK: 1960, IT: 1978, ES: 1986, KR: 1989, TW: 1995, CN: 2009, IN: 2018, MX: 2003, BR: 1988, IL: 1995, NL: 1941, BE: 1945, CH: 1996, IE: 1970 };
 /** The national system where you live — none before it was founded (Britain's NHS in 1948, and so on). */
 export const systemHere = (state) => (isAbroad(state) && nationalHealthNow(state) ? HEALTH_SYSTEMS[countryOf(state).id] ?? null : null);
-const nationalHealthNow = (state) => { const y = yearNow(state); return y >= 1950 && !(NATIONAL_HEALTH_FROM[countryOf(state).id] > y); };
+const nationalHealthNow = (state) => statuteIn(state, 'nationalHealth', countryOf(state).id);
 export const hasPrivateCover = (state) => Boolean(state.health?.privateCover && systemHere(state)?.private);
 /** Premium for private cover where you live, by age. */
 export const privatePremium = (state) => {

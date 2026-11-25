@@ -19,11 +19,11 @@
 import { yearNow } from '../world/Eras.js';
 import { netWorth } from '../../core/State.js';
 import { priceLevel } from '../world/Countries.js';
+import { statuteIn, statuteOverride, WELFARE_FROM } from '../politics/StatuteBook.js';
 
 export const CLASSES = { upper: 'Upper class', middle: 'Middle class', lowerMiddle: 'Lower middle class', working: 'Working class' };
 const RANK = { working: 0, lowerMiddle: 1, middle: 2, upper: 3 };
 const GENTLEMEN = ['foreignService', 'gb_foreignService', 'law', 'anglicanClergy', 'colonialService', 'finance', 'college', 'university', 'holySeeDiplomacy', 'ministry', 'intlJustice', 'judiciary'];
-const WELFARE_FROM = { GB: 1948, IE: 1952, US: 1935, FR: 1945, DE: 1883, SE: 1913, NZ: 1938, AU: 1944, CA: 1940, JP: 1961, '*': 1950 };
 const cc = (state) => state.character.countryId ?? 'US';
 const cd = (state) => (state.classDay ??= { origin: null, now: null, polished: false, risen: null, society: null });
 
@@ -57,7 +57,7 @@ export function classBonus(state, profession) {
   const base = { upper: 0.12, middle: 0.04, lowerMiddle: -0.06, working: -0.15 }[o];
   return base * weight(yearNow(state)) * (base < 0 && cd(state).polished ? 0.5 : 1);
 }
-export const welfareHere = (state) => yearNow(state) >= (WELFARE_FROM[cc(state)] ?? WELFARE_FROM['*']);
+export const welfareHere = (state) => statuteIn(state, 'nationalInsurance');
 const SOCIETY = (state) => (cc(state) === 'US' ? 'the Odd Fellows lodge (sick and burial benefits)' : cc(state) === 'FR' ? 'a société de secours mutuels' : cc(state) === 'DE' ? 'a Krankenkasse' : 'the Oddfellows (sick club and burial club)');
 const dues = (state) => Math.round(260 * priceLevel(state) * (yearNow(state) < 1914 ? 0.4 : 0.6));
 

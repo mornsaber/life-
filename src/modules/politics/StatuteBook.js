@@ -15,6 +15,22 @@ import { yearNow, eraYear, PRESENT } from '../world/Eras.js';
 import { SECTORS, historyShare } from '../world/OwnershipHistory.js';
 
 /* ---- History's dates ---- */
+/* ---- Dates of the laws other modules follow (moved here so a bill can change them) ---- */
+export const WELFARE_FROM = { GB: 1948, IE: 1952, US: 1935, FR: 1945, DE: 1883, SE: 1913, NZ: 1938, AU: 1944, CA: 1940, JP: 1961, '*': 1950 };
+export const COMP_FROM = { DE: 1884, GB: 1897, IE: 1897, FR: 1898, IT: 1898, US: 1911, JP: 1911, CA: 1914, AU: 1902, NZ: 1900, '*': 1920 };
+export const CASUAL_UNTIL = { GB: 1967, IE: 1970, US: 1953, AU: 1967, '*': 1960 };
+export const SECRET_BALLOT_FROM = { AU: 1856, NZ: 1870, GB: 1872, IE: 1872, CA: 1874, BE: 1877, NO: 1885, US: 1891, SE: 1866, DK: 1901, DE: 1903, FR: 1913, IT: 1912, ES: 1907, NL: 1849, '*': 1900 };
+export const MEMBERS_PAID_FROM = { GB: 1911, IE: 1911, IT: 1912, DE: 1906, ES: 1931, PT: 1911, AU: 1901, NZ: 1884, CA: 1867, US: 1789, FR: 1848, '*': 1900 };
+export const MERIT_FROM = { GB: 1870, IE: 1870, IN: 1855, US: 1883, CA: 1908, AU: 1902, NZ: 1912, FR: 1875, DE: 1800, AT: 1800, CH: 1850, JP: 1894, IT: 1908, ES: 1918, NL: 1850, SE: 1809, BE: 1846, '*': 1920 };
+export const FREE_FROM = { GB: 1891, IE: 1892, US: 1870, FR: 1881, DE: 1888, AT: 1869, IT: 1877, NL: 1901, SE: 1842, JP: 1900, RU: 1918, ES: 1857, BE: 1914, CH: 1874, CA: 1871, AU: 1872, NZ: 1877 };
+export const CANE_UNTIL = { GB: 1987, IE: 1982, FR: 1887, SE: 1958, NO: 1936, DK: 1967, FI: 1914, JP: 1947, DE: 1973, AT: 1974, IT: 1928, NL: 1920, PL: 1783, RU: 1917, NZ: 1990, AU: 1995, CA: 2004, ZA: 1996, IN: 2009, KR: 2011, US: 9999 };
+export const NATIONAL_HEALTH_FROM = { DE: 1883, AT: 1888, JP: 1961, GB: 1948, FR: 1945, CA: 1966, AU: 1975, NZ: 1938, SE: 1955, NO: 1956, DK: 1960, IT: 1978, ES: 1986, KR: 1989, TW: 1995, CN: 2009, IN: 2018, MX: 2003, BR: 1988, IL: 1995, NL: 1941, BE: 1945, CH: 1996, IE: 1970 };
+export const SICKNESS_FUND_FROM = { DE: 1883, AT: 1888, HU: 1891, LU: 1901, NO: 1909, GB: 1911, IE: 1911, RU: 1912, NL: 1941, JP: 1927, FR: 1930, IT: 1943, BE: 1944, CH: 1911, PL: 1920, CZ: 1919, SE: 1931, DK: 1892 };
+export const REHAB_FROM = { GB: 1975, IE: 2016, AU: 1990, NZ: 2004, CA: 1970, IN: 1975, ZA: 2009 };
+export const CIVIL_UNION_FROM = { DK: 1989, NO: 1993, SE: 1995, IS: 1996, NL: 1998, FR: 1999, BE: 2000, DE: 2001, FI: 2002, NZ: 2005, GB: 2005, CH: 2007, CZ: 2006, SI: 2006, HU: 2009, AT: 2010, IE: 2011, BR: 2011, CO: 2007, UY: 2008, AU: 2009, US: 2000, IT: 2016, GR: 2015, CL: 2015, EE: 2016, CY: 2015, HR: 2014, MT: 2014, '*': 9999 };
+export const WOMEN_CREDIT_FROM = { US: 1974, GB: 1975, IE: 1976, CA: 1974, AU: 1984, NZ: 1977, FR: 1965, DE: 1958, IT: 1975, ES: 1975, PT: 1976, NL: 1957, BE: 1976, CH: 1988, AT: 1975, SE: 1921, NO: 1927, DK: 1925, JP: 1947, ZA: 1984, '*': 1975 };
+export const INCOME_TAX_FROM = { IT: 1864, IN: 1886, JP: 1887, DE: 1891, NZ: 1891, AT: 1896, SE: 1902, NL: 1914, FR: 1914, AU: 1915, CH: 1915, RU: 1916, CA: 1917, MX: 1921, BR: 1922, ES: 1932, IE: 1922 };
+
 export const PROHIBITION = { US: [1920, 1933], FI: [1919, 1932], NO: [1916, 1927], IS: [1915, 1935], RU: [1914, 1925] };
 export const ABOLISHED = { GB: 1965, IE: 1990, FR: 1981, DE: 1949, AT: 1950, IT: 1948, ES: 1978, PT: 1867, NL: 1870, BE: 1996, SE: 1921, NO: 1905, DK: 1933, FI: 1949, CH: 1942, CA: 1976, AU: 1985, NZ: 1961, IS: 1928, LU: 1979, GR: 1993, ZA: 1995, MX: 1929, BR: 1889, AR: 1984, CO: 1910, VE: 1863, UY: 1907, CR: 1877, EC: 1906 };
 export const SUSPENDED = { IT: [[1889, 1926]], NZ: [[1941, 1950]], RU: [[1947, 1950]], US: [[1972, 1976]] };
@@ -107,6 +123,48 @@ export const STATUTES = {
     history: (cc, y) => y < 1868,
     effect: 'Felons may be sentenced to transportation to Australia.' },
 };
+
+// Laws other modules follow (work, welfare, politics, schools, rights, tax): history's date, unless a bill changes it.
+const since = (t, d) => (cc, y) => y >= (t[cc] ?? t['*'] ?? d);
+const until = (t, d) => (cc, y) => y < (t[cc] ?? t['*'] ?? d);
+/** The first year of a 48-hour week, and of holidays with pay (WorkingConditions.js keeps the hours themselves). */
+export const HOURS48_FROM = { GB: 1919, US: 1920, FR: 1919, DE: 1918, JP: 1947, '*': 1919 };
+export const HOLIDAY_FROM = { GB: 1938, US: 1940, FR: 1936, DE: 1919, '*': 1940 };
+Object.assign(STATUTES, {
+  workmensCompensation: { name: 'Workmen\'s compensation', icon: '🩹', lean: 'labor', from: 1870, history: since(COMP_FROM, 1920),
+    effect: 'Employers must compensate a worker hurt on the job.' },
+  fortyEightHourWeek: { name: 'The 48-hour week', icon: '⏰', lean: 'labor', from: 1840, history: since(HOURS48_FROM, 1919),
+    effect: 'Caps the standard working week at 48 hours (later laws cut it further).' },
+  holidaysWithPay: { name: 'Holidays with pay', icon: '🏖️', lean: 'labor', from: 1900, history: since(HOLIDAY_FROM, 1940),
+    effect: 'Workers are entitled to paid annual holiday.' },
+  dockDecasualisation: { name: 'Decasualisation of dock labour', icon: '⚓', lean: 'labor', from: 1890, history: since(CASUAL_UNTIL, 1960),
+    effect: 'Ends hiring dockers by the half-day at the gate: registered, regular work.' },
+  nationalInsurance: { name: 'National insurance (the welfare state)', icon: '🛟', lean: 'labor', from: 1880, history: since(WELFARE_FROM, 1950),
+    effect: 'The state pays sick pay, unemployment benefit and a decent funeral, where friendly societies used to.' },
+  sicknessInsurance: { name: 'Compulsory sickness insurance', icon: '🩺', lean: 'labor', from: 1880, history: (cc, y) => SICKNESS_FUND_FROM[cc] != null && y >= SICKNESS_FUND_FROM[cc],
+    effect: 'Workers and employers pay into a sickness fund that covers the doctor and sick pay.' },
+  nationalHealth: { name: 'A national health service', icon: '🏥', lean: 'labor', from: 1880, where: (cc) => cc !== 'US', history: (cc, y) => y >= 1950 && !(NATIONAL_HEALTH_FROM[cc] > y),
+    effect: 'Healthcare for everyone, paid for by the state or national insurance.' },
+  secretBallot: { name: 'The secret ballot', icon: '🗳️', lean: 'labor', from: 1830, history: since(SECRET_BALLOT_FROM, 1900),
+    effect: 'Votes are cast in secret: no more buying them, or watching how a tenant votes.' },
+  paidLegislators: { name: 'Payment of members', icon: '💷', lean: 'labor', from: 1800, history: since(MEMBERS_PAID_FROM, 1900),
+    effect: 'Members of the legislature are paid a salary, so working people can afford to sit.' },
+  meritCivilService: { name: 'Civil service by open competition', icon: '📝', lean: 'labor', from: 1800, history: since(MERIT_FROM, 1920),
+    effect: 'Government posts go by examination and merit, not patronage.' },
+  freeSchooling: { name: 'Free elementary schooling', icon: '🏫', lean: 'labor', from: 1830, history: since(FREE_FROM, 0),
+    effect: 'No fees at the state elementary school.' },
+  schoolCane: { name: 'Corporal punishment in schools', icon: '🪵', lean: 'business', from: 1800, history: until(CANE_UNTIL, 1980),
+    effect: 'Teachers may cane or strap pupils.' },
+  spentConvictions: { name: 'Rehabilitation of offenders', icon: '⚖️', lean: 'labor', from: 1950, history: since(REHAB_FROM, 1990),
+    effect: 'Old convictions become spent: you need not declare them after a crime-free spell.' },
+  civilPartnerships: { name: 'Civil partnerships', icon: '💞', lean: 'labor', from: 1985, history: since(CIVIL_UNION_FROM, 9999),
+    effect: 'Same-sex couples can register a partnership with most of the rights of marriage.' },
+  womensCredit: { name: 'Equal credit for women', icon: '💳', lean: 'labor', from: 1900, history: since(WOMEN_CREDIT_FROM, 1975),
+    effect: 'A woman can open a bank account, borrow and take a mortgage in her own name.' },
+  incomeTax: { name: 'Income tax', icon: '🧾', lean: 'labor', from: 1798,
+    history: (cc, y) => (cc === 'US' ? (y >= 1862 && y < 1873) || y >= 1913 : cc === 'GB' ? (y >= 1799 && y < 1817) || y >= 1842 : y >= (INCOME_TAX_FROM[cc] ?? 1890)),
+    effect: 'A tax on incomes: without it the state lives on customs, excise and land.' },
+});
 
 // Public ownership of each sector of the economy: nationalise it, or sell it (Ownership.js).
 for (const [id, sec] of Object.entries(SECTORS)) {

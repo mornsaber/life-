@@ -21,6 +21,7 @@ import { Random } from '../../core/Random.js';
 import { yearNow, PRESENT, setLeavingAge, setUniversityGate } from '../world/Eras.js';
 import { demographyAt } from '../world/HistoricalData.js';
 import { ADMISSION_HOOKS } from './EducationEngine.js';
+import { statuteIn, statuteOverride, FREE_FROM } from '../politics/StatuteBook.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
 
@@ -35,7 +36,6 @@ const LEAVING = {
   MX: [[1934, 10], [1993, 12]], AR: [[1884, 10], [1968, 12]], ZA: [[1950, 12], [1996, 15]], TR: [[1924, 10], [1997, 11]], EG: [[1950, 10], [1981, 12]],
 };
 /** When elementary school stopped charging fees. */
-const FREE_FROM = { GB: 1891, IE: 1892, US: 1870, FR: 1881, DE: 1888, AT: 1869, IT: 1877, NL: 1901, SE: 1842, JP: 1900, RU: 1918, ES: 1857, BE: 1914, CH: 1874, CA: 1871, AU: 1872, NZ: 1877 };
 /** When universities first admitted women to degrees there. */
 const WOMEN_UNI = { CH: 1867, US: 1837, GB: 1878, IE: 1880, FR: 1880, NL: 1871, SE: 1873, DK: 1875, FI: 1870, NO: 1882, IT: 1876, BE: 1880, CA: 1875, AU: 1880, NZ: 1877, IN: 1883, BR: 1879, AR: 1885, AT: 1897, DE: 1908, ES: 1910, PT: 1911, RU: 1905, JP: 1913, CN: 1920, TR: 1914, KR: 1945, EG: 1929, MX: 1910, ZA: 1880, GR: 1890, PL: 1894, HU: 1895, CZ: 1897 };
 /** Selective schooling at 10–11: [from, until, age, academic school, the rest]. */
@@ -60,7 +60,7 @@ export function leavingAgeHere(state) {
 export function enrolment(state) {
   const y = yearNow(state);
   if (!state?.era || y >= PRESENT) return 1;
-  if (FREE_FROM[cc(state)] && y >= FREE_FROM[cc(state)] + 10) return 0.98;
+  if (statuteIn(state, 'freeSchooling') && (statuteOverride(state, 'freeSchooling') || (FREE_FROM[cc(state)] != null && y >= FREE_FROM[cc(state)] + 10))) return 0.98;
   const gdp = demographyAt(cc(state), y)?.gdp ?? 3000;
   const base = y < 1850 ? 0.35 : y < 1900 ? 0.5 : y < 1950 ? 0.7 : y < 1980 ? 0.85 : 0.95;
   return Math.min(0.99, base * (gdp > 6000 ? 1.4 : gdp > 3000 ? 1.15 : gdp < 1500 ? 0.75 : 1));
@@ -111,8 +111,7 @@ export const SchoolingModule = {
         ctx.stat('smarts', -4);
       } else {
         s.literate = true;
-        const free = FREE_FROM[cc(state)];
-        if (free && yearNow(state) < free && state.people?.wealth !== 'upper') { s.feesPaid = true; ctx.log('You started school. Your family pays the schoolmaster a few pennies a week.', '🪙', 'info'); }
+        if (!statuteIn(state, 'freeSchooling') && state.people?.wealth !== 'upper') { s.feesPaid = true; ctx.log('You started school. Your family pays the schoolmaster a few pennies a week.', '🪙', 'info'); }
       }
     }
     // The exam at ten or eleven.

@@ -18,9 +18,10 @@ import { stateIdOf } from '../life/Regions.js';
 
 import { isAbroad, countryOf } from '../world/Countries.js';
 import { hasPrivateCover, systemHere, privatePremium, NATIONAL_HEALTH_FROM } from './HealthSystems.js';
+import { statuteIn, statuteOverride, SICKNESS_FUND_FROM } from '../politics/StatuteBook.js';
+export { SICKNESS_FUND_FROM };
 
 /** Workers' compulsory sickness insurance, before universal care. */
-export const SICKNESS_FUND_FROM = { DE: 1883, AT: 1888, HU: 1891, LU: 1901, NO: 1909, GB: 1911, IE: 1911, RU: 1912, NL: 1941, JP: 1927, FR: 1930, IT: 1943, BE: 1944, CH: 1911, PL: 1920, CZ: 1919, SE: 1931, DK: 1892 };
 const SICKNESS_FUND_NAME = { DE: 'Krankenkasse (statutory sickness fund)', AT: 'Krankenkasse (statutory sickness fund)', HU: 'Munkásbiztosító Pénztár', NO: 'Trygdekasse', JP: 'Kenkō hoken (workers\' health insurance)', FR: 'Assurances sociales', NL: 'Ziekenfonds', IT: 'Cassa mutua', BE: 'Mutualité', CH: 'Krankenkasse', PL: 'Kasa chorych', CZ: 'Nemocenská pokladna', SE: 'Sjukkassa', DK: 'Sygekasse', RU: 'Bolnichnaya kassa', LU: 'Caisse de maladie' };
 
 export const MEDICAID_INCOME = 21000;
@@ -70,11 +71,11 @@ export function coverageId(state, earned = income(state)) {
   if (state.military.service?.component === 'active') return y < 1966 ? 'militaryMedical' : 'tricare';
   // Before national health care or health insurance (world/Eras.js): sick clubs, charity and the doctor's bill.
   const cc = state.character.countryId ?? 'US';
-  const modern = cc === 'US' ? y >= 1945 : !(NATIONAL_HEALTH_FROM[cc] > y) && y >= 1950;
+  const modern = cc === 'US' ? y >= 1945 : statuteIn(state, 'nationalHealth', cc);
   if (!modern) {
     if ((state.health?.va?.rating ?? 0) >= 50 && y >= 1930) return 'va';
     // A worker in a country with sickness insurance is covered by it (not, at first, the family).
-    if (state.career.job && !(SICKNESS_FUND_FROM[cc] > y) && SICKNESS_FUND_FROM[cc]) return cc === 'GB' || cc === 'IE' ? 'panel' : 'sicknessFund';
+    if (state.career.job && statuteIn(state, 'sicknessInsurance', cc)) return cc === 'GB' || cc === 'IE' ? 'panel' : 'sicknessFund';
     if (earned < 20000) return 'charity';
     return state.career.job ? 'friendlySociety' : 'feeForService';
   }

@@ -19,6 +19,7 @@ import { skinToneOf } from '../people/SkinTone.js';
 import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
 import { PACKS } from './packs/index.js';
 import { statuteIn } from '../politics/StatuteBook.js';
+import { statuteOverride, INCOME_TAX_FROM } from '../politics/StatuteBook.js';
 
 export const PRESENT = 2026;
 /** The eras the start screen offers; each spans [from, to] and a life can start in any year of one. */
@@ -1189,6 +1190,13 @@ export function periodCountryName(state, cc, name) {
  * Napoleonic Wars, then stayed from 1842; most countries brought one in between the 1880s and 1914.
  */
 export function eraTaxShare(state) {
+  // Income tax is a law (StatuteBook): a bill can bring it in early or abolish it.
+  const law = statuteOverride(state, 'incomeTax');
+  if (law === false) return 0;
+  const share = historyTaxShare(state);
+  return law === true && share === 0 ? (yearNow(state) < 1914 ? 0.25 : 0.6) : share;
+}
+function historyTaxShare(state) {
   const y = yearNow(state);
   if (y >= 1945) return 1;
   const cc = state.character.countryId ?? 'US';
@@ -1198,7 +1206,6 @@ export function eraTaxShare(state) {
   if (y < (INCOME_TAX_FROM[cc] ?? 1890)) return 0;
   return y < 1914 ? 0.25 : 0.6;
 }
-const INCOME_TAX_FROM = { IT: 1864, IN: 1886, JP: 1887, DE: 1891, NZ: 1891, AT: 1896, SE: 1902, NL: 1914, FR: 1914, AU: 1915, CH: 1915, RU: 1916, CA: 1917, MX: 1921, BR: 1922, ES: 1932, IE: 1922 };
 /** When a state pension first covered workers: Bismarck's in 1889, Britain's 1909/1925, Social Security from 1937. */
 /** A state pension from history's date, unless a bill in this world brought one in sooner or ended it (politics/StatuteBook.js). */
 export const statePensionExists = (state, cc = state.character.countryId ?? 'US') => statuteIn(state, 'statePension', cc);

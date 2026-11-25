@@ -29,15 +29,15 @@ import { OFFICES } from './Offices.js';
 import { stateIdOf } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { priceLevel } from '../world/Countries.js';
+import { statuteIn, statuteOverride, SECRET_BALLOT_FROM, MEMBERS_PAID_FROM, MERIT_FROM } from './StatuteBook.js';
+export { SECRET_BALLOT_FROM, MERIT_FROM };
 
 const cc = (state) => state.character?.countryId ?? 'US';
 const at = (table, c) => table[c] ?? table['*'];
 
-export const SECRET_BALLOT_FROM = { AU: 1856, NZ: 1870, GB: 1872, IE: 1872, CA: 1874, BE: 1877, NO: 1885, US: 1891, SE: 1866, DK: 1901, DE: 1903, FR: 1913, IT: 1912, ES: 1907, NL: 1849, '*': 1900 };
-export const secretBallot = (state) => yearNow(state) >= at(SECRET_BALLOT_FROM, cc(state));
+export const secretBallot = (state) => statuteIn(state, 'secretBallot');
 
 /** Members of the national legislature unpaid until: */
-const MEMBERS_PAID_FROM = { GB: 1911, IE: 1911, IT: 1912, DE: 1906, ES: 1931, PT: 1911, AU: 1901, NZ: 1884, CA: 1867, US: 1789, FR: 1848, '*': 1900 };
 /** Local councillors unpaid until: */
 const COUNCILLORS_PAID_FROM = { GB: 1974, IE: 1974, AU: 1990, NZ: 1974, '*': 1960, US: 1800 };
 
@@ -47,7 +47,7 @@ export function officePay(state, officeId, salary) {
   if (!o) return salary;
   const y = yearNow(state);
   const c = cc(state);
-  if (o.kind === 'legislative' && o.country && y < at(MEMBERS_PAID_FROM, c)) return 0;
+  if (o.kind === 'legislative' && o.country && !statuteIn(state, 'paidLegislators', c)) return 0;
   if (['cityCouncil', 'schoolBoard'].includes(officeId) && y < at(COUNCILLORS_PAID_FROM, c)) return 0;
   return salary;
 }
@@ -90,13 +90,14 @@ export function neutralityBar(state) {
 }
 
 /** When government posts began to be filled on merit (open competition or a civil-service law). */
-export const MERIT_FROM = { GB: 1870, IE: 1870, IN: 1855, US: 1883, CA: 1908, AU: 1902, NZ: 1912, FR: 1875, DE: 1800, AT: 1800, CH: 1850, JP: 1894, IT: 1908, ES: 1918, NL: 1850, SE: 1809, BE: 1846, '*': 1920 };
 const MUNICIPAL_LAG = { US: 1910, '*': 0 };
 export function meritHere(state, sector) {
   const c = cc(state);
   const y = yearNow(state);
-  const from = sector === 'municipal' && c === 'US' ? MUNICIPAL_LAG.US : at(MERIT_FROM, c);
-  return y >= from;
+  if (!statuteIn(state, 'meritCivilService', c)) return false;
+  // American city halls kept the spoils system a generation after the Pendleton Act.
+  if (sector === 'municipal' && c === 'US' && statuteOverride(state, 'meritCivilService', c) == null) return y >= MUNICIPAL_LAG.US;
+  return true;
 }
 
 /** The hiring bonus (or penalty) of patronage for a public post before merit hiring. */
