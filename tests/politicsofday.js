@@ -12,7 +12,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { sync } from '../src/modules/world/History.js';
 import { periodText, periodTitle } from '../src/modules/world/Eras.js';
-import { raceCost, officePay, standCheck, senateByLegislature, secretBallot, patronageBonus, meritHere, campaignWords, endorsementNow, neutralityBar } from '../src/modules/politics/PoliticsOfTheDay.js';
+import { voteBar, raceCost, officePay, standCheck, senateByLegislature, secretBallot, patronageBonus, meritHere, campaignWords, endorsementNow, neutralityBar } from '../src/modules/politics/PoliticsOfTheDay.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc, year, age = 40) => {
@@ -93,6 +93,21 @@ const tests = {
       state.prompts = []; engine.ageUp(); state.prompts = [];
     }
     assert.ok(raceCost(life('GB', 1870).state, { cost: 100 }) > 100, 'unreformed British elections were dear');
+  },
+  'who may vote: age, property, Jim Crow; pocket boroughs and the machine'() {
+    const young = life('GB', 1950, 19).state;
+    assert.match(voteBar(young) ?? '', /voting age is 21/);
+    assert.equal(voteBar(life('GB', 1990, 19).state), null);
+    const tenant = life('GB', 1850, 30).state; tenant.housing.properties = []; tenant.housing.withParents = true;
+    assert.match(voteBar(tenant) ?? '', /householders/);
+    const { engine, state } = life('GB', 1830, 25);
+    state.finances.cash = 1e8;
+    engine.dispatch('politicsOfTheDay.buySeat');
+    assert.equal(state.politics.office?.id, 'gb_mp');
+    const ny = life('US', 1900, 30);
+    ny.engine.dispatch('politicsOfTheDay.machine');
+    assert.equal(ny.state.politics.machine.rank, 0);
+    assert.match(VIEWS.politics(ny.state, {}), /Ward heeler/);
   },
   'the politics tab renders in 1860 and 2000'() {
     for (const [cc, y] of [['GB', 1860], ['US', 1880], ['US', 2000]]) assert.ok(VIEWS.politics(life(cc, y).state, {}).length > 100);

@@ -15,7 +15,7 @@ import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js'
 import { esc, money, button, card, chip, meter, kv, empty, disclosure, select, orgTree } from '../Components.js';
 import { governmentChart } from '../../modules/org/OrgChart.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
-import { endorsementNow, endorsementName, campaignWords, unpaidNote, nomWord, raceCost } from '../../modules/politics/PoliticsOfTheDay.js';
+import { endorsementNow, endorsementName, campaignWords, unpaidNote, nomWord, raceCost, voteBar, pocketBoroughs, seatPrice, machineHere, MACHINE_RANKS } from '../../modules/politics/PoliticsOfTheDay.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
 import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Government.js';
@@ -238,11 +238,23 @@ function politicsParts(state) {
 }
 
 /** 🗳️ Office: the post you hold and everything it does. */
+/** The franchise, pocket boroughs and the machine. */
+function politicsOfDayCard(state) {
+  const bar = voteBar(state);
+  const m = state.politics?.machine;
+  const rows = [
+    bar ? `<li>🚫 ${esc(bar)}</li>` : '',
+    pocketBoroughs(state) && !state.politics?.office ? `<li>🏚️ Seats in pocket boroughs are for sale by their patrons. ${button('🏛️ Buy a seat', 'politicsOfTheDay.buySeat', { variant: 'small', hint: money(seatPrice(state)) })}</li>` : '',
+    machineHere(state) ? `<li>🎩 The machine: ${m && m.rank >= 0 ? `<b>${MACHINE_RANKS[m.rank]}</b>` : 'the organisation runs the city'} ${button(m && m.rank >= 0 ? '🗳️ Get out the vote for the ticket' : '🎩 Join the machine', 'politicsOfTheDay.machine', { variant: 'small', disabled: Boolean(state.yearly?.['politics.machine']) })}</li>` : '',
+  ].filter(Boolean).join('');
+  return rows ? card('Politics of the Day', `<ul class="history">${rows}</ul>`, { icon: '🎩' }) : '';
+}
+
 export function politicsView(state) {
   const x = politicsParts(state);
   const work = `${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${patronageCard(state)}${crownCards(state)}`;
   const none = x.current || work.trim() ? '' : card('No Office', `<p class="muted">You don't hold public office. ${oneParty(state) ? 'Posts are given by the Party: see 🎗️ Party.' : 'Stand for election from 📣 Campaign, and follow the chambers in 🏛️ Chamber.'}</p>`, { icon: '🗳️' });
-  return `${x.current}${presidencyCard(state)}${officeLifeCard(state)}${state.politics?.office ? protectionCard(state) : ''}${none}${work}${x.history}`;
+  return `${x.current}${politicsOfDayCard(state)}${presidencyCard(state)}${officeLifeCard(state)}${state.politics?.office ? protectionCard(state) : ''}${none}${work}${x.history}`;
 }
 
 /** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */

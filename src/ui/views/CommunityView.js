@@ -4,6 +4,7 @@
  */
 import { GIFTS, giftCheck, giftCost, marksHere } from '../../modules/life/Marks.js';
 import { worldLegaciesCard, classCard } from './WorldLegaciesCard.js';
+import { voteBar } from '../../modules/politics/PoliticsOfTheDay.js';
 import { PLACES } from '../../modules/life/WorldLegacies.js';
 import { secretSocietiesCard } from './SecretSocietiesView.js';
 import { schismIssue } from '../../modules/community/Religions.js';
@@ -159,7 +160,7 @@ export function partyCard(state) {
   const role = p ? PARTY_ROLES[p.role] : null;
   return card('Party & Elections', `
     ${p ? `<p>${chip(`${p.underground ? '🕯️' : PARTY_ICON[p.bloc]} ${esc(myPartyName(state))}${p.underground ? ' (underground)' : ''}`, p.underground ? 'warn' : 'good')} ${chip(role.label)} <small class="fine">since age ${p.since}${role.next ? ` · canvass in campaigns to rise to ${PARTY_ROLES[role.next].label.toLowerCase()}` : ''}</small></p>` : '<p class="muted">Join a party to canvass in national elections, rise in the local party and get its backing when you run.</p>'}
-    ${canVote(state) ? '' : '<p class="why">Only citizens 18+ vote in national elections here.</p>'}
+    ${canVote(state) ? '' : `<p class="why">${esc(voteBar(state) ?? 'Only citizens of voting age vote in national elections here.')}</p>`}
     <div class="toggle-row chips-row">${join}</div>
     ${p ? button('Leave the party', 'party.leave', { variant: 'small ghost' }) : ''}
     ${votes.length ? `<h4 class="sub">Your votes</h4><ul class="history">${votes.map((v) => `<li>Age ${v.age} · ${esc(v.body)}: ${v.choice === 'skip' ? 'didn\'t vote' : esc(partyName(state, v.choice))} ${v.choice === v.winner ? '✅' : v.choice === 'skip' ? '' : '❌'}</li>`).join('')}</ul>` : ''}`, { icon: '🗳️', summary: p ? partyName(state, p.bloc) : 'No party' });

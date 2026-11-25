@@ -26,6 +26,9 @@ import { netWorth, isOnActiveDuty } from '../../core/State.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { yearNow } from '../world/Eras.js';
 import { OFFICES } from './Offices.js';
+import { stateIdOf } from '../life/Regions.js';
+import { skinToneOf } from '../people/SkinTone.js';
+import { priceLevel } from '../world/Countries.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
 const at = (table, c) => table[c] ?? table['*'];
@@ -112,6 +115,36 @@ export const patronageNote = (state, profession) => (['federal', 'state', 'munic
 export const PoliticsOfTheDayModule = {
   id: 'politicsOfTheDay',
   order: 40.5,
+  actions: {
+    /** Buy a pocket borough seat from its patron (Britain before 1832). */
+    buySeat(ctx) {
+      const { state } = ctx;
+      if (!pocketBoroughs(state)) return ctx.toast('No seats for sale: the Reform Act did for the pocket boroughs', 'warn');
+      if (state.politics?.office) return ctx.toast('You already hold office', 'warn');
+      const price = seatPrice(state);
+      if (state.character.age < 21) return ctx.toast('From 21', 'warn');
+      if (!ctx.spend(price, 'The price of a pocket borough', { credit: false })) return ctx.toast('A seat costs a fortune', 'warn');
+      ctx.emit('politics:take', { officeId: 'gb_mp' });
+      return ctx.log('You bought a seat from its patron: forty electors, all his tenants, voted as they were told. You are a Member of Parliament.', '🏛️', 'milestone');
+    },
+    /** Join the machine, or work for it this year. */
+    machine(ctx) {
+      const { state, rng } = ctx;
+      if (!machineHere(state)) return ctx.toast('No machine to join here', 'warn');
+      const m = (state.politics ??= {}).machine ??= { rank: -1, votes: 0, since: state.character.age };
+      if (state.yearly?.['politics.machine']) return ctx.toast('Once a year', 'warn');
+      (state.yearly ??= {})['politics.machine'] = 1;
+      if (m.rank < 0) { m.rank = 0; return ctx.log('You joined the machine as a ward heeler: coal for widows at Christmas, a word with the judge, a job on the city payroll, and in return, votes.', '🎩', 'good'); }
+      const delivered = rng.int(50, 400) * (m.rank + 1);
+      m.votes += delivered;
+      state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + 3 + m.rank);
+      ctx.earn(Math.round(2000 * (m.rank + 1)), 'The machine\'s thanks (a city sinecure)', {});
+      if (m.votes >= 1500 * (m.rank + 1) && m.rank < MACHINE_RANKS.length - 1) { m.rank += 1; m.votes = 0; ctx.log(`You delivered your district. The organisation made you ${MACHINE_RANKS[m.rank].toLowerCase()}.`, '🎩', 'milestone'); }
+      else ctx.log(`You got out ${delivered} votes for the ticket.`, '🗳️', 'info');
+      if (rng.chance(0.06 + m.rank * 0.02)) ctx.emit('fame:scandal', { ctx, severity: 7, headline: 'a reform newspaper exposed the machine\'s padded payroll' });
+      return undefined;
+    },
+  },
   onAgeUp(ctx) {
     const { state } = ctx;
     const job = state.career?.job;
@@ -167,3 +200,43 @@ export function raceCostFactor(state) {
   return y < 1920 ? 0.3 : y < 1960 ? 0.5 : y < 1990 ? 0.8 : 1;
 }
 export const raceCost = (state, office) => Math.round((office?.cost ?? 0) * raceCostFactor(state));
+
+/* ------------------------------------------------------------------ */
+/* Who may vote                                                        */
+/* ------------------------------------------------------------------ */
+const VOTING_AGE_18_FROM = { US: 1971, GB: 1970, FR: 1974, DE: 1970, IT: 1975, JP: 2016, CA: 1970, AU: 1973, IN: 1989, '*': 1972 };
+const JIM_CROW_STATES = ['AL', 'AR', 'FL', 'GA', 'LA', 'MS', 'NC', 'SC', 'TN', 'TX', 'VA', 'OK', 'KY'];
+/**
+ * Why you can't vote here and now (or null): the voting age (21 until about 1970; 20 in Japan to
+ * 2016), the property franchise (Britain: freeholders before 1832, £10 householders to 1867, men of
+ * household to 1918), and in the Jim Crow South, the poll tax and literacy test until 1965.
+ * Women's suffrage is the statute book's (politics/StatuteBook.js).
+ */
+export function voteBar(state) {
+  const y = yearNow(state);
+  const c = cc(state);
+  const age = state.character.age;
+  const voteAge = y < (VOTING_AGE_18_FROM[c] ?? VOTING_AGE_18_FROM['*']) ? (c === 'JP' ? 20 : 21) : 18;
+  if (age < voteAge) return `The voting age is ${voteAge}`;
+  if (c === 'GB' || c === 'IE') {
+    const owns = (state.housing?.properties ?? []).length > 0 || (state.farm?.acres ?? 0) > 0;
+    const householder = owns || (!state.housing?.withParents && (state.housing?.rental || owns));
+    if (y < 1832 && (!owns || netWorth(state) < 20000)) return 'Only freeholders and the old borough franchise vote (until the Reform Act of 1832)';
+    if (y < 1867 && !householder) return 'Only £10 householders vote (until 1867)';
+    if (y < 1918 && !householder) return 'Only householders and lodgers of standing vote (until 1918)';
+  }
+  if (c === 'US' && y < 1965 && JIM_CROW_STATES.includes(stateIdOf(state)) && skinToneOf(state) >= 4) {
+    return y < 1870 ? 'Black men cannot vote here' : 'The poll tax and the literacy test keep Black voters off the rolls (until the Voting Rights Act, 1965)';
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pocket boroughs and the machine                                     */
+/* ------------------------------------------------------------------ */
+/** Before the Reform Act (1832) a patron's borough seat could be bought outright. */
+export const pocketBoroughs = (state) => cc(state) === 'GB' && yearNow(state) < 1832;
+export const seatPrice = (state) => Math.round(500000 * priceLevel(state));
+/** City machines (Tammany Hall and its cousins), about 1850–1960: you climb by delivering votes. */
+export const MACHINE_RANKS = ['Ward heeler', 'Precinct captain', 'District leader', 'Ward boss', 'Boss of the machine'];
+export const machineHere = (state) => cc(state) === 'US' && yearNow(state) >= 1850 && yearNow(state) < 1965;

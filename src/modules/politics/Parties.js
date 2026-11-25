@@ -9,6 +9,8 @@
  * state.civic.ballots = { [bodyId]: { choice, canvassed } }   the coming election
  * state.civic.votes   = [{ age, body, choice, winner }]
  */
+import { voteBar } from './PoliticsOfTheDay.js';
+import { statuteIn } from './StatuteBook.js';
 import { electionsHere } from '../world/Regimes.js';
 import { isCitizen } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
@@ -86,7 +88,7 @@ export function periodParty(cc, bloc) {
  */
 export const dominantParty = (state) => PARTY_NAMES[here(state)]?.dominant ?? null;
 export const partyOf = (state) => state.civic?.party ?? null;
-export const canVote = (state) => state.character.age >= 18 && isCitizen(state, here(state)) && !state.legal.incarceration;
+export const canVote = (state) => isCitizen(state, here(state)) && !state.legal.incarceration && !voteBar(state) && !(state.character.gender === 'female' && !statuteIn(state, 'womensSuffrage'));
 
 /** How much your party standing helps when you run as its candidate. */
 export function partyBonus(state) {
