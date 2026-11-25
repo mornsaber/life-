@@ -206,6 +206,11 @@ export const ConscriptionModule = {
     if (state.legal.incarceration || state.military.service) return;
     const age = state.character.age;
     const c = record(state);
+    // Åland is demilitarised (1921): its people aren't called up.
+    if (state.character.regionId === 'mariehamn' && yearNow(state) >= 1921) {
+      if (c.status !== 'exempt') { c.status = 'exempt'; ctx.log('You grew up on Åland: demilitarised since 1921, its young men are exempt from Finnish conscription.', '⛵', 'info'); }
+      return;
+    }
     // A career in the country's own forces discharges the duty; past the age limit it lapses.
     if (['pending', 'deferred'].includes(c.status) && state.military.history.some((h) => (h.nation ?? 'US') === countryOf(state).id && (h.yearsOfService ?? 0) >= 1)) {
       c.status = 'served';

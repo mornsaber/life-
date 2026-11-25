@@ -357,6 +357,9 @@ export const COLONIES = {
 };
 // Country packs bring their own foreign rule (packs/Sketch.js `ruled`).
 for (const p of PACKS) if (p.history?.ruled?.length && !COLONIES[p.id]) COLONIES[p.id] = p.history.ruled.map(([ruler, name, until, o]) => (ruler === 'TR' && until === 1918 && !o ? OTTOMAN(name) : S(ruler, name, until, o ?? {})));
+// Mandates the names don't say: South West Africa (a C-class mandate), New Guinea (Australia's, from 1920).
+if (COLONIES.NA?.[1]) COLONIES.NA[1].mandate = true;
+if (COLONIES.PG?.[0]) COLONIES.PG[0].mandate = true;
 const PACK_NAMES = Object.fromEntries(PACKS.filter((p) => p.history?.names).map((p) => [p.id, p.history.names]));
 export const rulerAdj = (cc) => RULER[cc] ?? cc;
 export const rulerName = (cc) => RULER_NAME[cc] ?? cc;
@@ -373,7 +376,9 @@ export function colonyStage(state, cc) {
     if (st.from && y < st.from) return null;
     // A condominium has two rulers; you live under the one whose side you're on (Condominium.js).
     const ruler = st.rulers ? condominiumSide(state, cc, st) : st.ruler;
-    return { ...st, ruler, index: i, armyOf: st.armyOf ?? (LAND_EMPIRES.includes(ruler) ? ruler : null) };
+    // A League mandate that lived past 1946 became a UN trust territory.
+    const name = y >= 1946 && st.ruler !== 'ZA' ? st.name.replace(/\(a mandate\)/, '(a UN trust territory)').replace(/\(a (\w+(?: \w+)?) mandate\)/, '(a $1 trust territory)') : st.name;
+    return { ...st, name, ruler, index: i, armyOf: st.armyOf ?? (LAND_EMPIRES.includes(ruler) ? ruler : null) };
   }
   return null;
 }
@@ -392,9 +397,23 @@ export function condominiumSide(state, cc, st) {
 /**
  * Territories under another state's sovereignty that govern themselves: Hong Kong and Macau after
  * their handovers ("one country, two systems"). Their own laws, courts, police, money and civil
- * service; no army, no diplomats and no head of state of their own.
+ * service; no army, no diplomats and no head of state of their own. And the others like them:
+ * Puerto Rico, Greenland and the Faroes; Britain's self-governing overseas territories; the Crown
+ * dependencies. honours: 'own' (the default), 'sovereign' (the sovereign's), 'both'.
+ * forces: 'none' (the default: a garrison that doesn't recruit locally), 'own' (a local regiment),
+ * 'sovereign' (its people serve in the sovereign's forces).
  */
+const SELF_GOVERNING = (of, from, name, head, handover, o = {}) => ({ of, from, name, short: o.short ?? name.replace(/^the /, ''), head, handover, honours: 'sovereign', forces: 'sovereign', ...o });
 export const AUTONOMOUS = {
+  PR: SELF_GOVERNING('US', 1952, 'the Commonwealth of Puerto Rico (Estado Libre Asociado)', 'the Governor', 'On 25 July 1952 the Commonwealth was proclaimed: Puerto Rico has written its own constitution and elects its own governor, under the American flag. Puerto Ricans are US citizens, and are drafted like any others, but they cannot vote for the President.', { short: 'Puerto Rico', news: 'Puerto Rico becomes a Commonwealth' }),
+  GL: SELF_GOVERNING('DK', 1979, 'Greenland, self-governing within the Danish Realm', 'the Premier', 'Home rule: on 1 May 1979 Greenland got its own parliament and government. It leaves the European Community in 1985; self-rule follows in 2009.', { short: 'Greenland', honours: 'both', news: 'Greenland gets home rule' }),
+  FO: SELF_GOVERNING('DK', 1948, 'the Faroe Islands, self-governing within the Danish Realm', 'the Løgmaður', 'Home rule, 1 April 1948: the Løgting governs everything but defence, foreign affairs and the courts, and the Faroese flag flies.', { short: 'the Faroes', news: 'The Faroe Islands get home rule' }),
+  GI: SELF_GOVERNING('GB', 1969, 'Gibraltar, a self-governing British territory', 'the Chief Minister', 'The 1969 constitution: Gibraltar governs itself, and Britain promises never to hand it to Spain against its people\'s will. Franco has closed the frontier in answer; it stays shut until 1985.', { short: 'Gibraltar', forces: 'own', news: 'Gibraltar governs itself' }),
+  BM: SELF_GOVERNING('GB', 1968, 'Bermuda, a self-governing British territory', 'the Premier', 'The 1968 constitution: Bermuda governs itself, a British territory with its own parliament, the oldest in the Commonwealth outside Britain.', { short: 'Bermuda', forces: 'own', news: 'Bermuda governs itself' }),
+  KY: SELF_GOVERNING('GB', 1972, 'the Cayman Islands, a self-governing British territory', 'the Premier', 'The 1972 constitution: the Cayman Islands govern themselves, a British territory and, before long, one of the world\'s great offshore banking centres.', { short: 'the Caymans', forces: 'own', news: 'The Cayman Islands govern themselves' }),
+  JE: SELF_GOVERNING('GB', 1800, 'the Bailiwick of Jersey, a Crown dependency', 'the Chief Minister (the Bailiff presides)', 'Liberation Day, 9 May 1945: HMS Bulldog in the harbour, the Germans surrender, and the island\'s own government is back.', { short: 'Jersey' }),
+  GG: SELF_GOVERNING('GB', 1800, 'the Bailiwick of Guernsey, a Crown dependency', 'the President of Policy & Resources (the Bailiff presides)', 'Liberation Day, 9 May 1945: the Germans surrender at St Peter Port, and the island\'s own government is back.', { short: 'Guernsey' }),
+  IM: SELF_GOVERNING('GB', 1800, 'the Isle of Man, a Crown dependency', 'the Chief Minister', 'The Isle of Man governs itself under the Crown, through Tynwald.', { short: 'the Isle of Man' }),
   HK: { of: 'CN', from: 1997, name: 'the Hong Kong Special Administrative Region of China', short: 'the Hong Kong SAR', head: 'the Chief Executive', garrison: 'the PLA Hong Kong Garrison',
     handover: 'At midnight on 30 June 1997, in the rain, the Union Flag came down over Hong Kong and the flags of China and the new Special Administrative Region went up. The last Governor sailed away on the royal yacht. "One country, two systems", for fifty years.' },
   MO: { of: 'CN', from: 1999, name: 'the Macao Special Administrative Region of China', short: 'the Macao SAR', head: 'the Chief Executive', garrison: 'the PLA Macao Garrison',
@@ -469,6 +488,15 @@ const OTTOMAN_RULE = (name) => G({ kind: 'colony', name: `${name}, ruled from Co
  * history-driven periods above take precedence.
  */
 const TIMELINES = {
+  // Self-governing territories, from the day they governed themselves.
+  PR: [[9999, DEMO('the Commonwealth of Puerto Rico, a US territory', 'the Governor')]],
+  GL: [[2009, DEMO('Greenland under home rule, within the Danish Realm', 'the Premier')], [9999, DEMO('Greenland under self-rule, within the Danish Realm', 'the Premier')]],
+  FO: [[9999, DEMO('the Faroe Islands under home rule, within the Danish Realm', 'the Løgmaður')]],
+  GI: [[9999, DEMO('Gibraltar, a self-governing British territory', 'the Chief Minister')]], BM: [[9999, DEMO('Bermuda, a self-governing British territory', 'the Premier')]],
+  KY: [[9999, DEMO('the Cayman Islands, a self-governing British territory', 'the Premier')]],
+  JE: [[1900, OLIGARCHY('the Bailiwick of Jersey, ruled by the States and its jurats', 'the Bailiff')], [9999, DEMO('the Bailiwick of Jersey, a Crown dependency', 'the Chief Minister')]],
+  GG: [[1900, OLIGARCHY('the Bailiwick of Guernsey, ruled by the States and its jurats', 'the Bailiff')], [9999, DEMO('the Bailiwick of Guernsey, a Crown dependency', 'the Chief Minister')]],
+  IM: [[1866, OLIGARCHY('the Isle of Man, under its self-electing House of Keys', 'the Lieutenant Governor')], [9999, DEMO('the Isle of Man, a Crown dependency (Tynwald)', 'the Chief Minister')]],
   // After the handovers (the colony's own stage rules until then).
   HK: [[2020, OLIGARCHY('the Hong Kong SAR of China: "one country, two systems"', 'the Chief Executive', { press: 'free' })], [9999, AUTH('the Hong Kong SAR of China, under the National Security Law', 'the Chief Executive', { surveillance: 0.12, exit: 'free' })]],
   MO: [[9999, OLIGARCHY('the Macao SAR of China: "one country, two systems"', 'the Chief Executive', { press: 'state' })]],

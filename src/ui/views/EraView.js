@@ -3,7 +3,8 @@
  * rules it, the history this world has had so far (and what went differently), and what
  * hasn't been invented yet.
  */
-import { esc, card, kv } from '../Components.js';
+import { esc, card, kv, button } from '../Components.js';
+import { mandateKind } from '../../modules/world/Mandates.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { warHere } from '../../modules/world/War.js';
 import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech, periodCountryName } from '../../modules/world/Eras.js';
@@ -75,7 +76,9 @@ export function eraCard(state) {
   const recent = seen.filter(([, e]) => !e.past).slice(-8);
   const skipped = (era.skipped ?? []).filter((id) => EVENT_LABELS[id] && EVENTS[id].window[1] < y);
   const coming = Object.entries(TECH).filter(([id]) => !hasTech(state, id)).sort((a, b) => a[1] - b[1]).slice(0, 4);
+  const mandate = mandateKind(state);
   return card(`The World in ${y}`, `${kv(rows)}
+    ${mandate && state.character.age >= 16 ? `<p class="fine">${mandate === 'trust' ? '🇺🇳 A UN trust territory: answerable to the Trusteeship Council.' : mandate === 'league' ? '🕊️ A League of Nations mandate: answerable to Geneva.' : '⚖️ The UN has revoked the mandate.'}</p>${button('📜 Petition for self-government', 'mandate.petition', { hint: mandate === 'trust' ? 'The Trusteeship Council hears petitions' : 'Adds to the pressure for independence', disabled: Boolean(state.yearly?.['mandate.petition']) })}` : ''}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
     ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}.</p>` : ''}

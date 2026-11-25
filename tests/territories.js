@@ -19,6 +19,7 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { regionRegimeAt } from '../src/modules/world/Eras.js';
+import { mandateKind } from '../src/modules/world/Mandates.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, y, lived = 20) {
@@ -112,5 +113,37 @@ t('treaty ports, leased territories and international cities', () => {
   assert.match(regionRegimeAt('klaipeda', 1921).name, /Memel Territory/);
   assert.match(regionRegimeAt('rijeka', 1922).name, /Free State of Fiume/);
   assert.equal(regionRegimeAt('shanghai', 1960), null);
+});
+t('self-governing territories: whose honours and forces', () => {
+  const pr = life('PR', 1970).state;
+  assert.ok(autonomyHere(pr)); assert.equal(honoursSystem(pr)[0]?.via, 'US');
+  assert.equal(enlistmentEligibility(pr, 'army', 'enlisted', 'active').reason?.includes('no armed forces') ?? false, false);
+  assert.match(colonyHere(life('PR', 1930).state).name, /Porto Rico/);
+  const gl = life('GL', 1995).state;
+  assert.deepEqual(honoursSystem(gl).map((x) => x.via), ['GL', 'DK']);
+  for (const cc of ['GI', 'BM', 'KY', 'JE', 'GG', 'IM']) {
+    const s = life(cc, 1990).state;
+    assert.ok(autonomyHere(s), cc); assert.equal(honoursSystem(s)[0]?.via, 'GB', cc); assert.equal(presidencyInEra(s, cc), false, cc);
+    assert.ok(workBlock(s, getProfession('foreignService')), cc);
+  }
+  assert.match(colonyHere(life('JE', 1942).state).name, /German-occupied Jersey/);
+  assert.equal(honoursSystem(life('JE', 1942).state).length, 0);
+  assert.match(colonyHere(life('GI', 1950).state).name, /Crown Colony of Gibraltar/);
+  for (const cc of ['PR', 'GL', 'FO', 'GI', 'BM', 'KY', 'JE', 'GG', 'IM']) assert.ok(COUNTRIES[cc], cc);
+});
+t('zones: the Canal Zone, Trieste, the Saar, Åland', () => {
+  assert.match(regionRegimeAt('balboa', 1950).name, /Canal Zone/);
+  assert.match(regionRegimeAt('trieste', 1950).name, /Free Territory of Trieste/);
+  assert.match(regionRegimeAt('saarbruecken', 1925).name, /League of Nations/);
+  assert.match(regionRegimeAt('saarbruecken', 1950).name, /Saar Protectorate/);
+  assert.match(regionRegimeAt('mariehamn', 1980).name, /Åland/);
+});
+t('mandates: answerable to Geneva, then to New York', () => {
+  assert.equal(mandateKind(life('TZ', 1935).state), 'league');
+  const tz = life('TZ', 1955).state;
+  assert.equal(mandateKind(tz), 'trust');
+  assert.match(colonyHere(tz).name, /trust territory/);
+  assert.equal(mandateKind(life('NA', 1975).state), 'revoked');
+  assert.equal(mandateKind(life('KE', 1950).state), null);
 });
 console.log(`territories: ${n} passed`);

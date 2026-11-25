@@ -121,6 +121,7 @@ export const IT = {
     milan: { name: 'Milan', icon: '👗', type: 'High-cost metro', state: 'IT-25', col: 1.3, market: 0.95, locality: 0.25, transit: 85, fare: ppp(39, EUR_IT), walkable: true, size: 'enterprise', population: [1370000, 3220000] },
     naples: { name: 'Naples', icon: '🍕', type: 'Major metro', state: 'IT-72', col: 0.85, market: 0.66, locality: 0.18, transit: 55, fare: ppp(35, EUR_IT), walkable: true, size: 'enterprise', population: [910000, 2970000] },
     vicenza: { name: 'Vicenza', icon: '🎭', type: 'Mid-size city', state: 'IT-34', col: 0.95, market: 0.82, locality: 0.2, transit: 40, fare: ppp(35, EUR_IT), walkable: true, size: 'medium', population: [110000, 850000] },
+    trieste: { name: 'Trieste', icon: '⚓', type: 'Coastal city', state: 'IT-36', col: 0.95, market: 0.85, locality: 0.2, transit: 50, fare: ppp(35, EUR_IT), walkable: true, size: 'medium', population: [200000, 200000] },
     aviano: { name: 'Aviano, Pordenone', icon: '✈️', type: 'Rural', state: 'IT-36', col: 0.85, market: 0.78, locality: 0.17, transit: 15, fare: ppp(30, EUR_IT), walkable: false, size: 'small', population: [9000, 310000] },
     palermo: { name: 'Palermo', icon: '🍋', type: 'Coastal metro', state: 'IT-82', col: 0.8, market: 0.6, locality: 0.17, transit: 40, fare: ppp(30, EUR_IT), walkable: true, size: 'large', population: [630000, 1200000] },
   },

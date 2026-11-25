@@ -510,7 +510,7 @@ function colonyYear(ctx, cc) {
     else if (next) ctx.log(`${rulerName(st.ruler)}'s rule is over. ${cname(cc)} is now ${next.name}, ruled from ${rulerCapital(next.ruler, yearNow(state))}.`, '🏳️', 'milestone');
     else if (AUTONOMOUS[cc]) handback(ctx, cc, st, rec, rng);
     else independence(ctx, cc, st, rec, rng);
-  } else if (!next && AUTONOMOUS[cc]) news(ctx, `${cname(cc)} is handed back to ${cname(AUTONOMOUS[cc].of)}`, '🏳️', 'world', 7);
+  } else if (!next && AUTONOMOUS[cc]) news(ctx, AUTONOMOUS[cc].news ?? `${cname(cc)} is handed back to ${cname(AUTONOMOUS[cc].of)}`, '🏳️', 'world', 7);
   else if (!next && !st.noMovement) news(ctx, `${cname(cc)} wins its independence`, '🏳️', 'world', 5);
 }
 
@@ -518,8 +518,8 @@ function colonyYear(ctx, cc) {
 function handback(ctx, cc, st, rec, rng) {
   const { state } = ctx;
   const a = AUTONOMOUS[cc];
-  ctx.log(`🏳️ The handover. ${a.handover} You live in ${a.name} now.`, '🏳️', 'milestone');
-  news(ctx, `${cname(cc)} returns to ${cname(a.of)}`, '🏳️', 'national', 10);
+  ctx.log(a.news ? `🏳️ ${a.handover}` : `🏳️ The handover. ${a.handover} You live in ${a.name} now.`, '🏳️', 'milestone');
+  news(ctx, a.news ?? `${cname(cc)} returns to ${cname(a.of)}`, '🏳️', 'national', 10);
   // Some had left before it: the queues at the consulates for a foreign passport in the 1990s.
   ctx.stat('stress', 3);
   // The civil service and the police carry on under the new flag: "Royal" comes off the badge.

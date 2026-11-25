@@ -37,7 +37,7 @@
  *               Belisario Domínguez medal (1953), the Philippines' Lakandula (2003).
  */
 import { ORDERS, CHIVALRY } from './Honours.js';
-import { yearNow, colonyHere, colonyStage } from './Eras.js';
+import { yearNow, colonyHere, colonyStage, autonomyOf } from './Eras.js';
 import { COUNTRIES } from './Countries.js';
 import { dominionMode as historyMode, statuteOverride, DOMINION_HONOURS as DOMINIONS } from '../politics/StatuteBook.js';
 
@@ -118,7 +118,7 @@ const TIER_FROM = {
   PH: { merit: 1946, lakandula: 2003 },
 };
 /** Whole orders, from their founding. */
-const ORDER_FROM = { HK: 1997, MO: 2001, CN: 1950, DE: 1951, IT: 1952, JP: 1875, KR: 1963, IN: 1954, NZ: 1996, ZA: 2002, CA: 1967, AU: 1975, IE: 9999 };
+const ORDER_FROM = { GL: 1989, HK: 1997, MO: 2001, CN: 1950, DE: 1951, IT: 1952, JP: 1875, KR: 1963, IN: 1954, NZ: 1996, ZA: 2002, CA: 1967, AU: 1975, IE: 9999 };
 
 /* ---- Britain by year ---- */
 const MALE_ONLY = { male: true };
@@ -193,6 +193,15 @@ export function honoursSystem(state) {
   const y = yearNow(state);
   const forGender = (l) => (l ? { ...l, tiers: l.tiers.filter((t) => !t.only || (state.character.gender === 'female' ? t.only.female : t.only.male)) } : l);
   const out = [];
+  // A self-governing territory: its own honours, the sovereign's (British, Danish, American), or both.
+  const auto = autonomyOf(state, cc);
+  if (auto && auto.honours && auto.honours !== 'own') {
+    const own = auto.honours === 'both' ? ownOrders(cc, y) : null;
+    if (own) out.push({ via: cc, ladder: own });
+    const theirs = auto.of === 'GB' ? { via: 'GB', ladder: britishOverseas(y, { colony: true }) } : ordersAt(auto.of, y);
+    if (theirs) out.push(theirs);
+    return out.map((x) => ({ ...x, ladder: forGender(x.ladder) })).filter((x) => x.ladder?.tiers?.length);
+  }
   const mode = dominionMode(cc, y, state);
   if (mode === 'dual') {
     const own = ownOrders(cc, y);

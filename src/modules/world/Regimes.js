@@ -36,7 +36,7 @@ import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
 import { setRegimeLookup } from './Ownership.js';
-import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow, eraYear, autonomyHere } from './Eras.js';
+import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, RULER_NAME, yearNow, eraYear, autonomyHere } from './Eras.js';
 const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
@@ -86,6 +86,11 @@ export const REGIMES = {
   HT: R({ ...FRAGILE, name: 'a state without elected leaders, run by a transitional council', elections: 'none' }),
   CD: R({ ...FRAGILE, name: 'a fragile presidential state' }),
   CF: R({ ...FRAGILE, name: 'a fragile presidential state' }),
+  PR: R({ name: 'the Commonwealth of Puerto Rico, a US territory', leader: 'the Governor' }), GL: R({ name: 'Greenland under self-rule, within the Danish Realm', leader: 'the Premier' }),
+  FO: R({ name: 'the Faroe Islands under home rule, within the Danish Realm', leader: 'the Løgmaður' }), GI: R({ name: 'Gibraltar, a British Overseas Territory', leader: 'the Chief Minister' }),
+  BM: R({ name: 'Bermuda, a British Overseas Territory', leader: 'the Premier' }), KY: R({ name: 'the Cayman Islands, a British Overseas Territory', leader: 'the Premier' }),
+  JE: R({ name: 'the Bailiwick of Jersey, a Crown dependency', leader: 'the Chief Minister' }), GG: R({ name: 'the Bailiwick of Guernsey, a Crown dependency', leader: 'the President of Policy & Resources' }),
+  IM: R({ name: 'the Isle of Man, a Crown dependency (Tynwald)', leader: 'the Chief Minister' }),
   HK: R({ kind: 'hybrid', name: 'a special administrative region of China, under the National Security Law', elections: 'controlled', press: 'state', surveillance: 0.12, leader: 'the Chief Executive' }),
   MO: R({ kind: 'hybrid', name: 'a special administrative region of China', elections: 'controlled', press: 'state', surveillance: 0.08, leader: 'the Chief Executive' }),
   PS: R({ ...FRAGILE, name: 'a territory under occupation and divided rule', elections: 'none', exit: 'restricted' }),
@@ -175,7 +180,7 @@ export function workBlock(state, profession) {
   if (r.religion === 'banned' && CLERGY_IDS.includes(base)) return 'The state has closed the churches and seminaries';
   // An autonomous region has no diplomats or spies of its own: Beijing's.
   const auto = autonomyHere(state);
-  if (auto && /foreignService|diplomac|intelligence|caseOfficer|sigint/i.test(`${base} ${profession.id}`)) return `Foreign affairs and defence belong to ${COUNTRIES[auto.of]?.name ?? 'the sovereign state'}: ${auto.short} has no diplomatic service of its own`;
+  if (auto && /foreignService|diplomac|intelligence|caseOfficer|sigint/i.test(`${base} ${profession.id}`)) return `Foreign affairs and defence belong to ${RULER_NAME[auto.of] ?? COUNTRIES[auto.of]?.name ?? 'the sovereign state'}: there is no diplomatic service of ${auto.short}'s own`;
   if (profession.country && !profession.colonial) {
     const y = yearNow(state);
     const from = Math.max(NATIONAL_FROM[profession.country] ?? 0, AGENCY_FROM[profession.id] ?? 0);

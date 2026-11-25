@@ -720,6 +720,59 @@ export const REGIONAL_EPISODES = [
       { id: 'deal', label: '🃏 Train as a croupier', effect: L('You trained as a croupier: good money, shifts round the clock.', '🃏', { stats: { happiness: 3 }, earn: 3000 }) },
       { id: 'no', label: '📚 Stay in school', effect: L('You stayed in school, though half your class left for the casinos.', '📚', { stats: { smarts: 2 } }) },
     ] },
+  // ---- Self-governing territories ----
+  { id: 'pr.migration', icon: '✈️', title: 'The Great Migration', when: W(['PR'], 1947, 1965, 18, 40),
+    text: 'Operation Bootstrap is turning the island from cane fields to factories, but there aren\'t enough jobs. The cheap flights to New York leave full every day; whole villages have cousins in the Bronx and East Harlem.',
+    options: [
+      { id: 'go', label: '✈️ Fly to New York', effect: L('You flew to New York with one suitcase, and found work in a garment factory. You were a citizen; you were still called a foreigner.', '✈️', { emigrate: 'US', stats: { stress: 6 } }) },
+      { id: 'stay', label: '🏭 Stay for the new factories', effect: L('You stayed, and found work in one of the new factories.', '🏭', { stats: { happiness: 1 } }) },
+    ] },
+  { id: 'gl.ec', icon: '🗳️', title: 'Leave the European Community?', when: W(['GL'], 1982, 1982, 18),
+    text: 'Greenland went into the European Community with Denmark in 1973, though most Greenlanders voted against. Now, with home rule, there is a vote on leaving, and the fishing grounds are the question.',
+    options: [
+      { id: 'leave', label: '🐟 Vote to leave', effect: L('You voted to leave. The leave side won; Greenland left the EC in 1985, the first place ever to do so.', '🗳️') },
+      { id: 'stay', label: '🇪🇺 Vote to stay', effect: L('You voted to stay, and lost.', '🗳️') },
+    ] },
+  { id: 'je.liberation', icon: '🎉', title: 'Liberation Day', when: W(['JE', 'GG'], 1945, 1945, 6),
+    text: '9 May 1945: British ships in the harbour, and the German garrison has surrendered. After five years of occupation, the last winter close to starvation, the whole island is in the streets.',
+    options: [
+      { id: 'harbour', label: '🎉 Go down to the harbour', effect: L('You cheered the Tommies in at the harbour, and someone gave you your first chocolate in years.', '🎉', { stats: { happiness: 8 } }) },
+    ] },
+  { id: 'im.summerland', icon: '🔥', title: 'The Summerland fire', when: W(['IM'], 1973, 1973, 8),
+    text: 'August 1973: the Summerland leisure centre on the Douglas seafront has caught fire with three thousand people inside. Fifty people are dead.',
+    options: [
+      { id: 'help', label: '🚒 Help on the seafront', effect: L('You helped on the seafront that night. The inquiry blamed the building, its plastic walls and its locked doors.', '🚒', { stats: { stress: 8 } }) },
+      { id: 'home', label: '🏠 Stay away', effect: L('You heard the sirens all night. Everyone on the island knew someone who was there.', '🏠', { stats: { stress: 4 } }) },
+    ] },
+  { id: 'ky.ivan', icon: '🌀', title: 'Hurricane Ivan', when: W(['KY'], 2004, 2004, 8),
+    text: 'September 2004: Hurricane Ivan has hit Grand Cayman almost head on. The sea came over the island; most of the houses are damaged.',
+    options: [
+      { id: 'rebuild', label: '🔨 Stay and rebuild', effect: L('You stayed and rebuilt. Within a year the banks and the hotels were open again.', '🔨', { stats: { stress: 8 }, cost: 4000 }) },
+    ] },
+  { id: 'gg.evacuation', icon: '🚢', title: 'The evacuation', when: W(['GG'], 1940, 1940, 5, 15),
+    text: 'June 1940: France has fallen and the Germans are a few miles away. The schools are being evacuated to England by boat, the teachers with them; parents have a day to decide.',
+    options: [
+      { id: 'go', label: '🚢 Go with the school to England', effect: L('You sailed with your class to a mill town in the north of England, and didn\'t see your parents for five years.', '🚢', { stats: { stress: 10 } }) },
+      { id: 'stay', label: '🏠 Stay on the island', effect: L('Your parents kept you home. You grew up under the occupation: German soldiers in the lanes, and hunger at the end.', '🏠', { stats: { stress: 8, health: -3 } }) },
+    ] },
+  { id: 'fo.referendum', icon: '🗳️', title: 'The 1946 referendum', when: W(['FO'], 1946, 1946, 21),
+    text: 'The Faroese are voting on whether to leave Denmark. It will be close; Copenhagen may not accept the result.',
+    options: [
+      { id: 'yes', label: '🇫🇴 Vote for independence', effect: L('You voted to leave. The yes side won narrowly; Denmark annulled it, and offered home rule instead.', '🗳️', { stats: { happiness: 2 } }) },
+      { id: 'no', label: '🇩🇰 Vote to stay with Denmark', effect: L('You voted to stay. Home rule came two years later.', '🗳️') },
+    ] },
+  { id: 'bm.referendum', icon: '🗳️', title: 'The independence referendum', when: W(['BM'], 1995, 1995, 18),
+    text: 'Bermuda is voting on independence from Britain. The banks and the hotels are nervous; a hurricane has just come through.',
+    options: [
+      { id: 'no', label: '🇬🇧 Vote to stay British', effect: L('You voted to stay. Nearly three in four did, and Bermuda remained a British territory.', '🗳️') },
+      { id: 'yes', label: '🇧🇲 Vote for independence', effect: L('You voted for independence. It lost, heavily.', '🗳️', { stats: { happiness: -1 } }) },
+    ] },
+  { id: 'gi.referendum', icon: '🪨', title: 'Joint sovereignty?', when: W(['GI'], 2002, 2002, 18),
+    text: 'London and Madrid have been talking about sharing sovereignty over Gibraltar. The Chief Minister has called a referendum of his own.',
+    options: [
+      { id: 'no', label: '❌ Vote no', effect: L('You voted no, with almost everyone: 98.97 per cent. The talks went nowhere.', '🗳️', { stats: { happiness: 2 } }) },
+      { id: 'yes', label: '✅ Vote yes', effect: L('You were one of the very few who voted yes.', '🗳️') },
+    ] },
   { id: 'vu.coconutWar', icon: '🥥', title: 'The Coconut War', when: W(['VU'], 1980, 1980, 14),
     text: 'On the eve of independence Jimmy Stevens and his Nagriamel movement, backed by French planters and an American libertarian foundation, have declared Espiritu Santo the Republic of Vemerana. The British and French can\'t agree what to do; Papua New Guinea is sending troops.',
     options: [

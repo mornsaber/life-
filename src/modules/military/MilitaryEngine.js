@@ -390,7 +390,8 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   }
   // An autonomous region has no armed forces: its garrison is the sovereign's and recruits none of its people.
   const auto = autonomyHere(state);
-  if (auto && !colonyHere(state)) return { ok: false, reason: `${auto.short} has no armed forces of its own: defence is ${auto.garrison}'s, which doesn't recruit locally` };
+  if (auto && (auto.forces ?? 'none') === 'none' && !colonyHere(state)) return { ok: false, reason: `${auto.short} has no armed forces of its own: defence is ${auto.garrison}'s, which doesn't recruit locally` };
+  if (colonyHere(state)?.occupation) return { ok: false, reason: 'Under enemy occupation: there is no army of yours here to join' };
   // A colony has its own army (and seldom anything else): world/ColonialForces.js.
   const colonialBlock = colonialBranchBlock(state, branchId);
   if (colonialBlock) return { ok: false, reason: colonialBlock };
