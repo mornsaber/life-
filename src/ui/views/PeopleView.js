@@ -468,6 +468,9 @@ function familyLegacyCard(state) {
     ${looms ? `<h4 class="sub">Heirlooms</h4><ul class="funds">${looms}</ul>` : '<p class="fine">Heirlooms come down from those before you: medals, rings, the things with stories.</p>'}`, { icon: '🏰' });
 }
 
+const FAME_EVENTS = { biography: 'a biography', film: 'a film of the life', rediscovered: 'rediscovered', reassessed: 'reassessed' };
+const fameAfterLine = (f) => `${f.rep >= 60 ? 'Still famous' : f.rep >= 30 ? 'Remembered' : 'Mostly forgotten'}${f.titles?.length ? `; best known for “${f.titles.at(-1)}”` : ''}${f.events?.length ? ` (${f.events.map((e) => FAME_EVENTS[e]).join(', ')})` : ''}`;
+
 function lineage(state) {
   const l = state.lineage;
   if (!l?.ancestors?.length) return '';
@@ -475,7 +478,7 @@ function lineage(state) {
     const kids = a.children?.length ? `<div class="tree-kids">${a.children.map((k) => `<span class="${k.heir ? 'tree-heir' : ''}">${k.heir ? '⬇️ ' : ''}${esc(k.name)}${k.alive ? '' : ' 🕯️'}</span>`).join(' · ')}</div>` : '';
     const facts = [a.career ? `💼 ${esc(a.career)}` : null, a.military ? `${a.rank ? militaryInsignia(a.rank.code, a.rank.nation, { branch: a.rank.branch }) : '🎖️'} ${esc(a.military)}` : null, a.education ? `🎓 ${esc(a.education)}` : null, a.honours?.length ? `🏅 ${esc(a.honours.join(', '))}` : null, a.businesses?.length ? `🏪 ${esc(a.businesses.join(', '))}` : null].filter(Boolean);
     const named = (a.namedAfter ?? []).map((n) => `${n.removed ? '<s>' : ''}${esc(n.name)}${n.removed ? `</s> <small>(removed ${n.removed})</small>` : ''}`).join(', ');
-    facts.push(...[a.temperament ? `${a.temperament.map((t) => TEMPERAMENTS[t]?.icon ?? '').join('')} ${esc(a.temperament.map((t) => TEMPERAMENTS[t]?.label ?? t).join(', '))}` : null, named ? `🪧 ${named}` : null, a.memoir ? `📖 “${esc(a.memoir)}”` : null, a.funeral ? `⚱️ ${esc(a.funeral)}` : null].filter(Boolean));
+    facts.push(...[a.temperament ? `${a.temperament.map((t) => TEMPERAMENTS[t]?.icon ?? '').join('')} ${esc(a.temperament.map((t) => TEMPERAMENTS[t]?.label ?? t).join(', '))}` : null, named ? `🪧 ${named}` : null, a.memoir ? `📖 “${esc(a.memoir)}”` : null, a.funeral ? `⚱️ ${esc(a.funeral)}` : null, a.fameAfter ? `🌟 ${esc(fameAfterLine(a.fameAfter))}` : null].filter(Boolean));
     return `<li class="tree-gen"><div class="tree-head"><b>${esc(a.styled ?? a.name)}</b>${a.epithet ? ` <i>${esc(a.epithet)}</i>` : ''}${a.spouse ? ` <small>⚭ ${esc(a.spouse)}</small>` : ''}</div>
       <small class="muted">Generation ${a.generation} · ${a.born}–${a.died} (${a.age}) · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}</small>
       ${facts.length ? `<div class="tree-facts"><small>${facts.join('<br>')}</small></div>` : ''}${kids}</li>`;

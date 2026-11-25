@@ -92,6 +92,7 @@ import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 import { causeOf } from '../modules/economy/Shocks.js';
 import { obituaryHeadline, lifeStoryFacts } from '../modules/life/LifeStory.js';
+import { obituaryPlacement } from '../modules/life/FameAfter.js';
 import { COUNTRIES, countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
 import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
@@ -821,6 +822,7 @@ export class Renderer {
       honors: state.honors,
       arms: (() => { const a = armsOf(state); return a.armigerous ? armsSvg(a, { size: 130, title: `The arms of ${c.firstName} ${c.lastName}` }) : ''; })(),
       facts: [
+        ['The obituary', obituaryPlacement(state)],
         ['Net worth', money(netWorth(state))],
         ['Lifetime earnings', money(state.finances.lifetimeEarnings)],
         peakJob ? ['Career peak', `${esc(peakJob.title)} [${gradePrefix({ ...peakJob, sector: peakJob.sector ?? PROFESSIONS[peakJob.professionId]?.sector })}${peakJob.peakGrade}]`] : null,

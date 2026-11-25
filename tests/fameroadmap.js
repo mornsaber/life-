@@ -15,6 +15,8 @@ import { mediaNow, reachOf, tierLine, brandsNow, scandalsNow, showOfTheDay } fro
 import { fameScore, fameSources } from '../src/modules/life/Fame.js';
 import { WorksModule, kindsNow } from '../src/modules/life/Works.js';
 import { scandalWeight, pressLawOdds } from '../src/modules/life/FameUse.js';
+import { obituaryPlacement, copyrightUntil, familyNameFame, FameAfterModule } from '../src/modules/life/FameAfter.js';
+import { buildHeirState } from '../src/modules/people/Legacy.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc, year, age = 40, seed = 6) => {
@@ -87,6 +89,29 @@ const tests = {
     engine.dispatch('fameUse.hire', 'manager');
     for (let i = 0; i < 15 && state.character.alive; i += 1) { state.prompts = []; engine.ageUp(); }
     assert.ok(state.character.age > 30);
+  },
+  'after death: the obituary, the family name, royalties in copyright'() {
+    const { engine, state } = life('GB', 1950, 60);
+    state.fame.buzz = 60; state.fame.peak = 75;
+    state.works = { list: [{ year: 1940, kind: 'novel', title: 'The Long Winter', verdict: 'a masterpiece', q: 92 }, { year: 1945, kind: 'novel', title: 'Iron and Salt', verdict: 'acclaimed', q: 75 }], practice: {}, prizes: ['nobelLit'], oratory: 0 };
+    assert.match(obituaryPlacement(state), /front page/);
+    assert.match(obituaryPlacement(life('GB', 1950, 60, 4).state), /local paper/);
+    const kid = { id: 'kid1', firstName: 'Tom', lastName: 'Penrose', gender: 'male', relation: 'child', ageOffset: -30, alive: true, relationship: 70 };
+    state.people.list.push(kid);
+    state.character.alive = false;
+    const heir = buildHeirState(new Random(2), state, kid.id);
+    const rec = heir.lineage.ancestors.at(-1).fameAfter;
+    assert.ok(rec && rec.acclaimed === 2 && rec.titles.includes('The Long Winter'));
+    assert.ok(familyNameFame(heir) > 5, 'the family name carries');
+    let earned = 0;
+    const ctx = { state: heir, earn: (n) => { earned += n; }, log: () => {} };
+    heir.character.alive = true; heir.character.age = 31; sync(heir);
+    FameAfterModule.onAgeUp(ctx);
+    assert.ok(earned > 0, 'royalties while in copyright');
+    assert.equal(copyrightUntil(1850, 'GB', 1860), 1878);
+    assert.equal(copyrightUntil(1950, 'FR', 2000), 2020);
+    assert.equal(copyrightUntil(1950, 'US', 1990), 2000);
+    assert.match(VIEWS.people(heir, {}) ?? '', /The Long Winter|Family Tree/);
   },
 };
 

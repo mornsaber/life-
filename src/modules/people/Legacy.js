@@ -31,6 +31,7 @@ import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, stocksValue } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 import { rememberedRecord } from './Remembered.js';
+import { fameAfterRecord } from '../life/FameAfter.js';
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { heirCitizenships } from '../world/Immigration.js';
@@ -439,6 +440,7 @@ export function buildHeirState(rng, old, childId) {
       cause: old.character.causeOfDeath, netWorth: legacy.assets - legacy.debts, generation: old.lineage?.generation ?? 1,
       businesses: allBusinesses(old).map((b) => b.name),
       ...ancestorRecord(old, child.id),
+      fameAfter: fameAfterRecord(old),
     }],
   };
   // The city's underworld goes on; a mobster's child is known to the family.
