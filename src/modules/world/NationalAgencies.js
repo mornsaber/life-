@@ -279,6 +279,25 @@ export const AGENCIES = {
 fromPacks(AGENCIES, 'AGENCIES');
 
 /**
+ * The civil services of the states that came out of the British and French empires, built on the
+ * colonial administrations they inherited: District Officers and Provincial Commissioners in
+ * Nairobi and Accra; sous-préfets and préfets in Dakar and Abidjan. (Countries with a service of
+ * their own above keep it.)
+ */
+const COMMONWEALTH_SERVICE = { analyst: 'Administrative Officer', specialist: 'Senior Administrative Officer', senior: 'District Commissioner', expert: 'Senior Assistant Secretary', lead: 'Under Secretary', chief: 'Provincial Commissioner', das: 'Deputy Secretary', director: 'Permanent Secretary', permSec: 'Head of the Civil Service' };
+const FRANCOPHONE_SERVICE = { analyst: 'Attaché d\'administration', specialist: 'Administrateur civil', senior: 'Sous-préfet', expert: 'Chargé de mission', lead: 'Sous-directeur', chief: 'Préfet', das: 'Directeur général', director: 'Secrétaire général du ministère', permSec: 'Secrétaire général du gouvernement' };
+const COMMONWEALTH = { KE: 'Kenya', NG: 'Nigerian', GH: 'Ghana', UG: 'Uganda', TZ: 'Tanzania', ZM: 'Zambia', MW: 'Malawi', ZW: 'Zimbabwe', BW: 'Botswana', SL: 'Sierra Leone', GM: 'Gambia', MY: 'Malaysian', LK: 'Ceylon', BD: 'Bangladesh', JM: 'Jamaica', TT: 'Trinidad and Tobago', BB: 'Barbados', BS: 'Bahamas', CY: 'Cyprus', MT: 'Malta', FJ: 'Fiji', BZ: 'Belize', GY: 'Guyana', MU: 'Mauritius', SC: 'Seychelles', SD: 'Sudan', LS: 'Lesotho', SZ: 'Eswatini', NA: 'Namibia', PG: 'Papua New Guinea', MM: 'Burma' };
+const FRANCOPHONE = { SN: 'sénégalaise', CI: 'ivoirienne', ML: 'malienne', BF: 'burkinabè', NE: 'nigérienne', TD: 'tchadienne', CM: 'camerounaise', GA: 'gabonaise', CG: 'congolaise', MG: 'malgache', BJ: 'béninoise', TG: 'togolaise', GN: 'guinéenne', MR: 'mauritanienne', TN: 'tunisienne', MA: 'marocaine', DZ: 'algérienne', CF: 'centrafricaine' };
+for (const [cc, adj] of Object.entries(COMMONWEALTH)) {
+  AGENCIES[cc] ??= {};
+  AGENCIES[cc].ministry ??= { name: `${adj} Civil Service`, employers: ['Office of the President', 'Ministry of Finance', 'Ministry of Home Affairs', 'Provincial Administration', 'Ministry of Health'], titles: COMMONWEALTH_SERVICE };
+}
+for (const [cc, adj] of Object.entries(FRANCOPHONE)) {
+  AGENCIES[cc] ??= {};
+  AGENCIES[cc].ministry ??= { name: `Fonction publique ${adj}`, employers: ['Présidence de la République', 'Ministère des Finances', 'Ministère de l\'Intérieur', 'Préfecture', 'Ministère de la Santé'], titles: FRANCOPHONE_SERVICE };
+}
+
+/**
  * Plain titles for the US ladder levels a country leaves unnamed, so a foreign
  * agency never shows a US-only post (a Behavioral Analysis Unit Agent, an FS-4,
  * a Federal Air Marshal). A country's own `titles` win over these.

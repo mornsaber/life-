@@ -585,7 +585,7 @@ function progression(state, job, profession, size) {
   const currentId = job.headOf && !job.headOf.mapped ? null : job.levelId;
   // Each rung shows the rank insignia worn there (where the career wears rank).
   const cc = state.character.countryId ?? 'US';
-  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, insigniaCountry(state, profession)) ?? '', job.appointedTitle ?? null);
+  let html = trackLadder(job.titleMap ? here.map((l) => (job.titleMap[l.id] ? { ...l, title: job.titleMap[l.id] } : l)) : here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, insigniaCountry(state, profession)) ?? '', job.appointedTitle ?? null);
   // What bigger (or smaller) agencies have that this one doesn't.
   const elsewhere = profession.levels.filter((l) => !here.includes(l));
   if (elsewhere.length) html += `<p class="fine">Not at this ${size === 'micro' ? 'small agency' : 'employer'}: ${elsewhere.map((l) => esc(l.title)).join(', ')}.</p>`;
@@ -652,6 +652,8 @@ function intlSection(state) {
   return disclosure('career.intl', '🌐 International service', `<p class="fine">Secondments abroad from your job: you keep your post and pay, add a mission allowance, and live where you're posted.</p><ul class="job-board">${rows}</ul>`, { count: `${ids.filter((id) => missionEligibility(state, id).ok).length} open` });
 }
 
+/** A rung's name at your employer (a service that kept its own ranks). */
+const rungName = (job, l) => job?.titleMap?.[l.id] ?? l.title;
 /** What stands between you and the next rung, ticked off; and where the ladder goes after it. */
 function promotionChecklist(state, job, status, profession, size) {
   const next = status.all ?? [];
@@ -664,15 +666,15 @@ function promotionChecklist(state, job, status, profession, size) {
   ];
   for (const l of next) {
     const c = levelCheck(state, l);
-    for (const m of c.missing ?? []) items.push(tick(false, `For ${esc(l.title)}: ${esc(typeof m === 'string' ? m : m.label ?? m.reason ?? String(m))}`));
-    if (c.clearanceNeeded) items.push(tick(false, `For ${esc(l.title)}: a ${esc(c.clearanceNeeded)} clearance (investigated on promotion)`));
+    for (const m of c.missing ?? []) items.push(tick(false, `For ${esc(rungName(job, l))}: ${esc(typeof m === 'string' ? m : m.label ?? m.reason ?? String(m))}`));
+    if (c.clearanceNeeded) items.push(tick(false, `For ${esc(rungName(job, l))}: a ${esc(c.clearanceNeeded)} clearance (investigated on promotion)`));
   }
   if (status.noOpening) items.push(tick(false, esc(status.reason)));
   // The road after: the next few rungs on your track.
   const ladder = ladderFor(profession, size);
   const idx = ladder.findIndex((l) => l.id === job.levelId);
   const road = ladder.slice(idx + 1).filter((l) => l.track === 'shared' || l.track === job.track || job.track === 'shared').slice(0, 4);
-  return `<div class="promo-check"><ul class="plain">${items.join('')}</ul>${road.length ? `<p class="fine">🪜 After that: ${road.map((l) => `${esc(l.title)} [${gradePrefix(job)}${l.grade}]`).join(' → ')}</p>` : ''}</div>`;
+  return `<div class="promo-check"><ul class="plain">${items.join('')}</ul>${road.length ? `<p class="fine">🪜 After that: ${road.map((l) => `${esc(rungName(job, l))} [${gradePrefix(job)}${l.grade}]`).join(' → ')}</p>` : ''}</div>`;
 }
 
 /** The one licence keeping you out of a job, if that's all that is. */

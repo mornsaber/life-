@@ -20,6 +20,8 @@ import { declareWarWith, endWarNow, warIn } from './War.js';
 import { setEraLayer, setReformLayer } from './Regimes.js';
 import { leaveJob, hire } from '../career/CareerEngine.js';
 import { createEmployer } from '../career/Employers.js';
+import { ladderFor } from '../career/Ladder.js';
+import { orgOf } from '../org/Organizations.js';
 import { LEGISLATURES } from '../politics/NationalOffices.js';
 import { OFFICES } from '../politics/Offices.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
@@ -752,6 +754,64 @@ const SUCCESSOR = {
   colonialService: (n) => `the ${n} Administrative Service`, colonialPolice: (n) => `the ${n} Police Service`, colonialTroops: (n) => `the ${n} Army`,
   colonialMedical: (n) => `the ${n} Medical Service`, tradingCompany: () => null, plantation: () => null,
 };
+/** The national career each colonial service becomes at independence. */
+const NATIONAL_CAREER = { colonialService: 'ministry', colonialPolice: 'police' };
+/** The ranks the new states kept from the old services (Kenya's District and Provincial Commissioners; the French commissaires). */
+const SUCCESSOR_RANKS = {
+  ministry: {
+    GB: { analyst: 'District Officer', specialist: 'Senior District Officer', senior: 'District Commissioner', expert: 'Senior Assistant Secretary', lead: 'Under Secretary', chief: 'Provincial Commissioner', das: 'Deputy Secretary', director: 'Permanent Secretary', permSec: 'Head of the Civil Service' },
+    FR: { analyst: 'Attaché d\'administration', specialist: 'Administrateur civil', senior: 'Sous-préfet', expert: 'Chargé de mission', lead: 'Sous-directeur', chief: 'Préfet', das: 'Directeur général', director: 'Secrétaire général du ministère', permSec: 'Secrétaire général du gouvernement' },
+  },
+  police: {
+    GB: { recruit: 'Recruit Constable', officer: 'Constable', senior: 'Corporal', detective: 'Detective Constable', seniorDetective: 'Detective Corporal', detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Inspector', detCaptain: 'Detective Chief Inspector', sergeant: 'Sergeant', lieutenant: 'Inspector', captain: 'Chief Inspector', deputyChief: 'Superintendent', chief_cmd1: 'Senior Superintendent', chief_cmd2: 'Assistant Commissioner', chief_cmd3: 'Senior Assistant Commissioner', chief_cmd4: 'Deputy Commissioner', chief: 'Commissioner of Police' },
+    FR: { recruit: 'Élève gardien de la paix', officer: 'Gardien de la paix', senior: 'Brigadier', detective: 'Inspecteur', seniorDetective: 'Inspecteur principal', detSergeant: 'Inspecteur divisionnaire', detLieutenant: 'Commissaire', detCaptain: 'Commissaire principal', sergeant: 'Brigadier-chef', lieutenant: 'Officier de paix', captain: 'Commandant', deputyChief: 'Commissaire principal', chief_cmd1: 'Commissaire divisionnaire', chief_cmd2: 'Contrôleur général', chief_cmd3: 'Inspecteur général', chief_cmd4: 'Directeur adjoint', chief: 'Directeur général de la Sûreté nationale' },
+  },
+};
+/** Where each colonial rank went (Africanisation: clerks and cadets became District Officers). */
+const RANK_FOR = { colonialService: { clerk: 'analyst', seniorClerk: 'analyst', cadet: 'analyst', districtOfficer: 'specialist', seniorDistrictOfficer: 'senior', districtCommissioner: 'senior', resident: 'chief', colonialSecretary: 'director', chiefSecretary: 'permSec' } };
+/** Move a kept-on colonial officer into the new state's own service at the nearest grade. */
+function intoNationalService(ctx, job, cc, name, ruler = 'GB') {
+  const { state } = ctx;
+  const target = NATIONAL_CAREER[job.professionId];
+  const prof = target && (PROFESSIONS[`${cc.toLowerCase()}_${target}`] ?? PROFESSIONS[target]);
+  if (!prof) return null;
+  const size = 'enterprise';
+  const ladder = ladderFor(prof, size).filter((l) => !l.appointed && !l.founder);
+  if (!ladder.length) return null;
+  // The same place on the new ladder as on the old (a sub-inspector stays a middle rank), no higher than the next-to-top.
+  const old = ladderFor(PROFESSIONS[job.professionId], job.employer?.size ?? size).filter((l) => !l.appointed && !l.founder);
+  const at = Math.max(0, old.findIndex((l) => l.id === job.levelId));
+  const frac = old.length > 1 ? at / (old.length - 1) : 0;
+  const pinned = RANK_FOR[job.professionId]?.[job.levelId];
+  const level = (pinned && ladder.find((l) => l.id === pinned)) ?? ladder[Math.min(ladder.length - 2, Math.max(0, Math.round(frac * (ladder.length - 1))))] ?? ladder[0];
+  const keep = { yearsAtEmployer: job.yearsAtEmployer, startAge: job.startAge, performance: job.performance, step: job.step, merit: job.merit, probationLeft: 0, rungs: job.rungs, peakGrade: job.peakGrade };
+  const from = job.employer?.name ?? PROFESSIONS[job.professionId]?.name;
+  const employer = createEmployer(ctx.rng, state, prof, state.character.regionId);
+  // The police keep the force's own name where the country has one (the Kenya Police, the Nigeria Police Force).
+  const ownForce = target === 'police' && !/Police Department$/.test(employer.name);
+  // A country with its own civil service in the data goes by its name (the Fonction publique sénégalaise).
+  if (!ownForce) employer.name = prof.id !== target ? `the ${prof.name.replace(/^the /i, '')}` : name;
+  name = employer.name;
+  employer.size = size;
+  // Not a resignation: the post itself moved.
+  state.career.job = null;
+  state.career.history.push({ ...job, employerName: from, endAge: state.character.age, reason: 'Transferred to the national service at independence', transferred: true });
+  const moved = hire(ctx, { professionId: prof.id, levelId: level.id, employer, step: keep.step ?? 1, merit: keep.merit ?? 0 });
+  if (!moved) return null;
+  const nj = state.career.job;
+  Object.assign(nj, { yearsAtEmployer: keep.yearsAtEmployer ?? 0, startAge: keep.startAge ?? state.character.age, performance: keep.performance ?? 55, probationLeft: 0, peakGrade: Math.max(keep.peakGrade ?? 0, nj.grade ?? 0), nationalized: { cc, since: state.character.age, from } });
+  // The new state's own ranks, where it has no national service of its own in the data.
+  if (!PROFESSIONS[`${cc.toLowerCase()}_${target}`]) {
+    nj.titleMap = { ...(SUCCESSOR_RANKS[target]?.[ruler === 'FR' || ruler === 'BE' ? 'FR' : 'GB'] ?? {}) };
+    if (nj.titleMap[nj.levelId]) nj.titleRaw = nj.title = nj.titleShown = nj.titleMap[nj.levelId];
+  }
+  const org = orgOf(state, nj.employer);
+  if (org && !ownForce) org.name = name;
+  // The hiring notice is the transfer's, not a new job's.
+  const entries = state.log.at(-1)?.entries;
+  if (entries) for (let i = entries.length - 1; i >= 0; i -= 1) if (/^You were hired as/.test(entries[i].text)) { entries.splice(i, 1); break; }
+  return nj;
+}
 /** At independence: kept on by the new government (most local officers), or let go with compensation. */
 function handOver(ctx, cc, st, job, rec, rng) {
   const { state } = ctx;
@@ -774,6 +834,13 @@ function handOver(ctx, cc, st, job, rec, rng) {
   const keep = job.levelId !== 'governor' && rng.chance(odds);
   if (keep) {
     const name = SUCCESSOR[job.professionId]?.(adj) ?? `the ${adj} civil service`;
+    // The service becomes the new state's own: its civil service, police or health service, with
+    // its own ranks to climb (no more Colonial Secretary or Governor). Rank, seniority and pay go with you.
+    const moved = intoNationalService(ctx, job, cc, name, st.ruler);
+    if (moved) {
+      ctx.stat('happiness', 3);
+      return ctx.log(`The ${rulerAdj(st.ruler)} service passed to the new government as ${moved.employer?.name ?? name}. You kept your rank, now ${moved.title}, answering to ${country}'s own ministers.`, '🏛️', 'milestone');
+    }
     job.nationalized = { cc, since: state.character.age, from: job.employer?.name ?? p.name };
     job.titleMap = { ...(job.titleMap ?? {}), ...(NATIONAL_TITLES[job.professionId] ?? {}) };
     if (job.titleMap[job.levelId]) job.title = job.titleMap[job.levelId];

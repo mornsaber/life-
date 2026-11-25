@@ -44,7 +44,7 @@ const COLONIAL = { sector: 'state', payMultiplier: 1.05, minAge: 18, sizes: { en
 const careers = {
   colonialService: {
     ...COLONIAL, id: 'colonialService', name: 'Colonial Service', icon: '🏛️',
-    employers: ['the Colonial Administrative Service', 'the Indian Civil Service', 'the Colonial Secretariat'],
+    employers: ['the Colonial Administrative Service', 'the Colonial Secretariat'],
     entry: { education: { level: 'highschool' } },
     ladder: [
       ['clerk', 'Government Clerk', 1, { years: 2 }],

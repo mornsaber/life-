@@ -30,6 +30,8 @@ export const setVocationsEnabled = (on) => { ENABLED = on; };
 /** The pack for your job (or a profession id), or null. */
 export function packFor(state, professionId = state.career?.job?.professionId) {
   if (!professionId || !ENABLED) return null;
+  // A colonial service the new state kept on is no longer the empire's: no colonial courses or honours.
+  if (state.career?.job?.nationalized && professionId === state.career.job.professionId && /^colonial/.test(professionId)) return null;
   return BY_PROFESSION[professionId] ?? BY_PROFESSION[getProfession(professionId)?.template] ?? null;
 }
 /** The record, for reading (views, eligibility): never creates one, so rendering leaves the state alone. */
