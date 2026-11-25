@@ -15,6 +15,7 @@ import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js'
 import { esc, money, button, card, chip, meter, kv, empty, disclosure, select, orgTree } from '../Components.js';
 import { governmentChart } from '../../modules/org/OrgChart.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
+import { endorsementNow, endorsementName, campaignWords, unpaidNote } from '../../modules/politics/PoliticsOfTheDay.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
 import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Government.js';
@@ -358,7 +359,7 @@ function campaignCard(state, c) {
     return card(`Campaign: ${office.name}`, `
       ${meter(Math.min(100, (c.funds / office.cost) * 100), { label: `💰 War chest ${money(c.funds)} of ~${money(office.cost)}`, suffix: '%' })}
       ${meter(Math.round(voteShare(state, c.officeId, c) * 100), { label: '📊 Projected support', tone: voteShare(state, c.officeId, c) > 0.5 ? 'good' : 'mid' })}
-      <div class="abilities">${Object.entries(ENDORSEMENTS).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${e.name} ✓`, 'good') : button(`${e.icon} Seek ${e.name}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
+      <div class="abilities">${Object.entries(ENDORSEMENTS).filter(([id]) => endorsementNow(state, id)).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${endorsementName(state, id, e.name)} ✓`, 'good') : button(`${e.icon} Seek ${endorsementName(state, id, e.name)}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
       <div class="action-grid">${button('📞 Fundraise', 'politics.fundraise', { hint: 'Twice a year' })}${button('🚪 Canvass', 'politics.canvass')}${button('🎤 Debate', 'politics.debate')}${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}</div>
       <p class="fine">Decided when you next age up.</p>`, { icon: '🗳️', accent: 'green' });
   }
@@ -369,6 +370,7 @@ function campaignCard(state, c) {
   const years = c.electionYear - currentYear(state);
   const polls = (c.polls ?? []).map((x) => `${x.you}%`).join(' → ');
   const adCost = Math.round(office.cost * 0.1);
+  const W = campaignWords(state);
   return card(`${c.incumbent ? 'Re-election' : 'Campaign'}: ${office.name}`, `
     <p class="muted">${primary ? `${isPartisan(c.officeId) ? 'Primary' : 'Election'} first` : 'General election'} · ${years > 0 ? `election in ${c.electionYear} (${years} yr)` : 'election this year — at your next birthday'}${polls ? ` · polls: ${polls}` : ''}</p>
     ${meter(Math.round(share * 100), { label: primary ? '📊 Primary projection' : '📊 Projected vote share', tone: share > 0.5 ? 'good' : 'mid' })}
@@ -376,15 +378,16 @@ function campaignCard(state, c) {
     ${opp ? `<p><b>${primary ? 'Waiting in the general' : 'Your opponent'}:</b> ${esc(opponentLabel(state, opp))}, ${esc(opp.background)} · quality ${opp.quality}${opp.scandal ? ` · <span class="neg">${opp.scandal} scandal${opp.scandal > 1 ? 's' : ''}</span>` : ''}${c.oppoDone ? ` · file: ${esc(opp.weakness)}` : ''}</p>` : ''}
     ${primary && c.rivals.length ? `<p><b>Primary field:</b> ${c.rivals.map((r) => `${esc(r.name)} (quality ${r.quality})`).join(', ')}. Primary voters want a candidate firmly on their side.</p>` : ''}
     ${primary ? '' : `<p class="fine">${g.parts.map((x) => `${esc(x.label)} <span class="${x.v >= 0 ? 'pos' : 'neg'}">${x.v >= 0 ? '+' : ''}${Math.round(x.v * 1000) / 10}</span>`).join(' · ')}</p>`}
-    <div class="abilities">${Object.entries(ENDORSEMENTS).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${e.name} ✓`, 'good') : button(`${e.icon} Seek ${e.name}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
+    <div class="abilities">${Object.entries(ENDORSEMENTS).filter(([id]) => endorsementNow(state, id)).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${endorsementName(state, id, e.name)} ✓`, 'good') : button(`${e.icon} Seek ${endorsementName(state, id, e.name)}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
     <div class="action-grid">
-      ${button('📞 Fundraise', 'politics.fundraise', { hint: 'Twice a year' })}
+      ${button(W.fundraise, 'politics.fundraise', { hint: 'Twice a year' })}
       ${button('💵 Self-fund (25% of cash)', 'politics.selfFund')}
-      ${button('📺 Run an ad', 'politics.ad', { arg: 'positive', hint: money(adCost), disabled: c.funds < adCost })}
-      ${button('🗡️ Attack ad', 'politics.ad', { arg: 'attack', hint: money(adCost), disabled: c.funds < adCost })}
-      ${button('🚪 Canvass', 'politics.canvass', { hint: '+Name recognition' })}
+      ${button(W.ad, 'politics.ad', { arg: 'positive', hint: money(adCost), disabled: c.funds < adCost })}
+      ${button(W.attack, 'politics.ad', { arg: 'attack', hint: money(adCost), disabled: c.funds < adCost })}
+      ${button(W.canvass, 'politics.canvass', { hint: '+Name recognition' })}
+      ${W.treat ? button('🍻 Treat the voters', 'politics.treat', { hint: `Open voting: drink, dinners and a sovereign in the hand · ${money(adCost)}`, disabled: c.funds < adCost }) : ''}
       ${button('🔎 Opposition research', 'politics.oppo', { hint: money(office.cost * 0.05), disabled: c.oppoDone })}
-      ${button('🎤 Debate', 'politics.debate', { hint: 'Once a year' })}
+      ${button(W.debate, 'politics.debate', { hint: 'Once a year' })}
       ${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}
     </div>
     ${disclosure('politics.townhall', '🏟️ Town halls: make the race about an issue', `<div class="toggle-row">${ISSUE_IDS.map((id) => button(`${ISSUES[id].icon} ${ISSUES[id].name}`, 'politics.townHall', { arg: id, variant: 'tiny' })).join('')}</div><p class="fine">Pick one where you're closer to the voters than ${esc(opp?.name ?? 'your opponent')} is.</p>`)}`, { icon: '🗳️', accent: 'green' });

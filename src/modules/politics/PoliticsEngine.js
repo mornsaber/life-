@@ -20,6 +20,7 @@ import { OFFICES } from './Offices.js';
 import { SEAT_OFFICES, executiveOf } from './Legislature.js';
 import { voteShare, appointmentEligibility } from './Campaigns.js';
 import { CampaignTrail, campaignYear } from './CampaignTrail.js';
+import { officePay } from './PoliticsOfTheDay.js';
 import { newCampaign, outsideCalendar, electorateOf, distance } from './Elections.js';
 import { platformOf, platformView, platformYear, recordStance, ISSUES, partyLine } from './Platform.js';
 import { currentYear } from '../../core/State.js';
@@ -245,7 +246,8 @@ export const PoliticsEngine = {
     const o = p.office;
     if (o) {
       const office = OFFICES[o.id];
-      ctx.earn(o.salary ?? office.salary, `${office.name} salary`, { wage: true });
+      const pay = officePay(state, o.id, o.salary ?? office.salary);
+      if (pay) ctx.earn(pay, `${office.name} salary`, { wage: true });
       if (office.pension) ctx.emit('retirement:accrue', { planId: office.pension, salary: office.salary, employer: office.name });
       p.recognition = Math.min(100, p.recognition + 3);
       ctx.stat('stress', office.fullTime ? 6 : 3);

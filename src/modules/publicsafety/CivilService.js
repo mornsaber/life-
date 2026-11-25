@@ -19,6 +19,7 @@
  * job.schooling = { levelId, until, kind }                       (concours, track)
  */
 import { clamp } from '../../core/Random.js';
+import { yearNow } from '../world/Eras.js';
 import { PROMO_GATES, promotionStatus, promote, levelCheck, levelYears } from '../career/CareerEngine.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, nextLevels } from '../career/Ladder.js';
@@ -66,12 +67,17 @@ const COUNTRY_SYSTEM = {
   ...Object.fromEntries(['IN', 'PK', 'BD', 'LK', 'NP', 'NG', 'KE', 'GH', 'UG', 'TZ', 'EG', 'PH'].map((c) => [c, 'committee'])),
 };
 const ccOf = (state) => state?.character?.countryId ?? 'US';
+/** When each promotion system came in (US civil-service lists in the big cities by the 1890s; British
+ *  police promotion exams after the Police Act of 1919; Japan's rank exams after 1948). */
+const SYSTEM_FROM = { list: 1895, qualify: 1920, rankExam: 1948, concours: 1880, track: 1920, committee: 1900 };
 
 /** The promotion system for this job here: { kind, ranks }. */
 export function systemOf(job, state) {
   const fam = familyOf(job);
   if (!fam) return { kind: 'board', ranks: [] };
-  const kind = COUNTRY_SYSTEM[ccOf(state)] ?? 'board';
+  let kind = COUNTRY_SYSTEM[ccOf(state)] ?? 'board';
+  // Before written promotion exams came in, promotion was by the chief's choice (and, in the US, the ward boss's).
+  if (state?.character && yearNow(state) < (SYSTEM_FROM[kind] ?? 0)) kind = 'board';
   if (kind === 'list') return { kind, ranks: EXAM_RANKS[job.professionId] ?? EXAM_RANKS[fam === 'fire' ? 'fire' : 'police'] };
   return { kind, ranks: RANKS[kind]?.[fam] ?? [] };
 }

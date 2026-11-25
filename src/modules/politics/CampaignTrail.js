@@ -17,6 +17,7 @@ import { filingFor, settleDeposit } from './FilingFees.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear, prestige, yearlyCount, bumpYearly, criminalRecord } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
+import { campaignWords, secretBallot, endorsementNow } from './PoliticsOfTheDay.js';
 import { runEligibility, voteShare, endorsementEligible } from './Campaigns.js';
 import { ISSUES, ISSUE_IDS, platformOf, setStance } from './Platform.js';
 import { executiveOf } from './Legislature.js';
@@ -324,7 +325,7 @@ export const CampaignTrail = {
     endorse(ctx, id) {
       const { state, rng } = ctx;
       const c = state.politics.campaign;
-      if (!c || c.endorsements.includes(id) || !ENDORSEMENTS[id]) return;
+      if (!c || c.endorsements.includes(id) || !ENDORSEMENTS[id] || !endorsementNow(state, id)) return;
       if (!once(ctx, `politics.endorse.${id}`, 1, 'Already asked this year.')) return;
       if (!endorsementEligible(state, id) || !rng.chance(0.65)) {
         ctx.log(`${ENDORSEMENTS[id].name} endorsed your opponent.`, ENDORSEMENTS[id].icon, 'warn');
@@ -368,10 +369,28 @@ export const CampaignTrail = {
       } else {
         c.momentum = (c.momentum ?? 0) + 0.015;
         state.politics.recognition = Math.min(100, state.politics.recognition + 3);
-        ctx.log(`Your ad (${money(cost)}) introduced you to voters who'd never heard your name.`, '📺', 'good');
+        ctx.log(`${campaignWords(state).adLog} (${money(cost)}) Voters who'd never heard your name know it now.`, '📺', 'good');
       }
       maybeEvent(ctx, c);
       return undefined;
+    },
+
+    /** Before the secret ballot: treat the voters (drink, dinners, a coin in the hand). Usual, and risky. */
+    treat(ctx) {
+      const { state, rng } = ctx;
+      const c = state.politics.campaign;
+      if (!c || secretBallot(state)) return;
+      const cost = Math.round(OFFICES[c.officeId].cost * 0.1);
+      if (c.funds < cost) return ctx.toast('Not enough in the war chest', 'warn');
+      if (!once(ctx, 'politics.treat', 1, 'The taverns are already open on your account.')) return;
+      c.funds -= cost;
+      c.momentum = (c.momentum ?? 0) + 0.03;
+      if (rng.chance(0.12)) {
+        c.momentum -= 0.05;
+        state.politics.recognition = Math.max(0, state.politics.recognition - 3);
+        return ctx.log('Your opponents petitioned against "corrupt treating" and the papers had a field day.', '🍻', 'warn');
+      }
+      ctx.log('The beer flowed, the dinners were good, and a good many voters remembered whose they were when they called out their vote.', '🍻', 'good');
     },
 
     /** Make the race about an issue: town halls on it. Good if you're closer to voters on it than your opponent. */

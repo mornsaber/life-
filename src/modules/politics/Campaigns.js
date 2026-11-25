@@ -20,6 +20,7 @@ import { generalShare, scandalDrag } from './Elections.js';
 import { stateIdOf } from '../life/Regions.js';
 import { presidencyInEra, yearNow, PRESENT } from '../world/Eras.js';
 import { statuteIn } from './StatuteBook.js';
+import { standCheck, neutralityBar, senateByLegislature } from './PoliticsOfTheDay.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
@@ -64,8 +65,10 @@ export function runEligibility(state, officeId) {
   if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
   if (residencyYears(state) < office.residency) return { ok: false, reason: `${office.residency} yr residency in ${stateOf(state).name}` };
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
-  if (isOnActiveDuty(state)) return { ok: false, reason: 'Active duty can\'t run (Hatch Act)' };
-  if (state.career.job?.sector === 'federal') return { ok: false, reason: 'Federal employees can\'t run (Hatch Act)' };
+  const neutral = neutralityBar(state);
+  if (neutral) return { ok: false, reason: neutral };
+  const era = standCheck(state, officeId);
+  if (era) return { ok: false, reason: era };
   if (office.req) {
     const check = checkRequirements(state, office.req);
     if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
@@ -101,7 +104,7 @@ export function voteShare(state, officeId, campaign, { incumbent = false } = {})
     return clamp(lead, 0.05, 0.8);
   }
   // Chosen by parliament or a convention: the governing majority's candidate, if your party holds it.
-  if (office.selection === 'parliament') {
+  if (office.selection === 'parliament' || senateByLegislature(state, officeId)) {
     const nat = Object.values(state.legislature?.bodies ?? {}).find((b) => b.level === 'federal');
     const mine = state.civic?.party?.bloc;
     const majority = nat ? (nat.labor * 2 > nat.seats ? 'labor' : 'business') : null;
