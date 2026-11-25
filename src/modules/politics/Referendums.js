@@ -226,13 +226,15 @@ export function questionsHere(state) {
   const region = stateIdOf(state);
   const sec = SECESSION[region];
   if (sec && y >= sec.from && !state.world?.seceded?.[region]) out.push({ q: `secession:${region}`, label: `🏳️ Independence for ${sec.name}`, support: sec.support });
+  const laws = [];
   for (const [id, s] of Object.entries(STATUTES)) {
     if (s.where && !s.where(cc)) continue;
     if ((s.from ?? 1800) > y || (s.to != null && y >= s.to)) continue;
     const now = statuteIn(state, id, cc);
-    out.push({ q: `law:${id}`, label: `${s.icon ?? '📜'} ${now ? 'Repeal' : 'Bring in'}: ${s.name.toLowerCase()}`, support: lawSupport(s, cc, y, !now) });
+    laws.push({ q: `law:${id}`, label: `${s.icon ?? '📜'} ${now ? 'Repeal' : 'Bring in'}: ${s.name.toLowerCase()}`, support: lawSupport(s, cc, y, !now) });
   }
-  return out;
+  // The laws with a live argument about them: those opinion is closest to changing.
+  return [...out, ...laws.sort((a, b) => b.support - a.support).slice(0, 12)];
 }
 /** Support for changing a law: high where history was about to make the change, low where it went the other way. */
 function lawSupport(s, cc, y, want) {

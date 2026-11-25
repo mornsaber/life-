@@ -16,6 +16,7 @@
 import { PERIOD_RUNGS, COUNTRY_RUNGS, PROFESSION_RUNGS } from './PeriodRungs.js';
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
+import { sovereignIn } from './HistoricalData.js';
 import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
 import { PACKS } from './packs/index.js';
 import { statuteIn } from '../politics/StatuteBook.js';
@@ -1163,6 +1164,8 @@ export function periodFlag(state, cc) {
   // A flag this world's people voted to change (New Zealand's fern, 2016).
   const changed = state?.world?.flagChange?.[cc];
   if (changed && yearNow(state) >= changed.year) return { id: changed.id };
+  // The Taliban's white flag flies over Afghanistan from August 2021.
+  if (cc === 'AF' && yearNow(state) >= 2021) return { id: 'taliban' };
   if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
   const y = yearNow(state);
   // Your own city's state flies its own flag (Bavaria's lozenges, the Transvaal's Vierkleur).
@@ -1214,7 +1217,18 @@ export function periodFlag(state, cc) {
     case 'VN': return y >= 1887 && y < 1945 ? { img: 'FR' } : { img: cc };
     case 'YE': return y < 1918 ? { img: 'TR' } : { img: cc };
     case 'HU': return y < 1867 ? { id: 'habsburg' } : y >= 1949 && y < 1957 ? { id: 'hungaryPR' } : { img: cc };
-    default: return { img: cc };
+    case 'AF': return y < 1919 ? { id: 'afghanEmirate' } : y < 1978 ? { id: 'afghanKingdom' } : y < 1980 ? { id: 'afghanKhalq' } : y < 1992 ? { id: 'afghanDRA' } : y >= 1996 && y < 2002 ? { id: 'taliban' } : y < 2002 ? { id: 'afghanIS' } : { img: cc };
+    case 'MM': return y < 1886 ? { id: 'konbaung' } : y < 1974 ? { id: 'burmaUnion' } : y < 2010 ? { id: 'burmaSocialist' } : { img: cc };
+    case 'AU': return y < 1901 ? { img: 'GB' } : { img: cc };
+    case 'NZ': return y < 1840 ? { id: 'noFlag' } : y < 1902 ? { img: 'GB' } : { img: cc };
+    case 'XK': return y < 1912 ? { img: 'TR' } : { img: cc };
+    case 'LU': return y < 1890 ? { img: 'NL' } : { img: cc };
+    case 'SS': return y < 2011 ? periodFlag(state, 'SD') : { img: cc };
+    case 'IM': return { img: cc };
+    case 'RW': return y >= 1962 && y < 2001 ? { id: 'rwandaOld' } : { img: cc };
+    case 'MN': return y >= 1924 && y < 1992 ? { id: 'mongoliaPR' } : { img: cc };
+    // A land not yet a state (before the colonial era or between empires) had no national flag.
+    default: return y >= 1816 && !sovereignIn(cc, y) && !(COLONIES[cc] ?? []).some((s) => !s.from || s.from <= y) ? { id: 'noFlag' } : { img: cc };
   }
 }
 

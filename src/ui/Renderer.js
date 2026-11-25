@@ -717,7 +717,11 @@ export class Renderer {
       const m = state.emergency[s.id];
       if (m) parts.push(`${s.icon} ${rankOfMember(s.id, m).title}`);
     }
-    if (state.politics.office) parts.push(`🗳️ ${state.politics.office.id === 'governor' ? 'Governor' : state.politics.office.id}`.replace('cityCouncil', 'City Council').replace('stateRep', 'State Rep').replace('stateSenator', 'State Senator').replace('usRep', 'U.S. Rep').replace('usSenator', 'U.S. Senator').replace('mayor', 'Mayor').replace('judge', 'Judge'));
+    if (state.politics.office) {
+      const o = state.politics.office;
+      const SHORT = { governor: 'Governor', cityCouncil: 'City Council', stateRep: 'State Rep', stateSenator: 'State Senator', usRep: 'U.S. Rep', usSenator: 'U.S. Senator', mayor: 'Mayor', judge: 'Judge' };
+      parts.push(`🗳️ ${SHORT[o.id] ?? o.title ?? OFFICES[o.id]?.name ?? o.id}`);
+    }
     const seat = state.judiciary?.seat;
     if (seat && state.politics.office?.id !== 'judge') parts.push(`🧑‍⚖️ ${courtTitle(state, seat.court)}`);
     if (state.career.emeritus && !job) parts.push(`🎓 ${state.career.emeritus.title}`);
