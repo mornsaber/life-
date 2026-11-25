@@ -198,3 +198,16 @@ export const PERIOD_RUNGS = [
   ...R('Dental Specialist (Orthodontics / Oral Surgery)', ['Dental Surgeon', 1920]), ...R('Chief of Oral & Maxillofacial Surgery', ['Senior Dental Surgeon', 1950]),
   ...R('Associate Dentist', ['Assistant Dentist', 1950]),
 ];
+
+/** Country ladders of their day: the British civil service's divisions before the 1920 reorganisation. */
+export const COUNTRY_RUNGS = {
+  GB: [
+    ...R('Administrative Officer', ['Boy Clerk', 1920]),
+    ...R('Executive Officer', ['Junior Clerk', 1876], ['Second Division Clerk', 1920]),
+    ...R('Higher Executive Officer', ['Senior Clerk', 1876], ['Second Division Clerk (Higher Grade)', 1920]),
+    ...R('Senior Executive Officer', ['Staff Clerk', 1920]),
+    ...R('Senior Principal', ['First Class Clerk', 1920]),
+    ...R('Director General', ['Assistant Under-Secretary', 1940]),
+    ...R('Permanent Secretary', ['Permanent Under-Secretary', 1920]),
+  ],
+};

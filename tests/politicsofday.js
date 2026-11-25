@@ -11,6 +11,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { sync } from '../src/modules/world/History.js';
+import { periodText, periodTitle } from '../src/modules/world/Eras.js';
 import { officePay, standCheck, senateByLegislature, secretBallot, patronageBonus, meritHere, campaignWords, endorsementNow, neutralityBar } from '../src/modules/politics/PoliticsOfTheDay.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -63,6 +64,15 @@ const tests = {
     const s3 = life('US', 1950).state;
     s3.career.job = { sector: 'federal' };
     assert.match(neutralityBar(s3), /Hatch Act/);
+  },
+  'historical jobs carry the titles of their day'() {
+    const s = life('GB', 1870).state;
+    const html = VIEWS.career(s, {});
+    const shown = periodText(html);
+    assert.doesNotMatch(shown, /VP of Retail Operations|Certified Nursing Assistant|Culinary Director|CNC Machinist/);
+    assert.match(periodTitle('Medical Resident'), /House Surgeon/);
+    sync(life('US', 2020).state);
+    assert.equal(periodTitle('Medical Resident'), 'Medical Resident');
   },
   'the politics tab renders in 1860 and 2000'() {
     for (const [cc, y] of [['GB', 1860], ['US', 1880], ['US', 2000]]) assert.ok(VIEWS.politics(life(cc, y).state, {}).length > 100);
