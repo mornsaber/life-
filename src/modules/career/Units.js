@@ -165,7 +165,10 @@ function hash(s) {
   return h >>> 0;
 }
 // Units that came late: no drug court before the war on drugs, no digital evidence before computers.
-const UNIT_FROM = [[/Drug|Narcotics/, 1914], [/Drug Court/, 1989], [/Digital|Cyber/, 1980], [/DNA/, 1986], [/Sex Offender/, 1980], [/Pretrial/, 1960], [/Reentry/, 1990], [/High-Risk/, 1970], [/Toxicology/, 1900], [/Firearms & Toolmarks/, 1925], [/Latent Prints/, 1905]];
+const UNIT_FROM = [[/Drug|Narcotics/, 1914], [/Drug Court/, 1989], [/Digital|Cyber/, 1980], [/DNA/, 1986], [/Sex Offender/, 1980], [/Pretrial/, 1960], [/Reentry/, 1990], [/High-Risk/, 1970], [/Toxicology/, 1900], [/Firearms & Toolmarks/, 1925], [/Latent Prints/, 1905],
+  [/Compliance/, 1985], [/Taxpayer Services/, 1950], [/Human Resources|\bHR\b/, 1975], [/Information Technology|\bIT\b/, 1980], [/Computer|Computing/, 1955], [/\bData\b/, 1965], [/Diversity|Inclusion/, 1990],
+  [/\bSWAT\b|Tactical Response|Special Weapons/, 1968], [/\bK-?9\b|Canine/, 1946], [/Counter-?Terror/, 1972], [/Hazmat|Hazardous Materials/, 1975], [/Air Support|Aviation Unit|Helicopter/, 1950],
+  [/Domestic Violence|Victim/, 1975], [/Child Protection|Child Abuse/, 1962], [/Internal Affairs|Professional Standards/, 1950], [/\b911\b|Emergency Communications/, 1968], [/Paramedic|\bEMS\b/, 1966], [/Risk Management/, 1970], [/Analytics/, 2005]];
 const inEra = (name) => !UNIT_FROM.some(([re, y]) => re.test(name) && eraYear() < y);
 const pick = (list, n) => { const ok = list.filter((x) => typeof x !== 'string' || inEra(x)); const l = ok.length ? ok : list; return l[n % l.length]; };
 const COMPASS = ['North', 'South', 'East', 'West', 'Central'];

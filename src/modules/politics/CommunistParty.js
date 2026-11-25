@@ -78,13 +78,17 @@ const BLOC = (name, extra = {}) => ({ name, short: 'the Party', congress: 'the n
 const ERA_PARTIES = {
   RU: BLOC('the Communist Party of the Soviet Union', { congress: 'the Supreme Soviet', army: 'the Soviet Army', cmc: 'the Defence Council of the USSR', youth: 'the Komsomol', capital: 'Moscow', titles: CPSU_TITLES }),
   PL: BLOC('the Polish United Workers\' Party'), HU: BLOC('the Hungarian Socialist Workers\' Party'), CZ: BLOC('the Communist Party of Czechoslovakia'), SK: BLOC('the Communist Party of Czechoslovakia'),
-  BG: BLOC('the Bulgarian Communist Party'), RO: BLOC('the Romanian Communist Party'), AL: BLOC('the Party of Labour of Albania'), MN: BLOC('the Mongolian People\'s Revolutionary Party'),
+  BG: BLOC('the Bulgarian Communist Party'), RO: BLOC('the Romanian Communist Party'), AL: BLOC('the Party of Labour of Albania', { congress: 'the People\'s Assembly', youth: 'the Union of Labour Youth of Albania', army: 'the Albanian People\'s Army', capital: 'Tirana', thought: 'Marxism–Leninism (Hoxhaism)' }), MN: BLOC('the Mongolian People\'s Revolutionary Party'),
   RS: BLOC('the League of Communists of Yugoslavia', { army: 'the Yugoslav People\'s Army', topNote: 'You lead the League, and Yugoslavia with it.' }),
   GDR: BLOC('the Socialist Unity Party of Germany (SED)', { army: 'the National People\'s Army', youth: 'the Free German Youth', capital: 'East Berlin' }),
   NAZI: { name: 'the National Socialist German Workers\' Party (NSDAP)', short: 'the Party', congress: 'the Reichstag', army: 'the Wehrmacht', cmc: 'the Reich Defence Council', gov: { 4: 'mayor' }, youth: 'the Hitler Youth', capital: 'Berlin', thought: 'National Socialism', office: null, flag: '🦅', topNote: 'Second only to the Führer.',
     titles: ['Party member', 'Blockleiter', 'Zellenleiter', 'Ortsgruppenleiter', 'Kreisleiter', 'Gauamtsleiter', 'Gauleiter', 'Reichsleiter', 'Member of the Reich Cabinet', 'Deputy Führer'] },
   FASCIST: { name: 'the National Fascist Party', short: 'the Party', congress: 'the Chamber of Fasces and Corporations', army: 'the Royal Army', cmc: 'the Supreme Defence Commission', gov: { 4: 'mayor' }, youth: 'the Balilla', capital: 'Rome', thought: 'Fascism', office: null, flag: '🪓', topNote: 'Second only to the Duce.',
     titles: ['Party member', 'Head of a nucleus', 'Section secretary', 'Fascio secretary', 'Federal vice-secretary', 'Federal secretary', 'Inspector of the Party', 'Member of the National Directorate', 'Member of the Grand Council of Fascism', 'Secretary of the National Fascist Party'] },
+};
+const EARLIER_NAMES = {
+  HU: [[1956, 'the Hungarian Working People\'s Party']], RO: [[1965, 'the Romanian Workers\' Party']],
+  AL: [[1948, 'the Communist Party of Albania']], PL: [[1948, 'the Polish Workers\' Party']],
 };
 /** The party you'd join in the year being played: none where there's no single party (Qing China, post-Soviet Russia). */
 export const partyHere = (state) => {
@@ -95,7 +99,13 @@ export const partyHere = (state) => {
   if (/Third Reich|annexed to Germany/.test(r.name ?? '') || (cc === 'AT' && r.kind === 'totalitarian')) return ERA_PARTIES.NAZI;
   if (/fascist/i.test(r.name ?? '')) return ERA_PARTIES.FASCIST;
   if (/German Democratic Republic/.test(r.name ?? '')) return ERA_PARTIES.GDR;
-  if (/Soviet/.test(r.name ?? '')) return ERA_PARTIES.RU;
+  // The Soviet Union and its republics; a satellite in the Soviet bloc has its own party.
+  if ((/^the Soviet Union/.test(r.name ?? '') || /Soviet republic/.test(r.name ?? '')) && (cc === 'RU' || !ERA_PARTIES[cc])) return ERA_PARTIES.RU;
+  if (ERA_PARTIES[cc]) {
+    // The party under its earlier name: Hungary's Working People's Party before 1956, Romania's Workers' Party before 1965.
+    const old = EARLIER_NAMES[cc]?.find(([until]) => yearNow(state) < until);
+    return old ? { ...ERA_PARTIES[cc], name: old[1] } : ERA_PARTIES[cc];
+  }
   if (/Yugoslavia/.test(r.name ?? '')) return ERA_PARTIES.RS;
   return RULING_PARTIES[cc] ?? ERA_PARTIES[cc] ?? BLOC('the ruling party', { flag: '🚩' });
 };

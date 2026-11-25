@@ -12,6 +12,7 @@
  * statuteIn(state, id, cc)  the law in force in country cc this year (true/false)
  */
 import { yearNow, eraYear, PRESENT } from '../world/Eras.js';
+import { SECTORS, historyShare } from '../world/OwnershipHistory.js';
 
 /* ---- History's dates ---- */
 export const PROHIBITION = { US: [1920, 1933], FI: [1919, 1932], NO: [1916, 1927], IS: [1915, 1935], RU: [1914, 1925] };
@@ -106,6 +107,13 @@ export const STATUTES = {
     history: (cc, y) => y < 1868,
     effect: 'Felons may be sentenced to transportation to Australia.' },
 };
+
+// Public ownership of each sector of the economy: nationalise it, or sell it (Ownership.js).
+for (const [id, sec] of Object.entries(SECTORS)) {
+  STATUTES[`ownership_${id}`] = { name: `Public ownership of ${sec.label}`, icon: sec.icon, lean: 'labor', from: sec.from,
+    history: (cc, y) => historyShare(id, cc, y) >= 0.5,
+    effect: `Puts ${sec.label} in state hands (a vote against sells them to private owners).` };
+}
 
 /** The book of national laws for a country in this life (enacted bills). */
 const bookOf = (state, cc) => (cc === 'US' ? state.laws?.federal : state.laws?.nations?.[cc]);

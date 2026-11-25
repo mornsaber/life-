@@ -35,6 +35,7 @@ import { createEmployer } from '../career/Employers.js';
 import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
+import { setRegimeLookup } from './Ownership.js';
 import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow, eraYear } from './Eras.js';
 const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
@@ -116,6 +117,7 @@ export const coupProne = (cc) => Boolean(REGIMES[cc]?.coups || REGIMES[cc]?.kind
 export const baseRegimeOf = (cc) => REGIMES[cc] ?? R({});
 export const regimeOf = (cc) => (ERA[cc] || REFORMS[cc] ? R({ ...(ERA[cc] ?? REGIMES[cc] ?? {}), ...(REFORMS[cc] ?? {}), ...(OVERRIDES[cc] ?? {}) }) : OVERRIDES[cc] ? R({ ...(REGIMES[cc] ?? {}), ...OVERRIDES[cc] }) : REGIMES[cc] ?? R({}));
 export const regimeHere = (state) => regimeOf(state.character.countryId ?? 'US');
+setRegimeLookup((cc) => regimeOf(cc));
 export const isOpenSociety = (cc) => ['democracy'].includes(regimeOf(cc).kind);
 
 /** Sanctions in force: who imposes them, and how hard (1 targeted, 2 broad, 3 comprehensive). */

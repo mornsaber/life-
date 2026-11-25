@@ -13,7 +13,7 @@ const MGMT = (reports, extra = {}) => ({ track: 'mgmt', abilities: ['supervise',
 const careers = {
   coalMining: {
     ...OLD, id: 'coalMining', name: 'Coal Mining', icon: '⛏️', payMultiplier: 0.9, untilYear: 1995, cyclical: 1.3,
-    employers: ['the Colliery Company', 'the National Coal Board', 'Valley Pit No. 3', 'Deep Navigation Colliery'],
+    employers: ['the Colliery Company', 'Valley Pit No. 3', 'Deep Navigation Colliery'],
     union: { chance: 0.95, name: 'the Mineworkers\' Union', strike: true },
     ladder: [
       ['pitBoy', 'Pit Boy (Trapper)', 1, { years: 2 }],
@@ -74,7 +74,7 @@ const careers = {
   },
   switchboard: {
     ...OLD, id: 'switchboard', name: 'Telephone Exchange', icon: '☎️', payMultiplier: 0.7, fromYear: 1900, untilYear: 1980, minAge: 16,
-    employers: ['the Telephone Exchange', 'the Post Office Telephones', 'the Bell Telephone Company'],
+    employers: ['the Telephone Exchange', 'the Bell Telephone Company'],
     ladder: [
       ['learner', 'Learner Operator', 1, { years: 1 }],
       ['operator', 'Switchboard Operator', 1, { years: 2 }],

@@ -230,7 +230,18 @@ export const PERIODS = [
   { cc: ['RU'], regime: MONARCH('the Russian Empire, where serfs are bound to the land', 'the Tsar', { religion: 'state', exit: 'restricted', jobs: 'assigned' }), active: (s) => !hap(s, 'serfdomEnds') },
   { cc: ['RU'], regime: MONARCH('the Russian Empire, ruled by the Tsar', 'the Tsar', { religion: 'state' }), active: (s) => hap(s, 'serfdomEnds') && !hap(s, 'russianRevolution') },
   { cc: ['RU'], regime: SOVIET, active: (s) => hap(s, 'russianRevolution') && !hap(s, 'sovietCollapse') },
-  { cc: ['PL', 'RO', 'HU', 'CZ', 'SK', 'BG', 'AL', 'MN'], regime: EAST_BLOC, active: (s) => hap(s, 'coldWar') && !hap(s, 'sovietCollapse') },
+  ...[['PL', 'the Polish People\'s Republic, a one-party state in the Soviet bloc'], ['HU', 'the Hungarian People\'s Republic, a one-party state in the Soviet bloc'],
+    ['CZ', 'communist Czechoslovakia, in the Soviet bloc'], ['SK', 'communist Czechoslovakia, in the Soviet bloc'], ['BG', 'the People\'s Republic of Bulgaria, Moscow\'s closest ally'],
+    ['MN', 'the Mongolian People\'s Republic, a Soviet satellite']]
+    .map(([c, name]) => ({ cc: [c], regime: { ...EAST_BLOC, name }, active: (s) => hap(s, 'coldWar') && !hap(s, 'sovietCollapse') })),
+  { cc: ['RO'], regime: { ...EAST_BLOC, name: 'the Romanian People\'s Republic, in the Soviet bloc' }, active: (s) => hap(s, 'coldWar') && yearNow(s) < 1965 && !hap(s, 'sovietCollapse') },
+  { cc: ['RO'], regime: { ...EAST_BLOC, name: 'Ceaușescu\'s Socialist Republic of Romania', leader: 'the Conducător', surveillance: 0.3 }, active: (s) => yearNow(s) >= 1965 && !hap(s, 'sovietCollapse') },
+  // Hoxha's Albania: in the bloc until the break with Moscow (1961), then China's ally until 1978, then alone;
+  // the world's first officially atheist state from 1967.
+  { cc: ['AL'], regime: { ...EAST_BLOC, name: 'the People\'s Republic of Albania, in the Soviet bloc', leader: 'Enver Hoxha, First Secretary' }, active: (s) => yearNow(s) >= 1946 && yearNow(s) < 1961 },
+  { cc: ['AL'], regime: { ...EAST_BLOC, name: 'Hoxha\'s Albania, broken with Moscow and allied to China', leader: 'Enver Hoxha, First Secretary', surveillance: 0.32 }, active: (s) => yearNow(s) >= 1961 && yearNow(s) < 1967 },
+  { cc: ['AL'], regime: { ...EAST_BLOC, name: 'Hoxha\'s Albania, allied to China, the world\'s first atheist state', leader: 'Enver Hoxha, First Secretary', religion: 'banned', surveillance: 0.35 }, active: (s) => yearNow(s) >= 1967 && yearNow(s) < 1978 },
+  { cc: ['AL'], regime: { ...EAST_BLOC, name: 'the People\'s Socialist Republic of Albania, alone against the world', leader: 'the First Secretary of the Party of Labour', religion: 'banned', surveillance: 0.35 }, active: (s) => yearNow(s) >= 1978 && yearNow(s) < 1991 },
   // Tito's Yugoslavia: one party and social ownership, but its people could work abroad from the 1960s.
   { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: { ...EAST_BLOC, name: 'socialist Yugoslavia, under the League of Communists', leader: 'Marshal Tito', exit: 'restricted' }, active: (s) => yearNow(s) >= 1945 && yearNow(s) < 1990 },
   { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Empire under the Kaiser', elections: 'controlled', leader: 'the Kaiser' }), active: (s) => hap(s, 'germanUnification') && !over(s, 'ww1') },

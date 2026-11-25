@@ -8,6 +8,7 @@
  * module, read here).
  */
 import { localEmployer } from '../world/LocalEmployers.js';
+import { stateEmployerFor, stateEnterpriseName, privateEmployerName } from '../world/Ownership.js';
 import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
@@ -195,6 +196,10 @@ export function createEmployer(rng, state, profession, regionId) {
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;
+  // A sector in state hands (or a planned economy): the state enterprise, not a private firm.
+  const stateOwned = !merged && stateEmployerFor(state, profession, cc ?? 'US', rng);
+  if (stateOwned) name = stateEnterpriseName(state, profession, cc ?? 'US', cityName(regionId), rng) ?? name;
+  else if (!merged && profession.sector === 'private') name = privateEmployerName(state, profession, cc ?? 'US', cityName(regionId), rng) ?? name;
   // A national agency is the employer ("Secret Intelligence Service (MI6)"); what follows the
   // dash in its listing ("Vauxhall Cross", "Heathrow") is the site you work at.
   let site = null;
@@ -228,6 +233,7 @@ export function createEmployer(rng, state, profession, regionId) {
     budget: { annual, left: annual },
     remote: Boolean(profession.remote),
     ...(site ? { site } : {}),
+    ...(stateOwned ? { ownership: 'state' } : {}),
   };
   // Every employer is a department of a persistent organization.
   attachOrg(state, employer, profession, regionId);
