@@ -39,7 +39,7 @@ export function emsCard(state) {
     ${tally ? `<div class="chip-row">${tally}</div>` : ''}
     <div class="action-grid">
       ${button('⏰ Pick up overtime', 'emsLife.overtime', { variant: 'small', disabled: (state.yearly['ems.overtime'] ?? 0) >= (sector === 'private' ? 3 : 2), hint: 'Time-and-a-half; more burnout' })}
-      ${button('📚 Continuing education', 'emsLife.ce', { variant: 'small', disabled: Boolean(state.yearly['ems.ce']), hint: `+36 hours toward ${CE_HOURS}` })}
+
       ${button('🫂 Stress debriefing', 'emsLife.cism', { variant: 'small', disabled: Boolean(state.yearly['ems.cism']), hint: 'Less trauma and burnout' })}
     </div>
     ${disclosure('ems.agency', `Agency${moved ? ' (moved this year)' : ''}`, `<div class="toggle-row">${agencies}</div>`, { count: a ? a.name : 'choose' })}

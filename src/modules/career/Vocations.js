@@ -340,7 +340,7 @@ function sentOnCourse(ctx, pack) {
   const lapsed = pack.courses.filter((c) => c.renew && v.courses[c.id] != null && !courseCurrent(state, pack, c) && applies(state, pack, c) && isRequired(c));
   const c = [...lapsed, ...due][0];
   if (!c) return;
-  const odds = profession.sector !== 'private' || ['large', 'enterprise', 'mega'].includes(job.employer?.size) ? 0.8 : 0.45;
+  const odds = profession.sector !== 'private' || ['large', 'enterprise', 'mega'].includes(job.employer?.size) ? 0.95 : 0.7;
   if (!rng.chance(odds)) return;
   bumpYearly(state, `vocation.course.${pack.id}`);
   if (c.years) { v.inCourse = { id: c.id, until: state.character.age + c.years }; return ctx.log(`${job.employer?.name ?? 'Your employer'} sent you on ${nameOf(state, c)}.`, c.icon ?? '📘', 'info'); }
@@ -373,7 +373,14 @@ export const VocationModule = {
     // A required course lapsing.
     for (const c of pack.courses) {
       const done = v.courses[c.id];
-      if (c.renew && done != null && state.character.age - done === c.renew && applies(state, pack, c)) ctx.log(`Your ${nameOf(state, c)} has lapsed: renew it (Work tab).`, '📅', 'warn');
+      // Renewals and refreshers are part of the job: done in work time, or on your own account at a small firm.
+      if (c.renew && done != null && state.character.age - done >= c.renew && applies(state, pack, c) && !state.legal?.incarceration) {
+        const funded = getProfession(state.career.job.professionId).sector !== 'private' || ['large', 'enterprise', 'mega'].includes(state.career.job.employer?.size);
+        const cost = funded ? 0 : costOf(state, c);
+        if (cost) ctx.spend(cost, `${nameOf(state, c)} (renewal)`, { allowDebt: true });
+        v.courses[c.id] = state.character.age;
+        ctx.log(`You renewed your ${nameOf(state, c)}${funded ? ' in work time' : ''}.`, c.icon ?? '📅', 'info');
+      }
     }
     // A posting's end.
     for (const p of v.postings) {

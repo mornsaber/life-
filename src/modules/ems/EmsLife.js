@@ -234,6 +234,12 @@ function emsTick(ctx, job) {
       e.ce = 0;
       e.ceDueAge = state.character.age + RECERT_YEARS;
       ctx.log('You recertified with the National Registry: sixty hours of continuing education, done.', '📜', 'good');
+    } else if (!state.legal?.incarceration) {
+      const short = CE_HOURS - (e.ce ?? 0);
+      ctx.spend(Math.round(short * 25), 'Continuing education', { allowDebt: true });
+      e.ce = 0;
+      e.ceDueAge = state.character.age + RECERT_YEARS;
+      ctx.log(`You recertified with the National Registry: sixty hours of continuing education, ${short} of them on your own time.`, '📜', 'good');
     } else {
       e.ceDueAge = state.character.age + 1;
       ctx.emit('credential:suspend', { ids: [isMedic(state) ? 'paramedic' : 'emt'], years: 1, reason: 'Missed recertification (continuing education)' });

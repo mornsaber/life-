@@ -47,7 +47,7 @@ export function clinicalCard(state) {
     <div class="action-grid">
       ${button('⏰ Incentive shifts', 'clinical.extraShifts', { variant: 'small', disabled: (state.yearly['clinical.extra'] ?? 0) >= 2, hint: 'Extra pay; more burnout' })}
       ${button('🗓️ PRN job elsewhere', 'clinical.prn', { variant: 'small', disabled: !licensed || Boolean(state.yearly['clinical.prn']), hint: licensed ? 'Moonlight at another facility' : 'Needs an active license' })}
-      ${button('📚 Continuing education', 'clinical.ce', { variant: 'small', disabled: Boolean(state.yearly['clinical.ce']), hint: 'Courses and a conference' })}
+
       ${button('🧑‍🏫 Precept a new grad', 'clinical.precept', { variant: 'small', disabled: Boolean(state.yearly['clinical.precept']) || yearsInProfession(state, [job.professionId]) < 2, hint: '+2 ladder points, $1,500 differential (2+ years)' })}
       ${button('🗂️ Practice council', 'clinical.committee', { variant: 'small', disabled: Boolean(state.yearly['clinical.committee']), hint: '+1 ladder point' })}
       ${button('📊 Quality project', 'clinical.project', { variant: 'small', disabled: Boolean(state.yearly['clinical.project']), hint: 'Evidence-based practice; up to +3 points' })}

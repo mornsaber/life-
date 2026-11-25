@@ -89,12 +89,12 @@ const tests = {
     assert.ok(!/NaN|undefined/.test(html));
   },
 
-  'skipping CE gets the license suspended'() {
+  'continuing education happens on its own; the license stays current'() {
     const { state, ctx } = setup(3, ['rrt']);
     work(ctx, state, 'respiratoryTherapy', 'rt');
     state.clinical.setting = 'adultIcu';
     for (let i = 0; i < 3; i++) { state.prompts = []; tick(ctx, state); }
-    assert.notEqual(state.credentials.held.rrt.status, 'active');
+    assert.equal(state.credentials.held.rrt.status, 'active');
   },
 
   'every clinical profession runs a decade of events cleanly'() {

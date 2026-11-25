@@ -302,7 +302,8 @@ function practiceTick(ctx, job) {
   const boards = state.credentials.held.boardCertified;
   if (boards?.status === 'active') {
     m.mocAge ??= boards.earnedAge ?? state.character.age;
-    if (state.character.age - m.mocAge >= MOC_YEARS) oneAtATime(ctx, 'medLife.moc', { icon: '🏅', title: 'Board Recertification', text: 'Your board certification is up for renewal: a long exam on a decade of new medicine.', options: [{ id: 'study', label: '📚 Study for it', hint: '≈92%' }, { id: 'wing', label: '🎲 Wing it', hint: '≈75%' }] });
+    // Recertification is part of the job: you study for it as every doctor does.
+    if (state.character.age - m.mocAge >= MOC_YEARS) MedLifeModule.resolvers.moc(ctx, {}, 'study');
   }
   // Burnout catches up.
   if (m.burnout >= 70 && !state.prompts.some((x) => x.type === 'medLife.burnout') && rng.chance(0.5)) {

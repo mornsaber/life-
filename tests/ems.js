@@ -105,12 +105,12 @@ const tests = {
     assert.ok(!/NaN|undefined/.test(VIEWS.career(state, {})));
   },
 
-  'skipping continuing education lapses the card'() {
+  'continuing education is made up automatically; it only lapses behind bars'() {
     const { state, ctx } = setup(3);
     medic(ctx, state);
     state.ems.agency = 'thirdService';
     for (let i = 0; i < 3; i++) { state.prompts = []; tick(ctx, state); }
-    assert.notEqual(state.credentials.held.paramedic.status, 'active', 'paramedic suspended');
+    assert.equal(state.credentials.held.paramedic.status, 'active', 'recertified on your own time');
   },
 
   'assignments need certifications; burnout can end the career'() {

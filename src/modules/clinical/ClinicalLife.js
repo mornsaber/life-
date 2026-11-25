@@ -516,6 +516,13 @@ function clinicalTick(ctx, job) {
         c.ce = 0;
         c.ceDueAge = state.character.age + 2;
         ctx.log(`You renewed your license: ${ceRequired(job)} hours of continuing education, documented.`, '📜');
+      } else if (!state.legal?.incarceration) {
+        // Like most professionals, you make up the rest yourself: online modules and a conference.
+        const short = ceRequired(job) - (c.ce ?? 0);
+        ctx.spend(Math.round(short * 35), 'Continuing education', { allowDebt: true });
+        c.ce = 0;
+        c.ceDueAge = state.character.age + 2;
+        ctx.log(`You renewed your license: ${ceRequired(job)} hours of continuing education, ${short} of them on your own time.`, '📜');
       } else {
         c.ceDueAge = state.character.age + 1;
         ctx.emit('credential:suspend', { ids: [lic], years: 1, reason: 'Continuing-education audit' });
