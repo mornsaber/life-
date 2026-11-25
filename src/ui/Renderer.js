@@ -58,6 +58,7 @@ import { yourTimesCard } from './YourTimes.js';
 import { eraCard, timesCard } from './views/EraView.js';
 import { honoursNote } from '../modules/world/HonoursOfTheDay.js';
 import { featsCard } from './views/FeatsView.js';
+import { worksCard, fameUseCard } from './views/WorksCard.js';
 import { pressCard } from './views/PressView.js';
 import { venturesView } from './views/VenturesView.js';
 import { littleThingsCard } from './views/LittleThingsView.js';
@@ -96,6 +97,7 @@ import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
 import { gradePrefix } from '../modules/career/PayGrades.js';
 import { fameSummary } from '../modules/life/Fame.js';
+import { REACH_LABEL, mediaNow } from '../modules/life/FameOfTheDay.js';
 import { officialResidence } from '../modules/world/Residences.js';
 import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
@@ -251,6 +253,7 @@ function fameCard(state) {
   return card('Fame', `
     ${meter(f.score, { max: 100, label: `${icon} ${label}${f.infamous ? ' (infamous)' : ''}`, suffix: '/100', tone: f.infamous ? 'bad' : 'good' })}
     ${kv([
+      ['Reach', `${esc(REACH_LABEL[f.reach])} · ${mediaNow(state).slice(-2).map((m) => m.label).join(', ')}`],
       ['Known for', f.sources.slice(0, 4).map((s) => `${esc(s.label)} <small class="muted">${s.value}</small>`).join(' · ') || '—'],
       f.peak > f.score ? ['Peak', `${f.peak}/100`] : null,
       f.deals.length ? ['Endorsements', f.deals.map((d) => `${esc(d.brand)} ($${d.amount.toLocaleString()}/yr to ${d.until})`).join(' · ')] : null,
@@ -337,7 +340,7 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${activityLabel(state, a)}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${featsCard(state)}${leisureCard(state) + fandomCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${fameUseCard(state)}${worksCard(state)}${hobbiesCard(state)}${featsCard(state)}${leisureCard(state) + fandomCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {

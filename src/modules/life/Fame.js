@@ -20,6 +20,9 @@ import { peekLife } from '../career/engines/Kit.js';
 import { OFFICES } from '../politics/Offices.js';
 import { rankOf } from '../military/MilitaryEngine.js';
 import { localWage } from '../world/Countries.js';
+import { yearNow } from '../world/Eras.js';
+import { scandalWeight, pressLawOdds } from './FameUse.js';
+import { brandsNow, scandalsNow, tierLine, showOfTheDay, intrusionOfTheDay, reachOf } from './FameOfTheDay.js';
 
 export const TIERS = [
   [0, 'Unknown', '🙂'], [10, 'Locally known', '🗞️'], [25, 'Well known', '📰'], [45, 'Famous', '⭐'], [70, 'A star', '🌟'], [90, 'An icon', '💫'],
@@ -29,7 +32,10 @@ export const tierOf = (score) => TIERS.filter(([at]) => score >= at).at(-1);
 const fm = (state) => (state.fame ??= { score: 0, peak: 0, buzz: 0, tier: 0, deals: [], security: false, scandals: [], since: null });
 const OFFICE_FAME = [0, 3, 8, 14, 24, 40, 80];
 const SPORT_FAME = { minor: 6, pro: 18, starter: 30, allStar: 48 };
-const BRANDS = ['a sportswear giant', 'a soft-drink brand', 'a luxury watchmaker', 'a car company', 'a cosmetics line', 'a bank', 'a phone maker', 'a fast-food chain', 'a crypto exchange', 'an airline'];
+
+/** Other systems' contributions to fame: fn(state, add(id, label, value, infamy)). */
+const FAME_SOURCES = [];
+export const registerFameSource = (fn) => FAME_SOURCES.push(fn);
 
 /** Everything that makes you known, as { id, label, value, infamy }. */
 export function fameSources(state) {
@@ -65,6 +71,7 @@ export function fameSources(state) {
   if (uw && !state.underworld?.witsec) add('crime', 'Notoriety in the underworld', (uw.rank ?? 0) * 9, true);
   const violent = (state.legal?.record ?? []).filter((c) => /murder|homicide|manslaughter|terror/i.test(`${c.offenseId ?? ''} ${c.name ?? ''}`)).length;
   if (violent) add('notoriety', 'A notorious case', 20 + violent * 8, true);
+  for (const fn of FAME_SOURCES) fn(state, add);
   add('buzz', 'In the news lately', fm(state).buzz);
   return out.sort((a, b) => b.value - a.value);
 }
@@ -79,6 +86,8 @@ export function fameScore(state) {
 export const isInfamous = (state) => { const s = fameSources(state); return Boolean(s[0]?.infamy); };
 
 /** Push buzz from anywhere (a viral moment, a rescue on the news). */
+const lawHint = (state, kind) => { const p = pressLawOdds(state, kind); return p >= 0.6 ? 'The law here is on your side' : p >= 0.4 ? 'Even odds in court here' : 'The law here favours the press'; };
+
 export function addBuzz(state, amount) {
   const f = fm(state);
   f.buzz = Math.round(clamp(f.buzz + amount, 0, 60));
@@ -88,6 +97,7 @@ export function addBuzz(state, amount) {
 export function scandal(ctx, severity, headline) {
   const { state } = ctx;
   const f = fm(state);
+  severity = Math.max(1, Math.round(severity * scandalWeight(state, headline)));
   f.scandals.push({ age: state.character.age, headline, severity });
   if (f.scandals.length > 12) f.scandals.shift();
   addBuzz(state, severity * 2);
@@ -103,11 +113,6 @@ export function scandal(ctx, severity, headline) {
   // A big one can become a cancellation (Celebrity.js).
   ctx.emit('fame:afterScandal', { severity, headline });
 }
-
-const SCANDALS = [
-  ['an old video of you surfaced', 10], ['a former friend sold a story about you to a tabloid', 8], ['your tax affairs made the front page', 12],
-  ['a leaked group chat', 9], ['photos from a party you\'d rather forget', 7], ['an ex wrote a tell-all', 11],
-];
 
 function yearTick(ctx) {
   const { state, rng } = ctx;
@@ -129,7 +134,7 @@ function yearTick(ctx) {
   if (tier > (f.tier ?? 0)) {
     f.since ??= age;
     const [, label, icon] = TIERS[tier];
-    ctx.log(isInfamous(state) ? `${label}, for the wrong reasons: your face is on the news and people cross the street.` : [null, 'People in town started to recognise you.', 'Strangers know your name now.', 'You are famous: you can\'t buy groceries without a selfie.', 'You are a star: your name sells magazines.', 'You are an icon: one of the most recognised people alive.'][tier], icon, 'milestone');
+    ctx.log(isInfamous(state) ? `${label}, for the wrong reasons: your face is in the papers and people cross the street.` : tierLine(state, tier), icon, 'milestone');
   }
   f.tier = tier;
   // Fame carries into politics: the public already knows your name.
@@ -140,7 +145,7 @@ function yearTick(ctx) {
   const infamous = isInfamous(state);
   // One fame moment a year at most.
   if (!infamous && s >= 25 && f.deals.length < 3 && rng.chance(0.3)) {
-    const brand = rng.pick(BRANDS);
+    const brand = rng.pick(brandsNow(yearNow(state)));
     // Brands pay what fame is worth here and then (a star in 1920s Bombay signed for far less).
     const amount = Math.max(100, Math.round(s * s * 40 * localWage(state) / 100) * 100);
     return ctx.prompt({ type: 'fame.endorse', icon: '🤝', title: 'An Endorsement Deal', text: `${brand[0].toUpperCase()}${brand.slice(1)} wants your face on its campaign: $${amount.toLocaleString()} a year for three years.`, options: [
@@ -148,8 +153,9 @@ function yearTick(ctx) {
     ], data: { brand, amount } });
   }
   if (s >= 40 && !low && rng.chance(0.25)) {
-    return ctx.prompt({ type: 'fame.paparazzi', icon: '📸', title: 'Paparazzi', text: 'Photographers have been camped outside your home all week. Today one followed you into a restaurant.', options: [
-      { id: 'ignore', label: '🕶️ Smile and ignore them' }, { id: 'confront', label: '😠 Confront him', tone: 'danger' }, { id: 'sue', label: '⚖️ Sue for invasion of privacy ($25,000)', disabled: state.finances.cash < 25000 },
+    const intr = intrusionOfTheDay(state);
+    return ctx.prompt({ type: 'fame.paparazzi', icon: '📸', title: intr.title, text: intr.text, options: [
+      { id: 'ignore', label: '🕶️ Smile and ignore them' }, { id: 'confront', label: '😠 Confront him', tone: 'danger' }, { id: 'sue', label: '⚖️ Sue for invasion of privacy ($25,000)', hint: lawHint(state, 'privacy'), disabled: state.finances.cash < 25000 },
     ] });
   }
   if (s >= 50 && !f.security && rng.chance(0.05)) {
@@ -158,9 +164,9 @@ function yearTick(ctx) {
     ] });
   }
   if (s >= 25 && rng.chance(0.04 + s / 1500 + (infamous ? 0.05 : 0))) {
-    const [headline, severity] = rng.pick(SCANDALS);
+    const [headline, severity] = rng.pick(scandalsNow(yearNow(state)));
     return ctx.prompt({ type: 'fame.scandal', icon: '📰', title: 'A Tabloid Story', text: `The papers have it: ${headline}.`, options: [
-      { id: 'apologise', label: '🙏 Apologise publicly' }, { id: 'deny', label: '🙅 Deny everything' }, { id: 'lawyers', label: '⚖️ Send in the lawyers ($40,000)', disabled: state.finances.cash < 40000 },
+      { id: 'apologise', label: '🙏 Apologise publicly' }, { id: 'deny', label: '🙅 Deny everything' }, { id: 'lawyers', label: '⚖️ Send in the lawyers ($40,000)', hint: lawHint(state, 'libel'), disabled: state.finances.cash < 40000 },
     ], data: { headline, severity } });
   }
   if (s >= 30 && age >= 35 && !yearlyCount(state, 'fame.book') && !(f.bookAge && age - f.bookAge < 10) && rng.chance(0.12)) {
@@ -170,8 +176,9 @@ function yearTick(ctx) {
     ], data: { advance } });
   }
   if (s >= 30 && rng.chance(0.15)) {
-    return ctx.prompt({ type: 'fame.talkShow', icon: '🎙️', title: 'A Late-Night Show', text: 'A late-night talk show wants you on the couch next week.', options: [
-      { id: 'charm', label: '😄 Go on and be charming' }, { id: 'decline', label: '🙅 Decline' },
+    const show = showOfTheDay(state);
+    return ctx.prompt({ type: 'fame.talkShow', icon: '🎙️', title: show.title, text: show.text, options: [
+      { id: 'charm', label: show.go }, { id: 'decline', label: '🙅 Decline' },
     ] });
   }
   return undefined;
@@ -244,7 +251,7 @@ export const FameModule = {
         addBuzz(state, 6);
       } else if (optionId === 'sue') {
         ctx.spend(25000, 'Privacy lawsuit', { allowDebt: false });
-        if (rng.chance(0.5)) { ctx.earn(rng.int(40000, 150000), 'Privacy damages', {}); ctx.log('You won: the agency paid damages and the photographers backed off.', '⚖️', 'good'); } else ctx.log('The judge ruled a public street is a public street.', '⚖️', 'warn');
+        if (rng.chance(pressLawOdds(state, 'privacy'))) { ctx.earn(rng.int(40000, 150000), 'Privacy damages', {}); ctx.log('You won: the agency paid damages and the photographers backed off.', '⚖️', 'good'); } else ctx.log('The judge ruled a public street is a public street.', '⚖️', 'warn');
       } else {
         ctx.stat('stress', 3);
         ctx.log('You smiled, said nothing and finished your lunch.', '🕶️', 'info');
@@ -265,7 +272,7 @@ export const FameModule = {
       let sev = data.severity;
       if (optionId === 'apologise') sev = Math.round(sev * (rng.chance(check(state, 0.6)) ? 0.5 : 0.9));
       else if (optionId === 'deny') sev = rng.chance(0.4) ? Math.round(sev * 0.3) : Math.round(sev * 1.5);
-      else { ctx.spend(40000, 'Media lawyers', { allowDebt: false }); sev = rng.chance(0.55) ? 2 : sev; }
+      else { ctx.spend(40000, 'Media lawyers', { allowDebt: false }); sev = rng.chance(pressLawOdds(state, 'libel')) ? 2 : sev; }
       scandal(ctx, sev, data.headline);
       return undefined;
     },
@@ -284,7 +291,7 @@ export const FameModule = {
     talkShow(ctx, data, optionId) {
       const { state, rng } = ctx;
       if (optionId !== 'charm') return undefined;
-      if (rng.chance(check(state, 0.65))) { addBuzz(state, 8); ctx.log('You killed it: the clip was everywhere the next morning.', '🎙️', 'good'); } else { addBuzz(state, 3); ctx.log('An awkward seven minutes. The host saved it.', '🎙️', 'info'); }
+      if (rng.chance(check(state, 0.65))) { addBuzz(state, 8); ctx.log(showOfTheDay(state).win, '🎙️', 'good'); } else { addBuzz(state, 3); ctx.log('It went awkwardly. Few will remember it.', '🎙️', 'info'); }
       return undefined;
     },
   },
@@ -295,5 +302,5 @@ export function fameSummary(state) {
   const f = state.fame;
   if (!f) return null;
   const score = fameScore(state);
-  return { score, tier: tierOf(score), peak: f.peak, sources: fameSources(state), deals: f.deals, security: f.security, scandals: f.scandals, infamous: isInfamous(state), lowThisYear: Boolean(state.yearly['fame.lieLow']), pushedThisYear: Boolean(state.yearly['fame.publicity']) };
+  return { score, reach: reachOf(state, score), tier: tierOf(score), peak: f.peak, sources: fameSources(state), deals: f.deals, security: f.security, scandals: f.scandals, infamous: isInfamous(state), lowThisYear: Boolean(state.yearly['fame.lieLow']), pushedThisYear: Boolean(state.yearly['fame.publicity']) };
 }
