@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import { eraGates } from '../tools/era-gates.mjs';
-import { educationAskedFor } from '../src/modules/world/Eras.js';
+import { educationAskedFor, periodText } from '../src/modules/world/Eras.js';
 
 const rows = (cc, y) => eraGates([cc], [y]).map((r) => r.why);
 const tests = {
@@ -19,6 +19,14 @@ const tests = {
   'no American licences where the work was never licensed'() {
     const gb = rows('GB', 1960).join(' | ');
     assert.doesNotMatch(gb, /Real Estate|Cosmetology|Journeyman|Private Investigator|Bail Agent|Professional Engineer|Insurance Producer/);
+  },
+  'each country names its own qualifications and exams'() {
+    const html = '<small>Needs State Bar License · Pass the State Civil Service Exam · Driver&#39;s License (Class D)</small>';
+    const show = (cc, y) => { eraGates([cc], [y]); return periodText(html); };
+    assert.match(show('FR', 2020), /barreau.*concours.*Permis B/);
+    assert.match(show('DE', 1970), /Staatsexamen.*Laufbahnprüfung.*Führerschein/);
+    assert.match(show('IN', 2000), /Bar Council.*Public Service Commission/);
+    assert.match(show('US', 2020), /State Bar License/);
   },
   'degrees asked for only once employers insisted'() {
     const state = (y) => ({ character: { birthYear: y - 30, age: 30 }, era: {} });

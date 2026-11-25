@@ -248,3 +248,50 @@ export const PROFESSION_RUNGS = {
   ],
   maritimeFaculty: R('Professor of Marine Transportation', ['Instructor in Seamanship', 1950]),
 };
+
+/* Countries' own qualifications and exams for what the ladders name in American terms (every year). */
+const A = (pairs) => pairs.map(([modern, local]) => [modern, local, 9999]);
+const EXAMS = (state, municipal, federal, safety) => [['Pass the State Civil Service Exam', state], ['Pass the Municipal Civil Service Exam', municipal], ['Pass the Federal Occupational Assessment', federal], ['Pass the federal civil-service examination', federal], ['Pass the Public Safety Entrance Exam', safety]];
+const LOCAL = {
+  FR: [['State Bar License', 'Avocat inscrit au barreau (CAPA)'], ['Admitted to the Bar', 'Avocat inscrit au barreau'], ['State Teaching Certificate', 'CAPES (professeur certifié)'], ['Teacher\'s Certificate', 'Brevet supérieur (instituteur)'],
+    ['Certified Public Accountant (CPA)', 'Expert-comptable (DEC)'], ['Medical License (MD)', 'Inscription à l\'Ordre des médecins'], ['Registered Nurse (RN)', 'Diplôme d\'État d\'infirmier'],
+    ['Pharmacist License (NAPLEX + MPJE)', 'Diplôme d\'État de pharmacien'], ['Registered Pharmaceutical Chemist', 'Pharmacien diplômé'], ['Dental License (DDS/DMD)', 'Diplôme de chirurgien-dentiste'], ['Veterinary License (NAVLE)', 'Diplôme de docteur vétérinaire'], ['Veterinary Licence', 'Diplôme de vétérinaire'],
+    ['Professional Engineer (PE)', 'Diplôme d\'ingénieur (CTI)'], ['Registered Architect (ARE)', 'Architecte DPLG (Ordre des architectes)'], ['Registered Architect', 'Architecte DPLG'], ['Real Estate Salesperson License', 'Carte professionnelle (loi Hoguet)'],
+    ...EXAMS('Pass the concours (fonction publique d\'État)', 'Pass the concours (fonction publique territoriale)', 'Pass the concours administratif', 'Pass the concours de gardien de la paix'),
+    ['Third Mate License (Unlimited Tonnage)', 'Brevet d\'officier chef de quart'], ['Second Mate\'s Certificate', 'Brevet de lieutenant au long cours'], ['Master (Captain) License — Unlimited', 'Brevet de capitaine de première classe'], ['Master\'s Certificate', 'Brevet de capitaine au long cours'],
+    ['FAA Certified Professional Controller', 'Licence de contrôleur aérien (DGAC)'], ['Airline Transport Pilot (ATP)', 'Licence de pilote de ligne (ATPL)'], ['Commercial Pilot (CPL)', 'Licence de pilote professionnel'], ['USCG Master License (Fishing Vessels)', 'Brevet de patron de pêche'],
+    ['Peace Officer (POST Basic Academy)', 'École nationale de police'], ['FBI Academy (Quantico)', 'École nationale supérieure de la police'], ['Driver\'s License (Class D)', 'Permis B']],
+  DE: [['State Bar License', 'Zweites Staatsexamen (Rechtsanwalt)'], ['Admitted to the Bar', 'Zulassung zur Rechtsanwaltschaft'], ['State Teaching Certificate', 'Zweites Staatsexamen (Lehramt)'], ['Teacher\'s Certificate', 'Lehrerprüfung'],
+    ['Certified Public Accountant (CPA)', 'Wirtschaftsprüfer (WP-Examen)'], ['Medical License (MD)', 'Approbation als Arzt'], ['Registered Nurse (RN)', 'Staatlich geprüfte Krankenpflege'], ['Pharmacist License (NAPLEX + MPJE)', 'Approbation als Apotheker'],
+    ['Registered Pharmaceutical Chemist', 'Approbierter Apotheker'], ['Dental License (DDS/DMD)', 'Approbation als Zahnarzt'], ['Veterinary License (NAVLE)', 'Approbation als Tierarzt'], ['Veterinary Licence', 'Approbation als Tierarzt'],
+    ['Professional Engineer (PE)', 'Diplom-Ingenieur'], ['Registered Architect (ARE)', 'Eintragung in die Architektenliste'], ['Registered Architect', 'Eintragung in die Architektenliste'],
+    ...EXAMS('Pass the Laufbahnprüfung (Landesbeamte)', 'Pass the Laufbahnprüfung (Kommunalbeamte)', 'Pass the Laufbahnprüfung (Bundesbeamte)', 'Pass the Polizei-Einstellungstest'),
+    ['Journeyman Electrician License', 'Gesellenbrief (Elektriker)'], ['Master Electrician License', 'Meisterbrief (Elektrotechnik)'], ['Journeyman Plumber License', 'Gesellenbrief (Installateur)'], ['Master Plumber License', 'Meisterbrief (Installateur)'],
+    ['FAA Certified Professional Controller', 'Fluglotsenlizenz (DFS)'], ['Airline Transport Pilot (ATP)', 'Verkehrspilotenlizenz (ATPL)'], ['Peace Officer (POST Basic Academy)', 'Polizeiausbildung (Landespolizeischule)'],
+    ['FBI Academy (Quantico)', 'Ausbildung beim Bundeskriminalamt'], ['Driver\'s License (Class D)', 'Führerschein (Klasse B)'], ['Master (Captain) License — Unlimited', 'Kapitänspatent (AG)'], ['Master\'s Certificate', 'Kapitänspatent']],
+  JP: [['State Bar License', 'Passed the national bar examination (shihō shiken)'], ['Admitted to the Bar', 'Registered as a bengoshi'], ['State Teaching Certificate', 'Teacher\'s licence (kyōin menkyo)'], ['Certified Public Accountant (CPA)', 'Certified public accountant (kōnin kaikeishi)'],
+    ['Medical License (MD)', 'National medical licence (ishi menkyo)'], ['Registered Nurse (RN)', 'National nursing licence (kangoshi)'], ['Pharmacist License (NAPLEX + MPJE)', 'National pharmacist licence (yakuzaishi)'],
+    ['Dental License (DDS/DMD)', 'National dental licence'], ['Veterinary License (NAVLE)', 'National veterinary licence'], ['Professional Engineer (PE)', 'Professional engineer (gijutsushi)'], ['Registered Architect (ARE)', 'First-class architect (ikkyū kenchikushi)'],
+    ['Real Estate Salesperson License', 'Real estate transaction specialist (takken)'], ['Real Estate Broker License', 'Real estate brokerage licence'],
+    ...EXAMS('Pass the national public service examination', 'Pass the local public service examination', 'Pass the national public service examination', 'Pass the prefectural police examination'),
+    ['Peace Officer (POST Basic Academy)', 'Prefectural police academy'], ['FBI Academy (Quantico)', 'National Police Academy'], ['Driver\'s License (Class D)', 'Driving licence (ordinary)'], ['Airline Transport Pilot (ATP)', 'Airline transport pilot (JCAB)']],
+  IN: [['State Bar License', 'Enrolled as an advocate (Bar Council)'], ['Admitted to the Bar', 'Enrolled as a pleader'], ['State Teaching Certificate', 'B.Ed. and teacher eligibility test'], ['Certified Public Accountant (CPA)', 'Chartered Accountant (ICAI)'],
+    ['Medical License (MD)', 'Registered with the Medical Council (MBBS)'], ['Registered Nurse (RN)', 'Registered nurse (Nursing Council)'], ['Pharmacist License (NAPLEX + MPJE)', 'Registered pharmacist (Pharmacy Council)'],
+    ['Professional Engineer (PE)', 'Chartered engineer (Institution of Engineers)'],
+    ...EXAMS('Pass the State Public Service Commission examination', 'Pass the staff selection examination', 'Pass the UPSC civil services examination', 'Pass the police constable recruitment examination'),
+    ['Peace Officer (POST Basic Academy)', 'Police Training College'], ['FBI Academy (Quantico)', 'National Police Academy (Hyderabad)'], ['Driver\'s License (Class D)', 'Driving licence (LMV)']],
+  CA: [['State Bar License', 'Called to the bar (law society)'], ['State Teaching Certificate', 'Provincial teaching certificate'], ['Professional Engineer (PE)', 'Professional Engineer (P.Eng.)'],
+    ...EXAMS('Pass the provincial public service examination', 'Pass the municipal selection', 'Pass the Public Service Commission examination', 'Pass the police constable selection'), ['FBI Academy (Quantico)', 'RCMP Academy (Depot, Regina)']],
+  AU: [['State Bar License', 'Admitted as a legal practitioner'], ['Certified Public Accountant (CPA)', 'Chartered Accountant (CA ANZ)'], ['State Teaching Certificate', 'Teacher registration'], ['Professional Engineer (PE)', 'Chartered Professional Engineer (Engineers Australia)'],
+    ...EXAMS('Pass the state public service selection', 'Pass the council selection', 'Pass the Commonwealth public service selection', 'Pass the police recruit selection'), ['Driver\'s License (Class D)', 'Driver licence (C class)'], ['FBI Academy (Quantico)', 'AFP College (Canberra)']],
+  IT: [['State Bar License', 'Esame di Stato da avvocato'], ['State Teaching Certificate', 'Abilitazione all\'insegnamento'], ['Certified Public Accountant (CPA)', 'Dottore commercialista'], ['Medical License (MD)', 'Abilitazione alla professione medica'],
+    ['Professional Engineer (PE)', 'Esame di Stato da ingegnere'], ['Registered Architect (ARE)', 'Esame di Stato da architetto'], ...EXAMS('Pass the concorso pubblico (regionale)', 'Pass the concorso pubblico (comunale)', 'Pass the concorso pubblico (statale)', 'Pass the concorso per la Polizia di Stato'), ['Driver\'s License (Class D)', 'Patente B']],
+  ES: [['State Bar License', 'Colegiado en el Colegio de Abogados'], ['State Teaching Certificate', 'Oposiciones al cuerpo de maestros'], ['Certified Public Accountant (CPA)', 'Auditor de cuentas (ROAC)'], ['Professional Engineer (PE)', 'Ingeniero colegiado'],
+    ...EXAMS('Pass the oposiciones (comunidad autónoma)', 'Pass the oposiciones (ayuntamiento)', 'Pass the oposiciones (Estado)', 'Pass the oposiciones a Policía Nacional'), ['Driver\'s License (Class D)', 'Permiso B']],
+  GB: [['Medical License (MD)', 'Registered with the General Medical Council'], ['Professional Engineer (PE)', 'Chartered Engineer (CEng)'], ['Registered Architect (ARE)', 'Registered Architect (ARB)'],
+    ...EXAMS('Pass the Civil Service Commission examination', 'Pass the council\'s selection', 'Pass the Civil Service Commission examination', 'Pass the police entrance examination'),
+    ['Peace Officer (POST Basic Academy)', 'Police Training Centre'], ['FBI Academy (Quantico)', 'Police Staff College (Bramshill)'], ['Driver\'s License (Class D)', 'Driving licence'], ['Airline Transport Pilot (ATP)', 'Airline Transport Pilot\'s Licence (CAA)'],
+    ['FAA Certified Professional Controller', 'Air traffic control licence (CAA)'], ['USCG Master License (Fishing Vessels)', 'Skipper\'s certificate (fishing)']],
+};
+LOCAL.IE = LOCAL.GB; LOCAL.NZ = LOCAL.AU; LOCAL.AT = LOCAL.DE; LOCAL.BE = LOCAL.FR;
+for (const [cc, pairs] of Object.entries(LOCAL)) COUNTRY_RUNGS[cc] = [...(COUNTRY_RUNGS[cc] ?? []), ...A(pairs)];

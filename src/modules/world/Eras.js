@@ -905,10 +905,15 @@ export function genderedTitle(title, gender) {
 const OLD_MULTI = OLD_TITLES.filter(([re]) => re.source.includes(' ')).map(([re, old, until]) => [new RegExp(re.source, 'g'), old, until]);
 /** Whole-title rungs (world/PeriodRungs.js): only where the title stands alone, not inside a longer one. */
 const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const RUNG_RES = PERIOD_RUNGS.map(([modern, old, until]) => [new RegExp(`(?<!\\b[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)')}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g'), old, until, modern]);
-const rungRe = (modern) => new RegExp(`(?<!\\b[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)')}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g');
+const RUNG_RES = PERIOD_RUNGS.map(([modern, old, until]) => [new RegExp(`(?<!\\b(?!(?:Needs|Requires|Entry|Earn|Hold|Get|Take|Apply|Seek|Pass|Become|Renew|Holds|Without|No)\\b)[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)').replace(/'/g, "(?:'|&#39;)")}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g'), old, until, modern]);
+const rungRe = (modern) => new RegExp(`(?<!\\b(?!(?:Needs|Requires|Entry|Earn|Hold|Get|Take|Apply|Seek|Pass|Become|Renew|Holds|Without|No)\\b)[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)').replace(/'/g, "(?:'|&#39;)")}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g');
 const PROF_RES = Object.fromEntries(Object.entries(PROFESSION_RUNGS).map(([id, list]) => [id, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
 const COUNTRY_RES = Object.fromEntries(Object.entries(COUNTRY_RUNGS).map(([cc, list]) => [cc, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
+/** Country names that hold in every year (the present included). */
+function countryRungs(t) {
+  for (const [re, old, until] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (until >= 9999) t = t.replace(re, old);
+  return t;
+}
 function periodRungs(t, professionId = null) {
   for (const [re, old, until] of PROF_RES[professionId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
   for (const [re, old, until] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
@@ -918,7 +923,7 @@ function periodRungs(t, professionId = null) {
 export function periodTitle(title, gender = getEraState()?.character?.gender, professionId = null) {
   if (!title) return title;
   title = genderedTitle(title, gender);
-  if (ERA_YEAR >= PRESENT) return title;
+  if (ERA_YEAR >= PRESENT) return countryRungs(title);
   let t = periodRungs(title, professionId);
   for (const [re, old, until] of OLD_TITLES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
@@ -1776,7 +1781,8 @@ const t0 = (text) => text.includes('&amp;');
 let RENAMES_HTML_CACHE = null;
 const renamesHtml = () => (RENAMES_HTML_CACHE ??= RENAMES.map(([re, from, to]) => [re, from, to, re.source.includes('&') ? new RegExp(re.source.replace(/&/g, '(?:&|\u0001)'), re.flags) : null]));
 export function periodText(text) {
-  if (ERA_YEAR >= PRESENT || typeof text !== 'string') return text;
+  if (typeof text !== 'string') return text;
+  if (ERA_YEAR >= PRESENT) return COUNTRY_RES[getEraState()?.character?.countryId] ? countryRungs(text.replace(/&amp;/g, AMP)).replace(/\u0001/g, '&amp;') : text;
   // Rendered HTML escapes "&": match "Billing &amp; Revenue Cycle" as "Billing & Revenue Cycle".
   const html = t0(text);
   let t = html ? text.replace(/&amp;/g, AMP) : text;
