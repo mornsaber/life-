@@ -156,14 +156,14 @@ const MIL_STYLES = {
     return wreath(Array.from({ length: Math.min(4, n - 6) }, (_, i) => `<text x="${12 + i * 9}" y="22" font-size="11" text-anchor="middle" fill="${GOLD}">✶</text>`).join(''), GOLD);
   },
 };
-const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY', 'NG', 'KE', 'GH', 'MT', 'GM', 'MW', 'BN', 'JM', 'BS', 'LK', 'BD', 'PG', 'SB', 'VU', 'TO', 'NP', 'BT', 'ET', 'SO', 'SS'];
+const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'HK', 'SG', 'MY', 'NG', 'KE', 'GH', 'MT', 'GM', 'MW', 'BN', 'JM', 'BS', 'LK', 'BD', 'PG', 'SB', 'VU', 'TO', 'NP', 'BT', 'ET', 'SO', 'SS'];
 /**
  * Commonwealth pips and crowns: monarchies keep the crown; republics wear their own emblem in its
  * place (Pakistan's crescent, Bangladesh's water lily, Malta's cross, Nigeria's eagle).
  */
-const CW_EMBLEM = { PK: '☪', ZA: '✵', IE: '✦', SG: '✶', NG: '🦅', KE: '⚔', GH: '★', MT: '✠', GM: '✵', MW: '☀', LK: '❂', BD: '✿', VU: '✵', NP: '⚔', BT: '☸', ET: '✵', SO: '★', SS: '✵' };
+const CW_EMBLEM = { HK: '✿', PK: '☪', ZA: '✵', IE: '✦', SG: '✶', NG: '🦅', KE: '⚔', GH: '★', MT: '✠', GM: '✵', MW: '☀', LK: '❂', BD: '✿', VU: '✵', NP: '⚔', BT: '☸', ET: '✵', SO: '★', SS: '✵' };
 /** The year each became a republic (or took its own emblem): before it, the King's crown. */
-const CW_REPUBLIC = { PK: 1956, ZA: 1961, IE: 1922, SG: 1965, NG: 1963, KE: 1964, GH: 1960, MT: 1974, GM: 1970, MW: 1966, LK: 1972, BD: 1971, VU: 1980, SS: 2011 };
+const CW_REPUBLIC = { HK: 1997, PK: 1956, ZA: 1961, IE: 1922, SG: 1965, NG: 1963, KE: 1964, GH: 1960, MT: 1974, GM: 1970, MW: 1966, LK: 1972, BD: 1971, VU: 1980, SS: 2011 };
 const cwEmblem = (cc) => (CW_REPUBLIC[cc] && eraYear() < CW_REPUBLIC[cc] ? '♛' : CW_EMBLEM[cc] ?? '♛');
 
 /* --- national families ------------------------------------------------ */

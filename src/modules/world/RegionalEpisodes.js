@@ -688,6 +688,38 @@ export const REGIONAL_EPISODES = [
     options: [
       { id: 'build', label: '🏗️ Roll up your sleeves', effect: L('You joined the new national service, and helped build the country from nothing.', '🏗️', { stats: { happiness: 3, fitness: 2 } }) },
     ] },
+  // ---- Hong Kong and Macau ----
+  { id: 'hk.1967', icon: '🧨', title: 'The 1967 riots', when: W(['HK'], 1967, 1967, 12),
+    text: 'Leftist unions, inspired by the Cultural Revolution across the border, are on the streets. There are bombs in the post boxes, real and fake; a radio host who mocked them has been burned alive in his car.',
+    options: [
+      { id: 'home', label: '🏠 Stay off the streets', effect: L('You kept your head down until the bombs stopped. Afterwards the government built the housing estates and the ICAC: it had learned something.', '🏠', { stats: { stress: 4 } }) },
+      { id: 'join', label: '✊ March with the leftists', effect: L('You marched with the little red books. Some of your friends were jailed for it.', '✊', { stats: { stress: 8 }, risk: [0.2, 'You were arrested and held for months.', { happiness: -10 }] }) },
+    ] },
+  { id: 'hk.1984', icon: '📜', title: 'The Joint Declaration', when: W(['HK'], 1984, 1990, 14),
+    text: 'Britain and China have signed: Hong Kong goes back to China in 1997, keeping its way of life "unchanged for fifty years". Then came June 1989 in Beijing. Queues are forming at the consulates for Canadian and Australian passports.',
+    options: [
+      { id: 'stay', label: '🏙️ Stay and see', effect: L('You stayed. Every June you lit a candle in Victoria Park.', '🕯️', { stats: { stress: 3 } }) },
+      { id: 'leave', label: '✈️ Emigrate to Canada', effect: L('You joined the exodus to Vancouver: "Hongcouver", the papers called it.', '✈️', { emigrate: 'CA', stats: { stress: 6 } }) },
+    ] },
+  { id: 'hk.2003', icon: '😷', title: 'SARS', when: W(['HK'], 2003, 2003, 10),
+    text: 'A new pneumonia is killing people in Amoy Gardens and the hospitals. The city wears masks; the streets are empty; and in July half a million march against Article 23.',
+    options: [
+      { id: 'march', label: '🚶 March on the first of July', effect: L('You marched in the heat. The security bill was shelved.', '🚶', { stats: { happiness: 3 } }) },
+      { id: 'home', label: '😷 Stay home', effect: L('You stayed home, washed your hands, and waited it out.', '😷', { stats: { stress: 4 } }) },
+    ] },
+  { id: 'hk.2019', icon: '☂️', title: 'The protests', when: W(['HK'], 2014, 2020, 16),
+    text: 'First the umbrellas in 2014; now, over an extradition bill, a million on the streets, then two million. Tear gas in Mong Kok, the airport occupied, the universities under siege. In 2020 Beijing answers with the National Security Law.',
+    options: [
+      { id: 'frontline', label: '⛑️ Go to the front line', effect: L('You wore the black and the yellow helmet. Some of your friends are in prison now; some are in London.', '⛑️', { stats: { stress: 15 }, risk: [0.25, 'You were arrested and charged with rioting.', { happiness: -15 }] }) },
+      { id: 'leave', label: '✈️ Take the BN(O) route to Britain', effect: L('You left for Britain on the BN(O) visa, like a hundred and fifty thousand others.', '✈️', { emigrate: 'GB', stats: { stress: 8 } }) },
+      { id: 'quiet', label: '🤐 Keep quiet', effect: L('You kept quiet, at work and online. Most people did.', '🤐', { stats: { stress: 6 } }) },
+    ] },
+  { id: 'mo.casinos', icon: '🎰', title: 'The casinos open up', when: W(['MO'], 2002, 2008, 14),
+    text: 'Stanley Ho\'s monopoly is over: Las Vegas has come to Macau. The Sands, the Venetian, the Wynn; by 2006 Macau takes more than the Strip, and every school-leaver can deal cards.',
+    options: [
+      { id: 'deal', label: '🃏 Train as a croupier', effect: L('You trained as a croupier: good money, shifts round the clock.', '🃏', { stats: { happiness: 3 }, earn: 3000 }) },
+      { id: 'no', label: '📚 Stay in school', effect: L('You stayed in school, though half your class left for the casinos.', '📚', { stats: { smarts: 2 } }) },
+    ] },
   { id: 'bn.oil', icon: '🛢️', title: 'Independence', when: W(['BN'], 1984, 1984, 10),
     text: 'Brunei is fully independent at last, on the first of January, rich with oil.',
     options: [

@@ -27,7 +27,7 @@ import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicSer
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf as homeCountryOf, isCitizen, COUNTRIES as ALL_COUNTRIES } from '../world/Countries.js';
-import { colonyHere } from '../world/Eras.js';
+import { colonyHere, autonomyHere } from '../world/Eras.js';
 /**
  * The country whose forces you join: your own, or the empire's whose province you live in (a
  * Bessarabian enlists in the Russian army, a Bosnian in the Ottoman). Its subjects count as its citizens.
@@ -388,6 +388,9 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (!subjectOf(state) && !isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !prOk && !b.openToForeigners) {
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
+  // An autonomous region has no armed forces: its garrison is the sovereign's and recruits none of its people.
+  const auto = autonomyHere(state);
+  if (auto && !colonyHere(state)) return { ok: false, reason: `${auto.short} has no armed forces of its own: defence is ${auto.garrison}'s, which doesn't recruit locally` };
   // A colony has its own army (and seldom anything else): world/ColonialForces.js.
   const colonialBlock = colonialBranchBlock(state, branchId);
   if (colonialBlock) return { ok: false, reason: colonialBlock };

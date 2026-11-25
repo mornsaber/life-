@@ -118,7 +118,7 @@ const TIER_FROM = {
   PH: { merit: 1946, lakandula: 2003 },
 };
 /** Whole orders, from their founding. */
-const ORDER_FROM = { DE: 1951, IT: 1952, JP: 1875, KR: 1963, IN: 1954, NZ: 1996, ZA: 2002, CA: 1967, AU: 1975, IE: 9999 };
+const ORDER_FROM = { HK: 1997, MO: 2001, CN: 1950, DE: 1951, IT: 1952, JP: 1875, KR: 1963, IN: 1954, NZ: 1996, ZA: 2002, CA: 1967, AU: 1975, IE: 9999 };
 
 /* ---- Britain by year ---- */
 const MALE_ONLY = { male: true };
@@ -202,8 +202,9 @@ export function honoursSystem(state) {
     const o = ordersAt(cc, y, state);
     if (o) out.push(o);
   } else {
-    // A colony: the ruling power's honours.
+    // A colony: the ruling power's honours (none from an occupier in wartime).
     const col = colonyHere(state);
+    if (col?.occupation) return [];
     const o = col?.ruler && col.ruler !== cc ? ordersAt(col.ruler, y) : ordersAt(cc, y);
     // A colonial subject on the British list: knighthoods and now and then a baronetcy, never a peerage.
     if (o?.via === 'GB' && col) out.push({ ...o, ladder: { ...o.ladder, tiers: o.ladder.tiers.filter((t) => !t.peer) } });

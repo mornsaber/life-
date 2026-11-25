@@ -136,8 +136,11 @@ const tests = {
     groupBoardYear(engine.context());
     assert.ok(!c.executives.president, 'the board replaced the president');
     // Remove a director.
-    engine.dispatch('business.removeGroupDirector', indep[0].id);
-    assert.ok(!c.board.seats.includes(indep[0]));
+    // (A director chosen now: one of the first may have stood down in the years since.)
+    const leaving = c.board.seats.find((s) => s.kind === 'independent');
+    state.prompts = []; // the board's verdict may be waiting on you, and that blocks other actions
+    engine.dispatch('business.removeGroupDirector', leaving.id);
+    assert.ok(!c.board.seats.includes(leaving));
     const html = VIEWS.business(state, {});
     clean(html);
     assert.match(html, /Board of directors/);

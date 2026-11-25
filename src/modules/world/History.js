@@ -47,7 +47,7 @@ import { empireColonies } from './Eras.js';
 import { colonialStanding } from './ColonialLife.js';
 import { closeBusiness } from '../business/BusinessEngine.js';
 import { workBlock } from './Regimes.js';
-import { presidencyInEra } from './Eras.js';
+import { presidencyInEra, AUTONOMOUS } from './Eras.js';
 import { colonialEmployerName } from '../content/packs/careers-colonial.js';
 import { regionsIn } from '../life/Regions.js';
 
@@ -495,7 +495,9 @@ function colonyYear(ctx, cc) {
   let due = false;
   if (typeof st.until === 'number') {
     const pressure = rec.pressure ?? 0;
-    if (y >= end + 3) due = true;
+    // A treaty's date (Hong Kong's 1997, Macau's 1999) doesn't drift.
+    if (st.fixed) due = y >= end;
+    else if (y >= end + 3) due = true;
     else if (y >= end - 4) due = rng.chance(clamp(0.2 + pressure * 0.06 + (y - end + 4) * 0.05, 0, 0.9));
   } else due = hap(state, st.until);
   if (!due) return;
@@ -504,9 +506,26 @@ function colonyYear(ctx, cc) {
   if (warIn(state, cc)?.id === `independence.${cc}`) endWarNow(ctx, cc, 'ended in independence');
   const next = colonyStage(state, cc);
   if (mine) {
-    if (next) ctx.log(`${rulerName(st.ruler)}'s rule is over. ${cname(cc)} is now ${next.name}, ruled from ${rulerCapital(next.ruler, yearNow(state))}.`, '🏳️', 'milestone');
+    if (next?.arrive) ctx.log(next.arrive, '🏳️', 'milestone');
+    else if (next) ctx.log(`${rulerName(st.ruler)}'s rule is over. ${cname(cc)} is now ${next.name}, ruled from ${rulerCapital(next.ruler, yearNow(state))}.`, '🏳️', 'milestone');
+    else if (AUTONOMOUS[cc]) handback(ctx, cc, st, rec, rng);
     else independence(ctx, cc, st, rec, rng);
-  } else if (!next && !st.noMovement) news(ctx, `${cname(cc)} wins its independence`, '🏳️', 'world', 5);
+  } else if (!next && AUTONOMOUS[cc]) news(ctx, `${cname(cc)} is handed back to ${cname(AUTONOMOUS[cc].of)}`, '🏳️', 'world', 7);
+  else if (!next && !st.noMovement) news(ctx, `${cname(cc)} wins its independence`, '🏳️', 'world', 5);
+}
+
+/** A colony handed back by treaty to a state that lets it keep its own system (Hong Kong, Macau). */
+function handback(ctx, cc, st, rec, rng) {
+  const { state } = ctx;
+  const a = AUTONOMOUS[cc];
+  ctx.log(`🏳️ The handover. ${a.handover} You live in ${a.name} now.`, '🏳️', 'milestone');
+  news(ctx, `${cname(cc)} returns to ${cname(a.of)}`, '🏳️', 'national', 10);
+  // Some had left before it: the queues at the consulates for a foreign passport in the 1990s.
+  ctx.stat('stress', 3);
+  // The civil service and the police carry on under the new flag: "Royal" comes off the badge.
+  const job = state.career?.job;
+  if (job && PROFESSIONS[job.professionId]?.colonial && (state.character.countryId ?? 'US') === cc) handOver(ctx, cc, st, job, rec, rng);
+  if (rec.loyal) ctx.log(`You served the ${rulerAdj(st.ruler)} administration to the end. The new one kept most of you on.`, '👀', 'info');
 }
 
 function independence(ctx, cc, st, rec, rng) {

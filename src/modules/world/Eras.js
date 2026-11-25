@@ -377,6 +377,25 @@ export function colonyStage(state, cc) {
 }
 export const colonyHere = (state) => colonyStage(state, state.character.countryId ?? 'US');
 /**
+ * Territories under another state's sovereignty that govern themselves: Hong Kong and Macau after
+ * their handovers ("one country, two systems"). Their own laws, courts, police, money and civil
+ * service; no army, no diplomats and no head of state of their own.
+ */
+export const AUTONOMOUS = {
+  HK: { of: 'CN', from: 1997, name: 'the Hong Kong Special Administrative Region of China', short: 'the Hong Kong SAR', head: 'the Chief Executive', garrison: 'the PLA Hong Kong Garrison',
+    handover: 'At midnight on 30 June 1997, in the rain, the Union Flag came down over Hong Kong and the flags of China and the new Special Administrative Region went up. The last Governor sailed away on the royal yacht. "One country, two systems", for fifty years.' },
+  MO: { of: 'CN', from: 1999, name: 'the Macao Special Administrative Region of China', short: 'the Macao SAR', head: 'the Chief Executive', garrison: 'the PLA Macao Garrison',
+    handover: 'At midnight on 19 December 1999 the Portuguese flag came down over Macau, after four hundred and forty-two years, and the flag of China went up: the last European colony in Asia handed back.' },
+};
+/** The autonomy a territory has this year (null while it is still a colony, or before its handover). */
+export function autonomyOf(state, cc) {
+  const a = AUTONOMOUS[cc];
+  if (!a) return null;
+  if (state?.era && (colonyStage(state, cc) || yearNow(state) < a.from)) return null;
+  return a;
+}
+export const autonomyHere = (state) => autonomyOf(state, state.character?.countryId ?? 'US');
+/**
  * Empires that ruled their lands as provinces of one state: their subjects served in the empire's
  * army (a Bessarabian in the Russian army, a Bosnian in the Ottoman), not a colonial force of their own.
  */
@@ -437,6 +456,9 @@ const OTTOMAN_RULE = (name) => G({ kind: 'colony', name: `${name}, ruled from Co
  * history-driven periods above take precedence.
  */
 const TIMELINES = {
+  // After the handovers (the colony's own stage rules until then).
+  HK: [[2020, OLIGARCHY('the Hong Kong SAR of China: "one country, two systems"', 'the Chief Executive', { press: 'free' })], [9999, AUTH('the Hong Kong SAR of China, under the National Security Law', 'the Chief Executive', { surveillance: 0.12, exit: 'free' })]],
+  MO: [[9999, OLIGARCHY('the Macao SAR of China: "one country, two systems"', 'the Chief Executive', { press: 'state' })]],
   AF: [[1826, WAR('the warring Durrani princes')], [1926, MONARCH('the Emirate of Afghanistan', 'the Emir', { women: 'restricted' })], [1973, MONARCH('the Kingdom of Afghanistan', 'the King', { women: 'restricted' })],
     [1978, AUTH('Daoud Khan\'s republic', 'President Daoud')], [1992, TOTAL('the Democratic Republic of Afghanistan, a Soviet-backed communist state at war', 'the General Secretary')],
     [1996, WAR('the civil war of the mujahideen factions')], [2001, G({ kind: 'theocracy', name: 'the Taliban\'s first Islamic Emirate', elections: 'none', press: 'state', religion: 'state', women: 'barred', alcohol: false, ratings: false, surveillance: 0.25, leader: 'the Amir al-Mu\'minin' })],
@@ -553,6 +575,8 @@ export function dataRegimeAt(cc, y) {
 }
 /** A republic's presidency exists in the year being played: the country is sovereign and has no crown (the regime data). */
 export function presidencyInEra(state, cc) {
+  // An autonomous region's head is its Chief Executive, under another state's president.
+  if (AUTONOMOUS[cc]) return false;
   if (!state?.era) return true;
   const y = yearNow(state);
   if (y >= PRESENT - 10) return true;
@@ -920,7 +944,8 @@ const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RUNG_RES = PERIOD_RUNGS.map(([modern, old, until]) => [new RegExp(`(?<!\\b(?!(?:Needs|Requires|Entry|Earn|Hold|Get|Take|Apply|Seek|Pass|Become|Renew|Holds|Without|No)\\b)[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)').replace(/'/g, "(?:'|&#39;)")}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g'), old, until, modern]);
 const rungRe = (modern) => new RegExp(`(?<!\\b(?!(?:Needs|Requires|Entry|Earn|Hold|Get|Take|Apply|Seek|Pass|Become|Renew|Holds|Without|No)\\b)[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)').replace(/'/g, "(?:'|&#39;)")}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g');
 const PROF_RES = Object.fromEntries(Object.entries(PROFESSION_RUNGS).map(([id, list]) => [id, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
-const COUNTRY_RES = Object.fromEntries(Object.entries(COUNTRY_RUNGS).map(([cc, list]) => [cc, list.map(([modern, old, until]) => [rungRe(modern), old, until])]));
+// A country's row may also say from when the old name held ([modern, old, until, from]).
+const COUNTRY_RES = Object.fromEntries(Object.entries(COUNTRY_RUNGS).map(([cc, list]) => [cc, list.map(([modern, old, until, from = 0]) => [rungRe(modern), old, until, from])]));
 /** Country names that hold in every year (the present included). */
 function countryRungs(t) {
   for (const [re, old, until] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (until >= 9999) t = t.replace(re, old);
@@ -928,7 +953,7 @@ function countryRungs(t) {
 }
 function periodRungs(t, professionId = null) {
   for (const [re, old, until] of PROF_RES[professionId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
-  for (const [re, old, until] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (ERA_YEAR < until) t = t.replace(re, old);
+  for (const [re, old, until, from] of COUNTRY_RES[getEraState()?.character?.countryId] ?? []) if (ERA_YEAR < until && ERA_YEAR >= from) t = t.replace(re, old);
   for (const [re, old, until] of RUNG_RES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
 }

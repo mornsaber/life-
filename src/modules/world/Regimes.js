@@ -36,7 +36,7 @@ import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
 import { setRegimeLookup } from './Ownership.js';
-import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow, eraYear } from './Eras.js';
+import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow, eraYear, autonomyHere } from './Eras.js';
 const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
@@ -86,6 +86,8 @@ export const REGIMES = {
   HT: R({ ...FRAGILE, name: 'a state without elected leaders, run by a transitional council', elections: 'none' }),
   CD: R({ ...FRAGILE, name: 'a fragile presidential state' }),
   CF: R({ ...FRAGILE, name: 'a fragile presidential state' }),
+  HK: R({ kind: 'hybrid', name: 'a special administrative region of China, under the National Security Law', elections: 'controlled', press: 'state', surveillance: 0.12, leader: 'the Chief Executive' }),
+  MO: R({ kind: 'hybrid', name: 'a special administrative region of China', elections: 'controlled', press: 'state', surveillance: 0.08, leader: 'the Chief Executive' }),
   PS: R({ ...FRAGILE, name: 'a territory under occupation and divided rule', elections: 'none', exit: 'restricted' }),
 };
 /**
@@ -171,6 +173,9 @@ export function workBlock(state, profession) {
   const base = profession.template ?? profession.id;
   if (r.business === 'state' && (MARKET_ONLY.includes(base) || MARKET_ONLY.includes(profession.id))) return 'There\'s no such private trade in a planned economy: the state runs everything';
   if (r.religion === 'banned' && CLERGY_IDS.includes(base)) return 'The state has closed the churches and seminaries';
+  // An autonomous region has no diplomats or spies of its own: Beijing's.
+  const auto = autonomyHere(state);
+  if (auto && /foreignService|diplomac|intelligence|caseOfficer|sigint/i.test(`${base} ${profession.id}`)) return `Foreign affairs and defence belong to ${COUNTRIES[auto.of]?.name ?? 'the sovereign state'}: ${auto.short} has no diplomatic service of its own`;
   if (profession.country && !profession.colonial) {
     const y = yearNow(state);
     const from = Math.max(NATIONAL_FROM[profession.country] ?? 0, AGENCY_FROM[profession.id] ?? 0);

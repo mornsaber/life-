@@ -293,5 +293,8 @@ const LOCAL = {
     ['Peace Officer (POST Basic Academy)', 'Police Training Centre'], ['FBI Academy (Quantico)', 'Police Staff College (Bramshill)'], ['Driver\'s License (Class D)', 'Driving licence'], ['Airline Transport Pilot (ATP)', 'Airline Transport Pilot\'s Licence (CAA)'],
     ['FAA Certified Professional Controller', 'Air traffic control licence (CAA)'], ['USCG Master License (Fishing Vessels)', 'Skipper\'s certificate (fishing)']],
 };
+// The Royal Hong Kong Police Force (1969–97): "Royal" for its part in the 1967 riots.
+LOCAL.HK = [];
+COUNTRY_RUNGS.HK = [['Hong Kong Police Force', 'Royal Hong Kong Police Force', 1997, 1969]];
 LOCAL.IE = LOCAL.GB; LOCAL.NZ = LOCAL.AU; LOCAL.AT = LOCAL.DE; LOCAL.BE = LOCAL.FR;
 for (const [cc, pairs] of Object.entries(LOCAL)) COUNTRY_RUNGS[cc] = [...(COUNTRY_RUNGS[cc] ?? []), ...A(pairs)];
