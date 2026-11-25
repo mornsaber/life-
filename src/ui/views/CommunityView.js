@@ -2,6 +2,7 @@
  * Community tab: your faith and congregation, giving, ministry, volunteering
  * and mentoring.
  */
+import { GIFTS, giftCheck, giftCost, marksHere } from '../../modules/life/Marks.js';
 import { secretSocietiesCard } from './SecretSocietiesView.js';
 import { schismIssue } from '../../modules/community/Religions.js';
 import { faithDayCard } from './FaithDayCard.js';
@@ -197,6 +198,19 @@ export function warCard(state) {
 /* Civic life                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Your mark on the town: gifts with your name on them, and what the family left before you. */
+function marksCard(state) {
+  if (state.character.age < 21) return '';
+  const y = yearNow(state);
+  const here = marksHere(state);
+  const gen = state.lineage?.generation ?? 1;
+  const list = here.map((m) => `<li>${GIFTS[m.kind]?.icon ?? (m.kind === 'statue' ? '🗿' : '🪧')} <b>${esc(m.title)}</b> <small class="muted">${m.year} · ${m.gen === gen ? 'yours' : `given by ${esc(m.by)}`}</small></li>`).join('');
+  const open = Object.keys(GIFTS).filter((k) => !giftCheck({ ...state, finances: { cash: Infinity } }, k)).map((k) => button(`${GIFTS[k].icon} ${GIFTS[k].name(y)}`, 'marks.give', { arg: k, variant: 'small', hint: money(giftCost(state, k)), disabled: Boolean(giftCheck(state, k)) })).join('');
+  if (!list && !open) return '';
+  return card('Your Mark on the Town', `${list ? `<ul class="history">${list}</ul>` : '<p class="muted">Nothing here has your name on it yet.</p>'}
+    ${open ? `<h4 class="sub">Give the town something</h4><div class="action-grid">${open}</div><p class="fine">Named after you; it changes the town, and it stays for your children.</p>` : ''}`, { icon: '🏛️', summary: here.length ? `${here.length} in the town` : '' });
+}
+
 function neighborsCard(state) {
   const c = state.civic;
   if (!c?.neighbors.length) return '';
@@ -283,5 +297,5 @@ function localCard(state) {
 }
 
 export function civicView(state) {
-  return `${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
+  return `${marksCard(state)}${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
 }
