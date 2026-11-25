@@ -3,6 +3,7 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { weekHours, paidHolidays, saturdayWork } from '../../modules/career/WorkingConditions.js';
 import { periodTitle } from '../../modules/world/Eras.js';
 import { workLifeCard } from '../../modules/career/WorkLife.js';
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
@@ -214,6 +215,7 @@ function currentJob(state) {
           payRow(job, state.character.countryId),
           ['In level', `${job.yearsInLevel} yr`],
           ['Seniority', `${job.yearsAtEmployer} yr`],
+          ['Your week', `${weekHours(state, job)} hours${saturdayWork(state) ? ' (Saturdays too)' : ''} · ${paidHolidays(state) ? `${paidHolidays(state)} days' paid holiday` : 'no paid holiday'}`],
           trainee ? ['Training', `<span class="warn-text">${esc(trainee.label)}</span>`] : job.probationLeft > 0 ? ['Status', `<span class="warn-text">Probation · ${job.probationLeft} yr left</span>`] : isTenured(job) ? ['Status', '🎓 Tenured'] : null,
           job.warnings ? ['Warnings', `<span class="neg">${job.warnings}</span>`] : null,
           job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>${job.plateauUntil ? ` · plateau lifts at ${job.plateauUntil}` : ''}`] : null,
