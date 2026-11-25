@@ -398,6 +398,22 @@ export function getCredential(id) {
 
 export const credentialName = (id) => CREDENTIALS[id]?.name ?? id;
 
+/**
+ * Licences that are American (or North American) institutions: elsewhere the work was never
+ * licensed this way (a British estate agent, plumber, electrician, undertaker or private detective
+ * needs no state licence; union cards are a North American closed shop; the PE an American one).
+ */
+const LICENSED_ONLY_IN = {
+  realEstate: ['US', 'CA', 'AU', 'NZ', 'ZA', 'PH', 'SG', 'KR', 'JP', 'IL'], brokerLicense: ['US', 'CA', 'AU', 'NZ', 'ZA', 'PH', 'SG', 'KR', 'JP', 'IL'],
+  cosmetologyLicense: ['US', 'CA', 'KR', 'JP'], journeymanCarpenter: ['US', 'CA'], ironworkerCard: ['US', 'CA'], journeymanLineman: ['US', 'CA'],
+  journeymanPlumber: ['US', 'CA', 'AU', 'NZ', 'DE', 'AT', 'CH'], masterPlumber: ['US', 'CA', 'AU', 'NZ', 'DE', 'AT', 'CH'],
+  journeymanElectrician: ['US', 'CA', 'AU', 'NZ', 'DE', 'AT', 'CH'], masterElectrician: ['US', 'CA', 'AU', 'NZ', 'DE', 'AT', 'CH'],
+  pe: ['US', 'CA', 'PH'], bailAgent: ['US', 'PH'], piLicense: ['US', 'CA', 'AU', 'NZ', 'ZA'], funeralDirectorLicense: ['US', 'CA', 'AU'],
+  insuranceProducer: ['US', 'CA', 'AU', 'NZ', 'JP', 'KR', 'SG', 'PH'], awsWelder: ['US', 'CA'], aicp: ['US'], cpm: ['US'], series7: ['US'], series66: ['US'],
+};
+/** Does a job here ask for this licence at all? */
+export const licensedHere = (id) => !LICENSED_ONLY_IN[id] || LICENSED_ONLY_IN[id].includes(currentCountry());
+
 /** Credentials that improve hiring odds in a profession (beyond the profession's own `valued` list). */
 export const VALUED_BY = {};
 for (const [id, c] of Object.entries(CREDENTIALS)) if (!c.retired) for (const p of c.valuedBy ?? []) (VALUED_BY[p] ??= []).push(id);

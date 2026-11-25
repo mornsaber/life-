@@ -33,7 +33,7 @@ export const WORKPLACE_COMPLAINTS = [
 /** Management, everywhere: a course before the management rungs. */
 export const MANAGEMENT = {
   courses: [
-    { id: 'management', name: (s) => (y(s) < 1960 ? 'a foremen\'s and supervisors\' course' : y(s) < 1990 ? 'a management course' : 'a leadership and management programme'), icon: '🧭', from: 1920, cost: 3000, gateMgmt: true, minGrade: 1 },
+    { id: 'management', name: (s) => (y(s) < 1960 ? 'a foremen\'s and supervisors\' course' : y(s) < 1990 ? 'a management course' : 'a leadership and management programme'), icon: '🧭', from: 1950, cost: 3000, gateMgmt: true, minGrade: 1 },
   ],
 };
 

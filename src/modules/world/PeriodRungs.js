@@ -6,6 +6,24 @@
 const R = (modern, ...pairs) => pairs.map(([old, until]) => [modern, old, until]);
 
 export const PERIOD_RUNGS = [
+  // Exams in the names of their day.
+  ...R('Pass the Federal Occupational Assessment', ['Pass the federal civil-service examination', 2010]),
+  ...R('UN Young Professionals Programme exam', ['Secretariat\'s competitive examination', 2011]),
+  ...R('Foreign Service Officer Test (FSOT)', ['Foreign Service Examination', 2007]),
+  ...R('SAG-AFTRA Membership', ['Screen Actors Guild card', 1952], ['SAG or AFTRA card', 2012]),
+  // Licences in the names of their day.
+  ...R('Pharmacist License (NAPLEX + MPJE)', ['Registered Pharmaceutical Chemist', 1979]),
+  ...R('Veterinary License (NAVLE)', ['Veterinary Licence', 2000]),
+  ...R('Registered Architect (ARE)', ['Registered Architect', 1965]),
+  ...R('State Bar License', ['Admitted to the Bar', 1950]),
+  ...R('State Teaching Certificate', ['Teacher\'s Certificate', 1950]),
+  ...R('Third Mate License (Unlimited Tonnage)', ['Second Mate\'s Certificate', 1970]),
+  ...R('Chief Mate License', ['First Mate\'s Certificate', 1970]),
+  ...R('Master (Captain) License — Unlimited', ['Master\'s Certificate', 1970]),
+  ...R('Third Assistant Engineer License', ['Engineer\'s Certificate (Second Class)', 1970]),
+  ...R('Chief Engineer License — Unlimited', ['Engineer\'s Certificate (First Class)', 1970]),
+  ...R('Journeyman Carpenter Card', ['Union Card (Carpenters)', 1950]),
+  ...R('Journeyman Ironworker Card', ['Union Card (Ironworkers)', 1950]),
   // Corporate ladders: no vice-presidents of operations before the managerial age.
   ...R('VP of Retail Operations', ['Partner in the Firm', 1900], ['Merchandise Manager', 1960]),
   ...R('Regional VP of Operations', ['General Manager', 1960]),
@@ -208,6 +226,11 @@ export const COUNTRY_RUNGS = {
     ...R('Senior Principal', ['First Class Clerk', 1920]),
     ...R('Director General', ['Assistant Under-Secretary', 1940]),
     ...R('Permanent Secretary', ['Permanent Under-Secretary', 1920]),
+    ...R('Admitted to the Bar', ['Called to the Bar', 1950]), ...R('State Bar License', ['Called to the Bar', 9999]),
+    ...R('Teacher\'s Certificate', ['Certificated Teacher', 1950]), ...R('State Teaching Certificate', ['Qualified Teacher Status', 9999]),
+    ...R('Certified Public Accountant (CPA)', ['Chartered Accountant (ACA)', 9999]),
+    ...R('Foreign Service Officer Test (FSOT)', ['Diplomatic Service examination', 9999]),
+    ...R('SAG-AFTRA Membership', ['Equity card', 9999]),
     // No maritime academies: the cadet training ships (HMS Conway, HMS Worcester) until the colleges of the 1960s.
     ...R('Maritime Academy (B.S. + license track)', ['Cadetship in a Nautical Training Ship', 1970]),
     ...R('Maritime Academy Faculty & Staff', ['Nautical Training Ships', 1970]),

@@ -26,7 +26,7 @@ export const HEALTH = {
     { id: 'midwifery', name: (s) => (y(s) < 1950 ? 'the Central Midwives Board certificate' : 'a midwifery qualification'), icon: '🤰', from: 1902, professions: NURSES, minGrade: 3, cost: 3000, years: 1, perf: 4 },
     { id: 'prescribing', name: 'a nurse prescribing qualification', icon: '💊', from: 1994, professions: NURSES, minGrade: 5, cost: 2000, perf: 4 },
     { id: 'tropicalNursing', name: 'a tropical nursing course', icon: '🦟', from: 1899, professions: NURSES, minGrade: 3, cost: 1500, perf: 2 },
-    { id: 'ward', name: (s) => (y(s) < 1970 ? 'the ward sister\'s course' : 'a ward leadership programme'), icon: '🧭', from: 1920, professions: NURSES, minGrade: 4, cost: 1500, perf: 3, gateMgmt: true },
+    { id: 'ward', name: (s) => (y(s) < 1970 ? 'the ward sister\'s course' : 'a ward leadership programme'), icon: '🧭', from: 1950, professions: NURSES, minGrade: 4, cost: 1500, perf: 3, gateMgmt: true },
     { id: 'pharmacyFellow', name: 'membership of the pharmaceutical society', icon: '⚗️', professions: ['pharmacy'], minGrade: 3, cost: 800, perf: 3 },
     { id: 'dentalFellow', name: (s) => (COMMONWEALTH.includes(cc(s)) ? 'Fellowship in Dental Surgery (FDS)' : 'a dental specialty residency'), icon: '🦷', from: 1947, professions: ['dentistry'], minGrade: 7, cost: 8000, years: 2, perf: 5 },
     { id: 'cbt', name: 'training in cognitive behavioural therapy', icon: '🧠', from: 1970, professions: ['counseling', 'psychology', 'occupationalTherapy'], minGrade: 2, cost: 3000, perf: 4 },

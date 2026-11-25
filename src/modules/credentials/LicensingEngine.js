@@ -21,7 +21,7 @@
 import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
 import { OFFENSES } from '../legal/Offenses.js';
 import { clamp } from '../../core/Random.js';
-import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK, REQUIRED_BY } from './CredentialRegistry.js';
+import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK, REQUIRED_BY, licensedHere } from './CredentialRegistry.js';
 import { stateIdOf, countryIdOf } from '../life/Regions.js';
 import { recognitionRoute, speaksLocal, localLanguage } from '../world/Immigration.js';
 import { COUNTRIES } from '../world/Countries.js';
@@ -30,7 +30,7 @@ import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS, PROGRAMS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
 import { drivingAge, drivingTestHere } from '../vehicles/DrivingOfTheDay.js';
-import { credentialExists, credentialRequired, diplomaExpected, degreesOptional, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
+import { credentialExists, credentialRequired, diplomaExpected, degreesOptional, educationAskedFor, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -129,16 +129,18 @@ export function checkRequirements(state, req = {}) {
   const diplomaOnly = req.education?.level === 'highschool' && !req.education.program && !req.education.major;
   // Before 1900 no job or licence asked for a degree: lawyers read law in an office, doctors
   // and engineers learned under a master, clerks and officials were taken on by patronage.
-  if (req.education && !(diplomaOnly && !diplomaExpected(state)) && !degreesOptional(state) && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
+  // After 1900: only what employers of the day insisted on (world/Eras.js educationAskedFor).
+  const asked = req.education && !degreesOptional(state) ? educationAskedFor(state, req.education) : null;
+  if (asked && !(diplomaOnly && !diplomaExpected(state)) && !meetsEducation(state, asked)) missing.push(describeEducation(asked));
   // A degree the era didn't ask for still stood for years of learning: articles, reading law,
   // walking the wards, a clerkship. Without the degree you came to the post that much older.
-  if (req.education && degreesOptional(state) && !meetsEducation(state, req.education)) {
+  if (req.education && !asked && !(diplomaOnly && !diplomaExpected(state)) && !meetsEducation(state, req.education)) {
     const years = APPRENTICE_YEARS[req.education.level] ?? (req.education.program ? 4 : 0);
-    if (years && state.character.age < 18 + years) missing.push(`age ${18 + years}+ (years learning the work: no degrees then)`);
+    if (years && state.character.age < 18 + years) missing.push(`age ${18 + years}+ (years learning the work: ${degreesOptional(state) ? 'no degrees then' : 'on the job, as it was then'})`);
   }
-  for (const c of req.credentials ?? []) if (credentialRequired(state, c) && !hasCredential(state, c)) missing.push(credentialName(c));
+  for (const c of req.credentials ?? []) if (credentialRequired(state, c) && licensedHere(c) && !hasCredential(state, c)) missing.push(credentialName(c));
   // A licence the era didn't have yet still stood for training: the post went to someone older.
-  const waived = (req.credentials ?? []).filter((c) => !credentialRequired(state, c) && !hasCredential(state, c));
+  const waived = (req.credentials ?? []).filter((c) => !(credentialRequired(state, c) && licensedHere(c)) && !hasCredential(state, c));
   if (waived.length) {
     const years = Math.max(...waived.map((c) => trainingYears(c)));
     if (years && state.character.age < 18 + years && !missing.some((m) => /^age /.test(m))) missing.push(`age ${18 + years}+ (years learning the work: no licence then)`);

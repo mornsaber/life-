@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { licensedHere } from '../credentials/CredentialRegistry.js';
 import { PHYSICAL, physicalWorkBarred } from '../health/Routine.js';
 import { shockFactor } from '../economy/Shocks.js';
 import { ordainedEntryLevel } from '../community/HolyOrders.js';
@@ -60,7 +61,7 @@ import { ruralHiring } from '../life/RuralLife.js';
 import { jobSkills, skill } from '../life/Skills.js';
 import { workRepBonus } from '../life/Reputation.js';
 import { automationRisk } from '../world/Eras.js';
-import { periodTitle, examRequired } from '../world/Eras.js';
+import { periodTitle, examRequired, educationAskedFor } from '../world/Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -120,7 +121,7 @@ export const addLevelGate = (fn) => { LEVEL_GATES.push(fn); };
  */
 addLevelGate((state, level) => {
   const r = level.req ?? {};
-  const waived = (r.education && degreesOptional(state)) || (r.credentials ?? []).some((c) => !credentialRequired(state, c));
+  const waived = (r.education && (degreesOptional(state) || !educationAskedFor(state, r.education))) || (r.credentials ?? []).some((c) => !credentialRequired(state, c) || !licensedHere(c));
   if (!waived || (level.grade ?? 0) < 5) return null;
   const need = (level.grade - 4) * 2;
   // Years in this line of work (its own career, or one built on the same template) count in full;

@@ -735,7 +735,11 @@ export const periodDollars = (state, amount) => (yearNow(state) < PRESENT && (st
  * 1910s, but nobody hired a policeman, a postman or a lorry driver on condition of one until the
  * licence was universal. Before these years a job doesn't require it.
  */
-const REQUIRED_FROM = { driverLicense: 1950, learnerPermit: 1950, motorcycle: 1960 };
+// Credentials that existed long before a job could insist on them: board certification for every
+// attending, welder and radiographer certificates, probation and fire-inspector certification.
+const REQUIRED_FROM = { driverLicense: 1950, learnerPermit: 1950, motorcycle: 1960, boardCertified: 1990, awsWelder: 1990, probationCert: 1980, fireInspector: 1985, arrt: 1975, languageProficiency: 1960,
+  pe: 1950, cpa: 1920, architectLicense: 1930, rn: 1920,
+  supervisorCourse: 1975, commandCollege: 1985, post: 1970, postReserve: 1975, buildingInspector: 1995, ff1: 1980, ff2: 1985, fireOfficer1: 1980, fireOfficer2: 1985 };
 /** Does a job in this year require this credential? */
 export const credentialRequired = (state, id) => credentialExists(state, id) && !(REQUIRED_FROM[id] > yearNow(state));
 /** Civil-service entrance exams: Britain from 1870 (Northcote–Trevelyan), the US federal service from 1883 (Pendleton), cities and states from about 1900. Before, jobs went by patronage. */
@@ -776,6 +780,47 @@ Object.assign(CREDENTIAL_FROM, {
   shotfirer: 1872, mineManager: 1872, apothecary: 1815, midwife: 1902, teachersCertificate: 1846, pitmanShorthand: 1870, pedlar: 1871, publican: 1800, dockRegistration: 1947,
 });
 /** Did this licence or certification exist in the year you're living in? */
+// Licences of the nineteenth century, by the first law that made them: certified public accountants
+// (New York, 1896), dentists (Alabama 1868; Britain's Dentists Act 1878), chemists (the Pharmacy Act,
+// 1868), vets (1881), architects (Illinois, 1897), masters' and mates' certificates of competency
+// (1851) and engineers' (1862), teachers' certificates (1846), union cards (carpenters 1881,
+// ironworkers 1896, plumbers 1889).
+Object.assign(CREDENTIAL_FROM, { cpa: 1896, dentalLicense: 1868, pharmacistLicense: 1868, vetLicense: 1881, architectLicense: 1897,
+  mateLicense: 1851, chiefMateLicense: 1851, masterLicense: 1851, engineerLicense: 1862, chiefEngineerLicense: 1862, teachingCert: 1846,
+  journeymanCarpenter: 1881, ironworkerCard: 1896, journeymanPlumber: 1889, journeymanLineman: 1891 });
+/**
+ * When an employer or a board first insisted on a qualification (not when it was first offered):
+ * before that the work was learned on the job, and the post went to someone older instead.
+ */
+export const PROGRAM_REQUIRED_FROM = {
+  jd: 1950, md: 1910, do: 1910, dds: 1900, dvm: 1920, pharmd: 2000, od: 1970, dc: 1970, dpt: 2015, paMaster: 2005, crnaProgram: 2000,
+  phd: 1950, mot: 2007, slpMaster: 1965, psyd: 1950, mph: 1950, msw: 1955, mls: 1951, counselingMaster: 1976, dieteticsMS: 2024, msAccounting: 2000, mba: 1975, mpa: 1975,
+  paralegal: 1980, teacherPrep: 1930, culinaryArts: 2100, cosmetologySchool: 1930, mortuaryScience: 1940, maritimeAcademy: 1990,
+  electricalTech: 2100, plumbingTech: 2100, hvacTech: 2100, weldingTech: 2100, autoTech: 2100, machinistTech: 2100, linemanSchool: 2100,
+  radiologyTech: 1975, respiratoryTech: 1980, dentalHygieneProgram: 1950, solarTech: 2100, interpreterCert: 1980, seminary: 1950, premedPostbacc: 2100,
+};
+/** A bare degree level, asked for by employers in general: bachelor's after the post-war boom, master's later. */
+export const LEVEL_REQUIRED_FROM = { associate: 1975, bachelor: 1950, master: 1970, professional: 1910, doctorate: 1920, phd: 1920 };
+/**
+ * The education a job could ask for in this year: null if it couldn't (the work was learned on the
+ * job), or the requirement with majors that didn't exist yet dropped (any degree did).
+ */
+export function educationAskedFor(state, req) {
+  if (!req) return null;
+  if (yearNow(state) >= PRESENT) return req;
+  const y = yearNow(state);
+  if (req.anyOf) {
+    const alts = req.anyOf.map((r) => educationAskedFor(state, r));
+    return alts.some((a) => a === null) ? null : { ...req, anyOf: alts };
+  }
+  if (req.program && PROGRAM_REQUIRED_FROM[req.program] > y) return null;
+  if (!req.program && LEVEL_REQUIRED_FROM[req.level] > y) return null;
+  if (req.majors?.length) {
+    const majors = req.majors.filter((m) => !(MAJOR_FROM[m] > y));
+    if (majors.length !== req.majors.length) return { ...req, majors: majors.length ? majors : undefined };
+  }
+  return req;
+}
 export const credentialExists = (state, id) => !(CREDENTIAL_FROM[id] > yearNow(state)) && !(CREDENTIAL_UNTIL[id] <= yearNow(state));
 /** Before the 1940s most working people had left school at 14: a high-school diploma wasn't asked for. */
 export const diplomaExpected = (state) => yearNow(state) >= 1945;

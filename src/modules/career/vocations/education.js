@@ -31,7 +31,7 @@ export const EDUCATION = {
   ],
   courses: [
     { id: 'teacherTraining', name: (s) => (y(s) < 1920 ? 'the normal school (teacher training college)' : y(s) < 1990 ? 'a teacher training certificate' : 'a postgraduate certificate in education'), icon: '🍎', from: 1840, professions: SCHOOL, minGrade: 1, cost: 5000, years: 1, perf: 8 },
-    { id: 'headship', name: (s) => (cc(s) === 'GB' && y(s) >= 1997 ? 'the National Professional Qualification for Headship' : 'a school leadership qualification'), icon: '🏫', from: 1960, professions: SCHOOL, minGrade: 4, cost: 3000, perf: 3, gateMgmt: true },
+    { id: 'headship', name: (s) => (cc(s) === 'GB' && y(s) >= 1997 ? 'the National Professional Qualification for Headship' : 'a school leadership qualification'), icon: '🏫', from: 1990, professions: SCHOOL, minGrade: 4, cost: 3000, perf: 3, gateMgmt: true },
     { id: 'phdSupervision', name: 'a course in supervising doctoral students', icon: '🎓', from: 1970, professions: ACADEMIC, minGrade: 4, cost: 0, perf: 2 },
     { id: 'librarianship', name: (s) => (y(s) < 1960 ? 'the Library Association examinations' : 'a master\'s in library science'), icon: '📚', from: 1885, professions: ['library'], minGrade: 1, cost: 8000, years: 1, perf: 6, gateGrade: 6 },
     { id: 'pgCert', name: 'a certificate in university teaching', icon: '🧑‍🏫', from: 1990, professions: ACADEMIC, minGrade: 3, cost: 1500, perf: 3 },

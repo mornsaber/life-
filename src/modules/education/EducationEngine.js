@@ -24,6 +24,10 @@ import { localTuition, undergradEntryYears, shortCycleOffered } from '../world/E
 /** Professional schools that took students straight from school until about 1910 (law, medicine, dentistry, divinity, pharmacy, veterinary). */
 const DIRECT_PROFESSIONAL = ['jd', 'md', 'do', 'dds', 'pharmd', 'dvm', 'seminary', 'imd'];
 export const PROFESSIONAL_AFTER_DEGREE_FROM = 1910;
+/** When each professional school first insisted on a completed bachelor's degree (before: a year or two
+ *  of college, or straight from school): medicine about 1930, law and dentistry about 1950, vets 1960. */
+const AFTER_DEGREE_FROM = { md: 1930, do: 1930, jd: 1950, dds: 1950, dvm: 1960, pharmd: 1990, seminary: 1940, imd: 1930 };
+const afterDegreeFrom = (programId) => AFTER_DEGREE_FROM[programId] ?? PROFESSIONAL_AFTER_DEGREE_FROM;
 const CERTIFICATE_UNTIL = { dpt: 1960, mot: 1960, crnaProgram: 1960 };
 export function requiresFor(state, programId, cc = state?.character?.countryId) {
   const req = undergradEntryYears(cc === 'US' ? undefined : cc, programId) ? { level: 'highschool' } : PROGRAMS[programId].requires;
@@ -33,7 +37,7 @@ export function requiresFor(state, programId, cc = state?.character?.countryId) 
   // Therapy and anaesthesia were certificates, taken after school (or nursing), until about 1960.
   if (CERTIFICATE_UNTIL[programId] > y) return y < 1945 ? null : { level: 'highschool' };
   // Before about 1910 law and medical schools took students straight from school.
-  if (DIRECT_PROFESSIONAL.includes(programId) && y < PROFESSIONAL_AFTER_DEGREE_FROM) return null;
+  if (DIRECT_PROFESSIONAL.includes(programId) && y < afterDegreeFrom(programId)) return y < 1945 ? null : { level: 'highschool' };
   return req;
 }
 import { stateIdOf } from '../life/Regions.js';
@@ -267,7 +271,7 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
   if (state.education.degrees.some((d) => d.programId === programId && (d.major ?? null) === (major ?? null))) return { ok: false, reason: 'Already earned' };
   if (p.minSmarts && state.stats.smarts < p.minSmarts) return { ok: false, reason: `Needs ${p.minSmarts}+ smarts` };
   // Grade-point averages for entry came with degree-first professional schools.
-  if (p.minGpa && !(DIRECT_PROFESSIONAL.includes(programId) && yearNow(state) < PROFESSIONAL_AFTER_DEGREE_FROM) && lastGpa(state) < p.minGpa) return { ok: false, reason: `Needs ${p.minGpa.toFixed(1)}+ GPA` };
+  if (p.minGpa && !(DIRECT_PROFESSIONAL.includes(programId) && yearNow(state) < afterDegreeFrom(programId)) && lastGpa(state) < p.minGpa) return { ok: false, reason: `Needs ${p.minGpa.toFixed(1)}+ GPA` };
   if (school.academy) {
     if (state.character.age > 23) return { ok: false, reason: 'Academies admit ages 17–23' };
     if (hasFelony(state) || state.education.degrees.some((d) => d.type === 'bachelor')) return { ok: false, reason: 'Not eligible for an academy appointment' };
