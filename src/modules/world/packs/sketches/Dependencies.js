@@ -72,7 +72,7 @@ export const FO = C('FO', 'the Faroe Islands', 'Faroese', 'Tórshavn', ['DKK', '
   courts: { top: 'Supreme Court of Denmark', high: 'Faroe Islands Court', appeal: 'Eastern High Court', magistrate: 'District judge', appointedBy: 'the Danish Crown' },
   religion: { mainline: 90, none: 10 }, emergency: '112', retire: 67, warChance: 0,
   ruled: [['DK', 'the Faroe Islands, an amt of Denmark', 1940, { leader: 'the Danish amtmand', fixed: true, noMovement: true }],
-    ['GB', 'British-occupied Faroe Islands', 1945, { leader: 'the British commander', fixed: true, noMovement: true, occupation: true, arrive: 'Germany has taken Denmark, and the Royal Navy has taken the Faroes: British soldiers in Tórshavn, and the Faroese flag flown on the fishing boats for the first time.' }],
+    ['GB', 'British-occupied Faroe Islands', 1945, { leader: 'the British commander', fixed: true, noMovement: true, occupation: true, flag: 'FO', arrive: 'Germany has taken Denmark, and the Royal Navy has taken the Faroes: British soldiers in Tórshavn, and the Faroese flag flown on the fishing boats for the first time.' }],
     ['DK', 'the Faroe Islands, an amt of Denmark', 1948, { leader: 'the Danish amtmand', fixed: true, noMovement: true, arrive: 'The British have gone home. The islands voted for independence in 1946, narrowly; Copenhagen offered home rule instead.' }]],
   regimes: null, sovereign: [],
 });

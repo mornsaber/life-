@@ -284,12 +284,6 @@ export const REGIONAL_EPISODES = [
       { id: 'hide', label: '🤫 Lie low', effect: L('You burned your party card and kept very quiet for seventeen years.', '🤫', { stats: { stress: 10 } }) },
       { id: 'exile', label: '✈️ Go into exile', effect: L('You left for Sweden with the help of the embassy.', '✈️', { emigrate: 'SE' }) },
     ] },
-  { id: 'cl.no', icon: '🌈', title: 'The Plebiscite', when: W(['CL'], 1988, 1988, 18),
-    text: 'Pinochet has called a plebiscite. The rainbow campaign says "No".',
-    options: [
-      { id: 'no', label: '🌈 Vote No', effect: L('You voted No. So did most of the country. The dictatorship was over.', '🌈', { stats: { happiness: 8 } }) },
-      { id: 'si', label: '✔️ Vote Yes', effect: L('You voted Yes, for order. You lost.', '✔️') },
-    ] },
 
   /* =============================== Wave B =============================== */
   // ---- The Eastern bloc ----
@@ -727,12 +721,6 @@ export const REGIONAL_EPISODES = [
       { id: 'go', label: '✈️ Fly to New York', effect: L('You flew to New York with one suitcase, and found work in a garment factory. You were a citizen; you were still called a foreigner.', '✈️', { emigrate: 'US', stats: { stress: 6 } }) },
       { id: 'stay', label: '🏭 Stay for the new factories', effect: L('You stayed, and found work in one of the new factories.', '🏭', { stats: { happiness: 1 } }) },
     ] },
-  { id: 'gl.ec', icon: '🗳️', title: 'Leave the European Community?', when: W(['GL'], 1982, 1982, 18),
-    text: 'Greenland went into the European Community with Denmark in 1973, though most Greenlanders voted against. Now, with home rule, there is a vote on leaving, and the fishing grounds are the question.',
-    options: [
-      { id: 'leave', label: '🐟 Vote to leave', effect: L('You voted to leave. The leave side won; Greenland left the EC in 1985, the first place ever to do so.', '🗳️') },
-      { id: 'stay', label: '🇪🇺 Vote to stay', effect: L('You voted to stay, and lost.', '🗳️') },
-    ] },
   { id: 'je.liberation', icon: '🎉', title: 'Liberation Day', when: W(['JE', 'GG'], 1945, 1945, 6),
     text: '9 May 1945: British ships in the harbour, and the German garrison has surrendered. After five years of occupation, the last winter close to starvation, the whole island is in the streets.',
     options: [
@@ -749,29 +737,35 @@ export const REGIONAL_EPISODES = [
     options: [
       { id: 'rebuild', label: '🔨 Stay and rebuild', effect: L('You stayed and rebuilt. Within a year the banks and the hotels were open again.', '🔨', { stats: { stress: 8 }, cost: 4000 }) },
     ] },
+  { id: 'gi.frontier', icon: '🚧', title: 'The frontier closes', when: W(['GI'], 1969, 1969, 8),
+    text: 'Franco has closed the frontier at La Línea in answer to the new constitution: no road, no ferry, no telephone line to Spain. The Spanish workers can\'t come in; families on either side can only shout across the fence.',
+    options: [
+      { id: 'stay', label: '🪨 Sit it out on the Rock', effect: L('You sat it out on the Rock. It stayed shut for sixteen years, until 1985.', '🪨', { stats: { stress: 5 } }) },
+      { id: 'tangier', label: '⛴️ Take the ferry to Tangier for the weekend', effect: L('The ferry to Tangier became your way out; Morocco was the only foreign country you could reach.', '⛴️', { stats: { happiness: 2 } }) },
+    ] },
+  { id: 'bm.1977', icon: '🔥', title: 'The 1977 riots', when: W(['BM'], 1977, 1977, 14),
+    text: 'Two men have been hanged for the killing of the Governor in 1973. Hamilton is burning: British troops are flying in, and there is a curfew.',
+    options: [
+      { id: 'home', label: '🏠 Stay home through the curfew', effect: L('You stayed home through the curfew. The royal commission that followed blamed decades of racial division.', '🏠', { stats: { stress: 6 } }) },
+      { id: 'street', label: '✊ Go out onto the streets', effect: L('You were out on the streets. Some of your friends were arrested.', '✊', { stats: { stress: 10 }, risk: [0.2, 'You were arrested for breaking the curfew.', { happiness: -8 }] }) },
+    ] },
+  { id: 'fo.crash', icon: '📉', title: 'The crash', when: W(['FO'], 1992, 1994, 18),
+    text: 'The fish have gone and the banks have gone with them: a fifth of the islands are out of work, and the boats are being sold for scrap.',
+    options: [
+      { id: 'denmark', label: '✈️ Move to Denmark', effect: L('You moved to Denmark, with one Faroese in ten.', '✈️', { emigrate: 'DK', stats: { stress: 6 } }) },
+      { id: 'stay', label: '🎣 Stay and wait for the fish', effect: L('You stayed. The fish came back, and so, slowly, did the work.', '🎣', { stats: { stress: 8 } }) },
+    ] },
+  { id: 'gl.qullissat', icon: '⛏️', title: 'Qullissat closes', when: W(['GL'], 1972, 1972, 14),
+    text: 'The Danish government has closed the coal mine at Qullissat, and with it the town: twelve hundred people are being moved to the new blocks in Sisimiut and Nuuk.',
+    options: [
+      { id: 'move', label: '🏢 Move into the new flats', effect: L('You moved into a concrete block in the new town. A lot of people never got used to it.', '🏢', { stats: { stress: 6 } }) },
+      { id: 'protest', label: '✊ Sign the protest', effect: L('You signed the protest. The town was closed anyway; it became one of the reasons for home rule.', '✊', { stats: { stress: 4 } }) },
+    ] },
   { id: 'gg.evacuation', icon: '🚢', title: 'The evacuation', when: W(['GG'], 1940, 1940, 5, 15),
     text: 'June 1940: France has fallen and the Germans are a few miles away. The schools are being evacuated to England by boat, the teachers with them; parents have a day to decide.',
     options: [
       { id: 'go', label: '🚢 Go with the school to England', effect: L('You sailed with your class to a mill town in the north of England, and didn\'t see your parents for five years.', '🚢', { stats: { stress: 10 } }) },
       { id: 'stay', label: '🏠 Stay on the island', effect: L('Your parents kept you home. You grew up under the occupation: German soldiers in the lanes, and hunger at the end.', '🏠', { stats: { stress: 8, health: -3 } }) },
-    ] },
-  { id: 'fo.referendum', icon: '🗳️', title: 'The 1946 referendum', when: W(['FO'], 1946, 1946, 21),
-    text: 'The Faroese are voting on whether to leave Denmark. It will be close; Copenhagen may not accept the result.',
-    options: [
-      { id: 'yes', label: '🇫🇴 Vote for independence', effect: L('You voted to leave. The yes side won narrowly; Denmark annulled it, and offered home rule instead.', '🗳️', { stats: { happiness: 2 } }) },
-      { id: 'no', label: '🇩🇰 Vote to stay with Denmark', effect: L('You voted to stay. Home rule came two years later.', '🗳️') },
-    ] },
-  { id: 'bm.referendum', icon: '🗳️', title: 'The independence referendum', when: W(['BM'], 1995, 1995, 18),
-    text: 'Bermuda is voting on independence from Britain. The banks and the hotels are nervous; a hurricane has just come through.',
-    options: [
-      { id: 'no', label: '🇬🇧 Vote to stay British', effect: L('You voted to stay. Nearly three in four did, and Bermuda remained a British territory.', '🗳️') },
-      { id: 'yes', label: '🇧🇲 Vote for independence', effect: L('You voted for independence. It lost, heavily.', '🗳️', { stats: { happiness: -1 } }) },
-    ] },
-  { id: 'gi.referendum', icon: '🪨', title: 'Joint sovereignty?', when: W(['GI'], 2002, 2002, 18),
-    text: 'London and Madrid have been talking about sharing sovereignty over Gibraltar. The Chief Minister has called a referendum of his own.',
-    options: [
-      { id: 'no', label: '❌ Vote no', effect: L('You voted no, with almost everyone: 98.97 per cent. The talks went nowhere.', '🗳️', { stats: { happiness: 2 } }) },
-      { id: 'yes', label: '✅ Vote yes', effect: L('You were one of the very few who voted yes.', '🗳️') },
     ] },
   { id: 'vu.coconutWar', icon: '🥥', title: 'The Coconut War', when: W(['VU'], 1980, 1980, 14),
     text: 'On the eve of independence Jimmy Stevens and his Nagriamel movement, backed by French planters and an American libertarian foundation, have declared Espiritu Santo the Republic of Vemerana. The British and French can\'t agree what to do; Papua New Guinea is sending troops.',

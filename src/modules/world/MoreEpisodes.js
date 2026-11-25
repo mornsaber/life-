@@ -100,12 +100,6 @@ export const MORE_EPISODES = [
       { id: 'carry', label: "🚌 Carry on, as everyone does", effect: L("You took different routes to work and stayed away from crowds, and carried on, as everyone did.", '🚌', { stats: { stress: 8 } }) },
       { id: 'leave', label: "✈️ Leave for Miami", effect: L("You left for Miami, where half your neighbourhood seemed to end up.", '✈️', { emigrate: 'US' }) },
     ] },
-  { id: 'co.peace16', icon: '🕊️', title: 'The Peace Vote', when: W(['CO'], 2016, 2016, 18),
-    text: "After fifty years of war the government and the FARC have signed a peace. Now the country votes on it.",
-    options: [
-      { id: 'yes', label: "🕊️ Vote yes", effect: L("You voted yes. It lost by a whisker, and was signed again anyway, amended.", '🕊️', { stats: { happiness: 2 } }) },
-      { id: 'no', label: "✋ Vote no", effect: L("You voted no: too soft on the guerrillas, you thought. It was signed again anyway, amended.", '✋') },
-    ] },
   // ---- Algeria ----
   { id: 'dz.war', icon: '⛰️', title: 'The War of Independence', when: W(['DZ'], 1955, 1961, 15, 45),
     text: "The FLN has risen against France. The army is herding villages into camps; in the Casbah of Algiers there are bombs and paratroopers.",
@@ -171,12 +165,6 @@ export const MORE_EPISODES = [
       { id: 'cheer', label: "🍁 Cheer it", effect: L("You watched the maple leaf go up on Parliament Hill and liked it more every year.", '🍁', { stats: { happiness: 3 } }) },
       { id: 'miss', label: "🇬🇧 Miss the old one", effect: L("You missed the Red Ensign. Your children never knew it.", '🇬🇧') },
     ] },
-  { id: 'ca.ref95', icon: '🗳️', title: 'The Referendum', when: W(['CA'], 1995, 1995, 18),
-    text: "Quebec votes on sovereignty. The polls are tied, and a hundred thousand people have come to Montreal to rally for unity.",
-    options: [
-      { id: 'no', label: "🍁 Vote (or rally) for Canada", effect: L("You were with the crowd at the unity rally. No won, by fifty thousand votes.", '🍁', { stats: { happiness: 3 } }) },
-      { id: 'oui', label: "⚜️ Vote (or hope) for a sovereign Quebec", effect: L("You voted Oui. It lost by a hair, and the premier blamed money and the ethnic vote.", '⚜️', { stats: { happiness: -2 } }) },
-    ] },
   // ---- Uzbekistan ----
   { id: 'uz.cotton', icon: '☁️', title: 'The Cotton Harvest', when: W(['UZ'], 1950, 1990, 12, 50),
     text: "It's September, and Moscow's cotton plan must be met. Schools and offices are emptied; everyone goes to the fields to pick.",
@@ -189,12 +177,6 @@ export const MORE_EPISODES = [
     options: [
       { id: 'tent', label: "⛺ Live in the tent city", effect: L("You lived in a tent for a summer, then got a flat in a new block built by workers from Leningrad.", '⛺', { stats: { stress: 6 } }) },
       { id: 'build', label: "🏗️ Help rebuild", effect: L("You worked on the rebuilding with brigades from all over the Union.", '🏗️', { earn: 300, stats: { happiness: 3 } }) },
-    ] },
-  { id: 'uz.indep', icon: '🇺🇿', title: 'Independence', when: W(['UZ'], 1991, 1991, 16),
-    text: "The Soviet Union is coming apart. Uzbekistan has declared itself independent, and there's a vote to confirm it.",
-    options: [
-      { id: 'yes', label: "🇺🇿 Vote for independence", effect: L("You voted for independence with nearly everyone else.", '🇺🇿', { stats: { happiness: 3 } }) },
-      { id: 'russia', label: "🚆 Leave for Russia", effect: L("You took the train to Russia, where the work was.", '🚆', { emigrate: 'RU' }) },
     ] },
   // ---- Morocco ----
   { id: 'ma.agadir', icon: '🏚️', title: 'The Agadir Earthquake', when: W(['MA'], 1960, 1960, 8),
@@ -357,12 +339,6 @@ export const MORE_EPISODES = [
       { id: 'flee', label: "⛵ Cross to Djibouti", effect: L("You crossed the Bab-el-Mandeb in a fishing boat to Djibouti.", '⛵', { emigrate: 'DJ' }) },
     ] },
   // ---- Cameroon ----
-  { id: 'cm.plebiscite', icon: '🗳️', title: 'The Plebiscite', when: W(['CM'], 1961, 1961, 18),
-    text: "The British Cameroons vote: join Nigeria, or join the newly independent Cameroun?",
-    options: [
-      { id: 'cameroun', label: "🇨🇲 Vote to join Cameroun", effect: L("You voted to join Cameroun. The south did; the north went to Nigeria.", '🇨🇲') },
-      { id: 'nigeria', label: "🇳🇬 Vote to join Nigeria", effect: L("You voted to join Nigeria, and lost.", '🇳🇬') },
-    ] },
   { id: 'cm.lions', icon: '⚽', title: 'The Indomitable Lions', when: W(['CM'], 1990, 1990, 6),
     text: "At the World Cup in Italy, Cameroon have beaten the champions Argentina, and Roger Milla, thirty-eight, is dancing at the corner flag.",
     options: [
@@ -434,12 +410,6 @@ MORE_EPISODES.push(
     options: [
       { id: 'enlist', label: "🎖️ Enlist in the AIF", effect: L("You enlisted and went ashore at Anzac Cove. You remembered the twenty-fifth of April for the rest of your life.", '🎖️', { stats: { stress: 15 }, risk: [0.22, "You were badly wounded on the ridges above the cove.", { health: -25 }] }) },
       { id: 'home', label: "🐑 Stay on the land", effect: L("You stayed on the land. The white feathers came in the post.", '🐑', { stats: { happiness: -2 } }) },
-    ] },
-  { id: 'au.1967', icon: '🗳️', title: 'The 1967 Referendum', when: W(['AU'], 1967, 1967, 21),
-    text: "A referendum to count Aboriginal people in the census and let the Commonwealth make laws for them.",
-    options: [
-      { id: 'yes', label: "✅ Vote yes", effect: L("You voted yes, with ninety per cent of the country, the biggest yes vote ever recorded.", '✅', { stats: { happiness: 3 } }) },
-      { id: 'no', label: "✖️ Vote no", effect: L("You voted no, and were nearly alone.", '✖️') },
     ] },
   { id: 'au.sydney2000', icon: '🏅', title: 'The Sydney Olympics', when: W(['AU'], 2000, 2000, 6),
     text: "Sydney has the Olympics. Cathy Freeman is in the final of the 400 metres in her green-and-gold suit.",
@@ -516,12 +486,6 @@ MORE_EPISODES.push(
       { id: 'leave', label: "🚂 Leave yourself", effect: L("You left for Switzerland on one of the last ordinary trains.", '🚂', { emigrate: 'CH' }) },
       { id: 'silent', label: "🤐 Keep quiet", effect: L("You kept quiet, as most did.", '🤐', { stats: { happiness: -4 } }) },
     ] },
-  { id: 'at.zwentendorf', icon: '☢️', title: 'Zwentendorf', when: W(['AT'], 1978, 1978, 19),
-    text: "The nuclear power station at Zwentendorf is finished. Now the country votes on whether to switch it on.",
-    options: [
-      { id: 'no', label: "🚫 Vote no", effect: L("You voted no. It won by thirty thousand votes; the plant never ran a day.", '🚫') },
-      { id: 'yes', label: "⚡ Vote yes", effect: L("You voted yes, and lost by a whisker.", '⚡') },
-    ] },
   // ---- Switzerland ----
   { id: 'ch.strike18', icon: '✊', title: 'The General Strike', when: W(['CH'], 1918, 1918, 16),
     text: "Prices have doubled in the war and wages haven't. The unions have called a general strike, and the army is in the streets of Zurich.",
@@ -533,12 +497,6 @@ MORE_EPISODES.push(
     text: "General Guisan has mobilised the army. You'll spend months at a time on the frontier or in the Alpine redoubt.",
     options: [
       { id: 'serve', label: "🏔️ Serve", effect: L("You did your Aktivdienst on the northern frontier and in the mountains, year after year.", '🏔️', { stats: { stress: 6, health: 2 } }) },
-    ] },
-  { id: 'ch.eea', icon: '🗳️', title: 'The EEA Vote', when: W(['CH'], 1992, 1992, 18),
-    text: "Should Switzerland join the European Economic Area? The country is split down the middle, French against German.",
-    options: [
-      { id: 'yes', label: "🇪🇺 Vote yes", effect: L("You voted yes. It lost by a hair.", '🇪🇺') },
-      { id: 'no', label: "🇨🇭 Vote no", effect: L("You voted no, and won by a hair.", '🇨🇭') },
     ] },
   // ---- Israel ----
   { id: 'il.1967', icon: '🏜️', title: 'The Six-Day War', when: W(['IL'], 1967, 1967, 10),
@@ -560,11 +518,6 @@ MORE_EPISODES.push(
       { id: 'olim', label: "🧳 Help the new immigrants", effect: L("You helped a family from Kharkiv learn Hebrew and find work. The father, a surgeon, swept streets for a year.", '🧳', { stats: { happiness: 4 } }) },
     ] },
   // ---- Norway ----
-  { id: 'no.1905', icon: '🇳🇴', title: 'Independence from Sweden', when: W(['NO'], 1905, 1905, 21),
-    text: "The Storting has dissolved the union with Sweden. Men vote to confirm it; women are collecting signatures of their own.",
-    options: [
-      { id: 'yes', label: "🇳🇴 Vote (or sign) for independence", effect: L("You were one of the 368,208 for dissolution. Only 184 voted against.", '🇳🇴', { stats: { happiness: 5 } }) },
-    ] },
   { id: 'no.occupation', icon: '🏔️', title: 'The Occupation', when: WH('ww2', ['NO'], 1940, 1944, 15),
     text: "The Germans have occupied Norway and Quisling runs a puppet government. The teachers refuse to join his party; boats leave for Shetland at night.",
     options: [
@@ -572,11 +525,11 @@ MORE_EPISODES.push(
       { id: 'shetland', label: "⛵ Take the Shetland Bus", effect: L("You crossed to Shetland in a fishing boat and joined the Norwegian forces in Britain.", '⛵', { stats: { stress: 10 } }) },
       { id: 'quiet', label: "🧊 Give the cold shoulder", effect: L("You kept the cold shoulder: nobody sat next to a German on the tram.", '🧊') },
     ] },
-  { id: 'no.ec72', icon: '🗳️', title: 'Into Europe?', when: W(['NO'], 1972, 1972, 20),
-    text: "Norway votes on joining the European Community. The fishermen and the farmers are against; Oslo is for.",
+  { id: 'no.may45', icon: '🇳🇴', title: '17 May 1945', when: W(['NO'], 1945, 1945, 6),
+    text: "The Germans surrendered a week ago. It's Constitution Day, the first in five years that anyone can celebrate in the open: flags that were hidden in attics are out, and the children's parade is marching again.",
     options: [
-      { id: 'no', label: "🎣 Vote no", effect: L("You voted no, and no won.", '🎣') },
-      { id: 'yes', label: "🇪🇺 Vote yes", effect: L("You voted yes, and lost.", '🇪🇺') },
+      { id: 'parade', label: "🎺 March in the parade", effect: L("You marched down the street behind the school band, waving a flag that had been hidden under the floorboards since 1940.", '🎺', { stats: { happiness: 10 } }) },
+      { id: 'reckon', label: "⚖️ Watch the reckoning begin", effect: L("You watched the police lead away a neighbour who had joined Quisling's party. The trials (the landssvik cases) would run for years.", '⚖️', { stats: { stress: 4 } }) },
     ] },
   // ---- Denmark ----
   { id: 'dk.1943', icon: '⛵', title: 'October 1943', when: WH('ww2', ['DK'], 1943, 1943, 14),
@@ -584,12 +537,6 @@ MORE_EPISODES.push(
     options: [
       { id: 'boat', label: "⛵ Get a family to the boats", effect: L("You hid a Jewish family and drove them to a fishing harbour at night. They reached Sweden.", '⛵', { stats: { stress: 12, happiness: 6 }, risk: [0.06, "You were stopped and questioned by the Gestapo.", { stress: 10 }] }) },
       { id: 'money', label: "💵 Give money for the crossings", effect: L("You gave money for the fishermen's fares.", '💵', { cost: 300, stats: { happiness: 3 } }) },
-    ] },
-  { id: 'dk.ec72', icon: '🗳️', title: 'Joining the Common Market', when: W(['DK'], 1972, 1972, 20),
-    text: "Denmark votes on joining the European Community, with Britain.",
-    options: [
-      { id: 'yes', label: "🇪🇺 Vote yes", effect: L("You voted yes, with the large majority.", '🇪🇺') },
-      { id: 'no', label: "🇩🇰 Vote no", effect: L("You voted no.", '🇩🇰') },
     ] },
   { id: 'dk.1989', icon: '🏳️‍🌈', title: 'Registered Partnership', when: W(['DK'], 1989, 1989, 18),
     text: "Denmark has become the first country in the world where two men or two women can register as partners. Eleven couples are at Copenhagen city hall today.",

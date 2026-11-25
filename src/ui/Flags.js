@@ -97,6 +97,16 @@ const DRAW = {
   gdr: () => wrap(`${bands(['#111', '#DD0000', '#FFCE00'])}<circle cx="30" cy="22.5" r="8" fill="#DD0000" stroke="#FFCE00" stroke-width="1"/><g fill="none" stroke="#FFCE00" stroke-width="1.1" stroke-linecap="round"><path d="M26.5 26 L30 18.5 L33.5 26"/><path d="M30 17 V25"/><path d="M28 17 H32"/><path d="M25.5 22 A5 3.2 0 0 0 34.5 22"/></g>`, 'The flag of the German Democratic Republic'),
   southVietnam: () => wrap(`<rect width="${W}" height="${H}" fill="#FFDA00"/>${[18, 22.5, 27].map((y) => `<rect x="0" y="${y - 1.4}" width="${W}" height="2.8" fill="#DA251D"/>`).join('')}`, 'The flag of the Republic of Vietnam'),
   southYemen: () => wrap(`${bands(['#CE1126', '#fff', '#111'])}<polygon points="0,0 22,22.5 0,45" fill="#3D8ED0"/>${star(7, 22.5, 4.5, '#CE1126')}`, 'The flag of the People\'s Democratic Republic of Yemen'),
+  // Flags of their decades (the flag-icons set has today's).
+  romaniaRSR: () => wrap(`${bands(['#002B7F', '#FCD116', '#CE1126'], true)}<circle cx="30" cy="22.5" r="6" fill="#1A7A3A" stroke="#C9A227" stroke-width="0.8"/>${star(30, 17, 2, '#CE1126')}`, 'The flag of the Socialist Republic of Romania'),
+  bulgariaPRB: () => wrap(`${bands(['#fff', '#00966E', '#D62612'])}<circle cx="11" cy="15" r="5.5" fill="#D62612" stroke="#C9A227" stroke-width="0.8"/><text x="11" y="17.5" font-size="6" text-anchor="middle" fill="#C9A227">🦁</text>`, 'The flag of the People\'s Republic of Bulgaria'),
+  albaniaPSR: () => wrap(`<rect width="${W}" height="${H}" fill="#E41E20"/><text x="30" y="32" font-size="20" text-anchor="middle">🦅</text>${star(30, 9, 3.4, '#E41E20').replace('/>', ' stroke="#FFD700" stroke-width="0.9"/>')}`, 'The flag of the People\'s Socialist Republic of Albania'),
+  hungaryPR: () => wrap(`${bands(['#CD2A3E', '#fff', '#436F4D'])}<circle cx="30" cy="22.5" r="6" fill="#436F4D" stroke="#C9A227" stroke-width="0.8"/>${star(30, 17.5, 2, '#CD2A3E')}`, 'The flag of the Hungarian People\'s Republic (1949–56)'),
+  greeceCross: () => wrap(`<rect width="${W}" height="${H}" fill="#0D5EAF"/><rect x="25" y="0" width="10" height="${H}" fill="#fff"/><rect x="0" y="17.5" width="${W}" height="10" fill="#fff"/>`, 'The cross flag of Greece (on land, before 1978)'),
+  spainFranco: () => wrap(`${bands(['#C60B1E', '#FFC400', '#FFC400', '#C60B1E'])}<text x="22" y="30" font-size="15" text-anchor="middle">🦅</text>`, 'The flag of Franco\'s Spain, with the eagle of St John'),
+  spainRepublic: () => wrap(bands(['#C60B1E', '#FFC400', '#6C3082']), 'The tricolour of the Second Spanish Republic'),
+  jerseyOld: () => wrap(`<rect width="${W}" height="${H}" fill="#fff"/><path d="M0,0 L60,45 M60,0 L0,45" stroke="#DF112D" stroke-width="7"/>`, 'The flag of Jersey (before the 1981 badge)'),
+  stGeorge: () => wrap(`<rect width="${W}" height="${H}" fill="#fff"/><rect x="25" y="0" width="10" height="${H}" fill="#CE1124"/><rect x="0" y="17.5" width="${W}" height="10" fill="#CE1124"/>`, 'The St George\'s cross Guernsey flew before 1985'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };
 

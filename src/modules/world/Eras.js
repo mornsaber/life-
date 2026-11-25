@@ -423,6 +423,8 @@ export const AUTONOMOUS = {
 export function autonomyOf(state, cc) {
   const a = AUTONOMOUS[cc];
   if (!a) return null;
+  // A referendum in this world made it independent (politics/Referendums.js).
+  if (state?.world?.independent?.[cc]) return null;
   if (state?.era && (colonyStage(state, cc) || yearNow(state) < a.from)) return null;
   return a;
 }
@@ -616,8 +618,8 @@ export function dataRegimeAt(cc, y) {
 }
 /** A republic's presidency exists in the year being played: the country is sovereign and has no crown (the regime data). */
 export function presidencyInEra(state, cc) {
-  // An autonomous region's head is its Chief Executive, under another state's president.
-  if (AUTONOMOUS[cc]) return false;
+  // An autonomous region's head is its Chief Executive, under another state's president (until it votes itself free).
+  if (AUTONOMOUS[cc] && !state?.world?.independent?.[cc]) return false;
   if (!state?.era) return true;
   const y = yearNow(state);
   if (y >= PRESENT - 10) return true;
@@ -1166,6 +1168,8 @@ export function periodFlag(state, cc) {
     if (local?.flag) return local.flag.length === 2 ? { img: local.flag.toUpperCase() } : { id: local.flag };
   }
   const st = colonyStage(state, cc);
+  // A stage can fly its own flag (the Faroese flag, recognised by the British occupiers in 1940).
+  if (st?.flag) return { img: st.flag };
   if (st && st.ruler !== cc) return periodFlag(state, st.ruler);
   const ussr = hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse');
   switch (cc) {
@@ -1187,8 +1191,18 @@ export function periodFlag(state, cc) {
     case 'EG': return y >= 1922 && y < 1953 ? { id: 'egyptKingdom' } : { img: cc };
     case 'PT': return y < 1910 ? { id: 'portugalMonarchy' } : { img: cc };
     case 'LY': return y >= 1977 && y < 2011 ? { id: 'libyaGreen' } : { img: cc };
-    case 'CZ': case 'SK': return y < 1918 ? { img: 'AT' } : y < 1993 ? { img: 'CZ' } : { img: cc };
-    case 'HR': case 'SI': case 'BA': return y < 1918 ? { img: 'AT' } : y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    // The Habsburg lands flew the black and gold until 1918 (Hungary its own tricolour after 1867).
+    case 'AT': return y < 1918 ? { id: 'habsburg' } : y >= 1938 && y < 1945 ? { id: 'germanEmpire' } : { img: cc };
+    case 'CZ': case 'SK': return y < 1918 ? { id: 'habsburg' } : y < 1993 ? { img: 'CZ' } : { img: cc };
+    case 'HR': case 'SI': case 'BA': return y < 1918 ? { id: 'habsburg' } : y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    case 'RO': return y >= 1948 && y < 1990 ? { id: 'romaniaRSR' } : { img: cc };
+    case 'BG': return y >= 1946 && y < 1991 ? { id: 'bulgariaPRB' } : { img: cc };
+    case 'AL': return y >= 1946 && y < 1992 ? { id: 'albaniaPSR' } : { img: cc };
+    case 'GR': return y < 1970 ? { id: 'greeceCross' } : { img: cc };
+    case 'ES': return y >= 1931 && y < 1939 ? { id: 'spainRepublic' } : y >= 1939 && y < 1981 ? { id: 'spainFranco' } : { img: cc };
+    case 'GL': return y < 1985 ? { img: 'DK' } : { img: cc };
+    case 'JE': return y < 1981 ? { id: 'jerseyOld' } : { img: cc };
+    case 'GG': return y < 1985 ? { id: 'stGeorge' } : { img: cc };
     case 'RS': case 'MK': case 'ME': return y >= 1918 && y < 1991 ? { id: 'yugoslavia' } : { img: cc };
     case 'PL': return y < 1918 ? { img: 'RU' } : { img: cc };
     case 'IE': return y < 1922 ? { img: 'GB' } : { img: cc };
@@ -1196,7 +1210,7 @@ export function periodFlag(state, cc) {
     case 'KR': case 'KP': return y >= 1910 && y < 1945 ? { img: 'JP' } : y < 1948 ? { img: 'KR' } : { img: cc };
     case 'VN': return y >= 1887 && y < 1945 ? { img: 'FR' } : { img: cc };
     case 'YE': return y < 1918 ? { img: 'TR' } : { img: cc };
-    case 'HU': return y < 1918 ? { img: 'AT' } : { img: cc };
+    case 'HU': return y < 1867 ? { id: 'habsburg' } : y >= 1949 && y < 1957 ? { id: 'hungaryPR' } : { img: cc };
     default: return { img: cc };
   }
 }

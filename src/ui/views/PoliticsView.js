@@ -42,7 +42,8 @@ import { isMep, GROUPS, COMMITTEES, POSTS } from '../../modules/politics/Europea
 import { leadsCoalitionState } from '../../modules/politics/Coalitions.js';
 import { crownBadge } from '../Insignia.js';
 import { POSTS as OVERSEAS } from '../../modules/world/OverseasPosts.js';
-import { reformsOpen } from '../../modules/world/Reforms.js';
+import { reformsOpen, governsHere } from '../../modules/world/Reforms.js';
+import { questionsHere } from '../../modules/politics/Referendums.js';
 import { flagImg } from '../Flags.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
@@ -186,6 +187,19 @@ export function reformsBlock(state) {
   return `<h4 class="sub">Change the rules</h4><p class="fine">How the country is governed is yours to change now: one great reform a year. Each costs approval; in an unfree state the old guard won't like it.</p><div class="action-grid">${open.map((r) => button(r.label, 'reforms.enact', { arg: r.id, disabled: used, hint: `−${r.cost} approval${r.risky ? ' · the old guard will resist' : ''}` })).join('')}</div>`;
 }
 
+/** Putting a question to the people (politics/Referendums.js): a head of government calls it, a legislator tables a bill. */
+export function referendumBlock(state) {
+  const o = state.politics?.office;
+  const legislator = o && OFFICES[o.id]?.kind === 'legislative' && (OFFICES[o.id]?.country ?? 'US') === (state.character.countryId ?? 'US');
+  if (!governsHere(state) && !legislator) return '';
+  const qs = questionsHere(state);
+  if (!qs.length) return '';
+  const pending = (state.world?.referendums?.pending ?? []).some((p) => p.cc === (state.character.countryId ?? 'US'));
+  const used = Boolean(state.yearly['referendum.call']);
+  return `<h4 class="sub">Put it to the people</h4><p class="fine">${governsHere(state) ? 'Call a referendum: the country votes next year, and the result is binding either way.' : 'Table a referendum bill: if the chamber passes it, the country votes next year.'}</p>
+    <div class="enroll-form" data-collect-root>${select('question', qs.map((x) => ({ value: x.q, label: `${x.label} (polls ≈${Math.round(x.support * 100)}%)` })))}${button(governsHere(state) ? '🗳️ Call a referendum' : '🗳️ Table a referendum bill', 'referendum.call', { variant: 'small primary', collect: true, disabled: pending || used, hint: pending ? 'A referendum is on its way' : used ? 'Next year' : '' })}</div>`;
+}
+
 function politicsParts(state) {
   const p = state.politics;
   const o = p.office;
@@ -198,6 +212,7 @@ function politicsParts(state) {
         ${o.drivers?.length ? `<p class="fine">Last year: ${o.drivers.map((d) => `${esc(d.label)} <span class="${d.delta >= 0 ? 'pos' : 'neg'}">${d.delta >= 0 ? '+' : ''}${d.delta}</span>`).join(' · ')}</p>` : ''}
         ${executiveConsole(state)}
         ${reformsBlock(state)}
+        ${referendumBlock(state)}
         ${kv([['Term', o.viaParty ? 'Until the Party moves you' : `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(o.salary ?? office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', o.viaParty ? 'Cadre pension (civil service)' : office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
         <div class="row-end">${button('👋 Resign', 'politics.resign', { variant: 'danger small' })}</div>`, { icon: '🏛️', accent: 'yellow' })
     : '';
