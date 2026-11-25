@@ -117,6 +117,25 @@ const CORRECTIONS = ['jail', 'corrections', 'federalPrisons'];
 const FEDERAL_LE = ['fbi', 'dea', 'atf', 'usms', 'usss', 'oig', 'cbp', 'hsi', 'tsa', 'borderPatrol'];
 const FIRE = ['fire', 'airportFire', 'stateFire', 'ems'];
 const SCHOOLS = ['education', 'schoolBus'];
+/** The command ranks of particular services, in their own words (a library has no deputy commissioner). */
+const MEGA_BY_ID = {
+  library: ['Principal Librarian', 'Assistant City Librarian', 'Deputy City Librarian'],
+  publicWorks: ['Division Engineer', 'Assistant Director of Public Works', 'Deputy Director of Public Works'],
+  waterUtility: ['Division Manager', 'Assistant Director of Water Utilities', 'Deputy Director of Water Utilities'],
+  publicHealth: ['Bureau Director', 'Assistant Health Commissioner', 'Deputy Health Commissioner'],
+  municipalAdmin: ['Department Director', 'Deputy City Manager'],
+  councilInspector: ['Deputy Building Official', 'Assistant Building Commissioner', 'Deputy Building Commissioner'],
+  forester: ['Regional Forester', 'Assistant State Forester', 'Deputy State Forester'],
+  gameWarden: ['Warden Major', 'Assistant Chief Game Warden', 'Deputy Chief Game Warden'],
+  probation: ['Head of Area', 'Deputy Regional Director', 'Deputy Director of Probation'],
+  prosecution: ['Bureau Chief', 'Executive Assistant DA', 'Chief Assistant DA'],
+  maritimeFaculty: ['Dean of the Academy', 'Vice President for Academic Affairs', 'Provost'],
+  transit: ['Assistant General Superintendent', 'General Superintendent', 'Deputy General Manager'],
+  animalControl: ['Division Manager', 'Assistant Director of Animal Services', 'Deputy Director of Animal Services'],
+  schoolBus: ['Assistant Director of Transportation', 'Director of Pupil Transportation'],
+  postal: ['Senior Plant Manager', 'Area Manager', 'Area Vice President'],
+  meteorology: ['Division Chief', 'Office Director', 'Deputy Assistant Administrator'],
+};
 /** Extra command ranks big agencies have, inserted below the head (by kind of agency). */
 export function megaRanks(profession) {
   const id = profession.id;
@@ -124,7 +143,8 @@ export function megaRanks(profession) {
   if (POLICE.includes(id)) return ['Deputy Inspector', 'Inspector', 'Assistant Chief', 'Chief of Department'];
   if (FIRE.includes(id)) return ['Deputy Assistant Chief', 'Assistant Chief', 'Chief of Department'];
   if (CORRECTIONS.includes(id)) return ['Complex Warden', 'Regional Deputy Director', 'Deputy Commissioner of Corrections'];
-  if (SCHOOLS.includes(id)) return ['Network Superintendent', 'Chief Academic Officer'];
+  if (id === 'education') return ['Network Superintendent', 'Chief Academic Officer'];
+  if (MEGA_BY_ID[id]) return MEGA_BY_ID[id];
   if (profession.sector === 'federal') return ['Division Director', 'Deputy Associate Administrator', 'Associate Administrator'];
   return ['Division Director', 'Assistant Commissioner', 'Deputy Commissioner'];
 }

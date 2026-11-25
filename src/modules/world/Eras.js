@@ -13,6 +13,7 @@
  *
  * state.era = { start, events: { [id]: { year, ended?, outcome? } }, colonies: { [cc]: { done: [stage…], since, pressure, joined, loyal } } }
  */
+import { PERIOD_RUNGS } from './PeriodRungs.js';
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
@@ -160,6 +161,7 @@ export const PROFESSION_FROM = {
   humanResources: 1920, marketing: 1920, fitness: 1960, cosmetology: 1910, dietitian: 1920, optometry: 1910,
   physicalTherapy: 1920, actuary: 1900, lineworker: 1900, meteorology: 1900, interpreter: 1900, interpretation: 1900,
   moc: 1950, privateSecurity: 1910, bailBonds: 1910, propertyManagement: 1920, insurance: 1900, gig: 2012,
+  athletics: 1869, maritimeFaculty: 1874, forester: 1885, switchboard: 1878, typingPool: 1885, carpentry: 1800,
   welding: 1905, chiropractic: 1897, transitPolice: 1904, logistics: 1950, oilGas: 1860, dot: 1916, planning: 1910, gameWarden: 1880, universityPolice: 1894, stateFire: 1905, probation: 1878,
 };
 /** Work closed to women until about this year (loosely: the first women in, then the doors opening). */
@@ -819,14 +821,14 @@ export const eraYear = () => ERA_YEAR;
 /** Job titles as they were: [pattern, replacement, until]. */
 const OLD_TITLES = [
   [/\bAccountant\b/, 'Bookkeeper', 1880], [/\bPharmacist\b/, 'Apothecary', 1870], [/\bReal Estate Agent\b/, 'Land Agent', 1900], [/\bVeterinarian\b/, 'Horse Doctor', 1880],
-  [/\bPsychiatrist\b/, 'Alienist', 1920], [/\bSocial Worker\b/, 'Almoner', 1930], [/\bChef\b/, 'Cook', 1900], [/\bTruck Driver\b/, 'Carter', 1920], [/\bBus Driver\b/, 'Omnibus Driver', 1930],
+  [/\bPsychiatrist\b/, 'Alienist', 1920], [/\bSocial Worker\b/, 'Almoner', 1930], [/\bChef\b(?! de)/, 'Cook', 1900], [/\bTruck Driver\b/, 'Carter', 1920], [/\bBus Driver\b/, 'Omnibus Driver', 1930],
   [/\bSales Associate\b/, 'Shop Assistant', 1980], [/\bCashier\b/, 'Shop Clerk', 1920], [/\bPhotographer\b/, 'Daguerreotypist', 1860], [/\bNurse Practitioner\b/, 'Nurse', 1970],
   [/\bTeacher\b/, 'Schoolteacher', 1900],
   // Trades and grades the ladders name in today's terms.
   [/\bCNC Machinist\b/, 'Machinist', 1975], [/\bCNC Programmer\b/, 'Toolmaker', 1975], [/\bCertified Pharmacy Technician\b/, 'Senior Dispenser', 1975], [/\bPharmacy Technician\b/, "Dispenser", 1975],
   [/\bCertified Registered Nurse Anesthetist\b/, 'Nurse Anaesthetist', 1956], [/\bNurse Anaesthetist\b/, 'Theatre Sister', 1920], [/\bRegistered Nurse\b/, 'Trained Nurse', 1920],
   [/\bLube Technician\b/, 'Garage Hand', 1960], [/\bIT Support Technician\b/, 'Office Machine Mechanic', 1980], [/\bData Entry Clerk\b/, 'Clerk', 1965],
-  [/\bSurvey Technician\b/, "Surveyor's Assistant", 1960], [/\bVisual Merchandiser\b/, 'Window Dresser', 1960], [/\bStore Manager\b/, 'Shopkeeper', 1900], [/\bAssistant Store Manager\b/, 'Head Shopman', 1900], [/\bInstrument Operator\b/, 'Chainman', 1920],
+  [/\bSurvey Technician\b/, "Surveyor's Assistant", 1960], [/\bVisual Merchandiser\b/, 'Window Dresser', 1960], [/\bAssistant Store Manager\b/, 'Head Shopman', 1900], [/\bStore Manager\b/, 'Shopkeeper', 1900], [/\bInstrument Operator\b/, 'Chainman', 1920],
   // Uniformed civilian ladders (tools/ranks-civil.mjs): prisons, jails, marshals, troopers, wardens.
   [/\bSenior Patrol Officer\b/, 'Senior Patrolman', 1975], [/\bCriminal Investigator\b/, 'Detective', 1970], [/\bMajor Crimes Investigator\b/, 'Senior Detective', 1970],
   [/\bof Corrections\b/, 'of Prisons', 1970], [/\bSenior Correctional Officer\b/, 'Senior Guard', 1970], [/\bCorrectional Officer\b/, 'Prison Guard', 1970], [/\bCorrections\b/, 'Prison', 1970],
@@ -854,11 +856,20 @@ export function genderedTitle(title, gender) {
   const [f, m] = title.split(' / ');
   return gender === 'female' ? f : m;
 }
+/** The multi-word titles of OLD_TITLES, safe to apply to whole pages too. */
+const OLD_MULTI = OLD_TITLES.filter(([re]) => re.source.includes(' ')).map(([re, old, until]) => [new RegExp(re.source, 'g'), old, until]);
+/** Whole-title rungs (world/PeriodRungs.js): only where the title stands alone, not inside a longer one. */
+const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const RUNG_RES = PERIOD_RUNGS.map(([modern, old, until]) => [new RegExp(`(?<!\\b[A-Z][\\w'&;-]* )(?<![\\w'])${esc(modern).replace(/&/g, '(?:&|&amp;|\\u0001)')}(?! [A-Z(&\\u0001])(?![\\w'])`, 'g'), old, until, modern]);
+function periodRungs(t) {
+  for (const [re, old, until] of RUNG_RES) if (ERA_YEAR < until) t = t.replace(re, old);
+  return t;
+}
 export function periodTitle(title, gender = getEraState()?.character?.gender) {
   if (!title) return title;
   title = genderedTitle(title, gender);
   if (ERA_YEAR >= PRESENT) return title;
-  let t = title;
+  let t = periodRungs(title);
   for (const [re, old, until] of OLD_TITLES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
 }
@@ -1720,6 +1731,8 @@ export function periodText(text) {
   const html = t0(text);
   let t = html ? text.replace(/&amp;/g, AMP) : text;
   for (const [re, from, to, alt] of renamesHtml()) if (ERA_YEAR < from) t = t.replace(html && alt ? alt : re, (_m, ...g) => to(ERA_YEAR, ...g));
+  t = periodRungs(t);
+  for (const [re, old, until] of OLD_MULTI) if (ERA_YEAR < until) t = t.replace(re, old);
   return html ? t.replace(/\u0001/g, '&amp;') : t;
 }
 
