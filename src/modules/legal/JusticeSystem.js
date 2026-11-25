@@ -227,7 +227,10 @@ function verdict(ctx, data, edge) {
   const { state, rng } = ctx;
   const defense = DEFENSE[data.defense] ?? DEFENSE.publicDefender;
   const smarts = data.defense === 'self' ? (state.stats.smarts - 60) / 200 : 0;
-  const convict = rng.chance(clamp(convictOdds(data.evidence, defense) - smarts - edge, 0.03, 0.95));
+  // Before the Prisoners' Counsel Act (1836) a British felony defendant's counsel could not address the jury.
+  const noCounsel = (state.character.countryId ?? 'US') === 'GB' && yearNow(state) < 1836 && OFFENSES[data.offenseId]?.severity === 'felony' ? 0.15 : 0;
+  if (noCounsel) ctx.log('Your counsel could question witnesses but not speak to the jury: you had to make your own defence.', '⚖️', 'warn');
+  const convict = rng.chance(clamp(convictOdds(data.evidence, defense) - smarts - edge + noCounsel, 0.03, 0.95));
   if (!convict) {
     ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');
     showResult(ctx, { icon: '🧑‍⚖️', title: OFFENSES[data.offenseId].name, big: 'Not guilty', tone: 'good' });

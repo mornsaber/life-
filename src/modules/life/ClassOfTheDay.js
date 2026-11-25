@@ -78,6 +78,8 @@ export const ClassOfTheDayModule = {
     c.origin ??= originOf(state);
     const now = classNow(state);
     c.now = now;
+    // Before the welfare state the poor died younger: damp rooms, poor food, heavy work.
+    if (!welfareHere(state) && state.character.age >= 35 && state.character.age % 3 === 0) ctx.stat('health', now === 'working' ? -1 : now === 'upper' ? 1 : 0);
     if (!c.risen && RANK[now] - RANK[c.origin] >= 2) {
       c.risen = 'up';
       ctx.log(yearNow(state) < 1960 ? `You've risen out of the class you were born to. Your old neighbours say you've got above yourself; your new ones notice your vowels.` : 'You\'ve come a long way from where you started. Your parents are proud, and a little lost in your new life.', '🪜', 'milestone');
