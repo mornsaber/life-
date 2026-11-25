@@ -109,6 +109,23 @@ export const REGION_STATES = {
   zagan: [R(1800, 1871, ['the Kingdom of Prussia (Silesia)', 'the King of Prussia', 'colony', 'prussia']), R(1871, 1918, ['the German Empire (Silesia)', 'the Kaiser', 'colony', 'germanEmpire']),
     R(1918, 1933, ['the Weimar Republic (Silesia)', 'the President of Germany', 'colony', 'weimar']), R(1933, 1945, ['Nazi Germany (Silesia)', 'the Führer', 'colony', 'germanEmpire'])],
   lviv: [R(1800, 1918, ['Galicia, a crown land of Austria', 'the Emperor of Austria', 'colony', 'habsburg']), R(1919, 1939, ['the Second Polish Republic (Lwów)', 'the President of Poland', 'colony', 'pl'])],
+  // China's treaty ports and leased territories: a city's own masters inside the Qing Empire and the Republic.
+  shanghai: [R(1854, 1941, ['the Shanghai International Settlement, run by the Shanghai Municipal Council (the French Concession beside it)', 'the Shanghai Municipal Council', 'city', null]),
+    R(1941, 1945, ['Japanese-occupied Shanghai', 'the Japanese army', 'colony', null])],
+  qingdao: [R(1898, 1914, ['Kiautschou Bay, a German leased territory (Tsingtao)', 'the German Governor', 'colony', 'germanEmpire']), R(1914, 1922, ['Japanese-occupied Tsingtao', 'the Japanese Governor', 'colony', null]),
+    R(1938, 1945, ['Japanese-occupied Tsingtao', 'the Japanese army', 'colony', null])],
+  weihai: [R(1898, 1930, ['Weihaiwei, a British leased territory', 'the Commissioner', 'colony', 'blueEnsign'])],
+  dalian: [R(1898, 1905, ['the Kwantung Leased Territory (Russian Dalny and Port Arthur)', 'the Russian Governor', 'colony', null]), R(1905, 1945, ['the Kwantung Leased Territory (Japanese Dairen)', 'the Governor-General of Kwantung', 'colony', null]),
+    R(1945, 1955, ['Dalian under Soviet military administration', 'the Soviet commandant', 'colony', null])],
+  zhanjiang: [R(1898, 1945, ['Kouang-Tchéou-Wan, a French leased territory', 'the French Administrator', 'colony', null])],
+  // International cities: Tangier, Memel, Fiume (Danzig is above).
+  tangier: [R(1925, 1940, ['the Tangier International Zone, run by the powers', 'the Committee of Control', 'city', null]), R(1940, 1945, ['Spanish-occupied Tangier', 'the Spanish administrator', 'colony', null]),
+    R(1945, 1956, ['the Tangier International Zone, run by the powers', 'the Committee of Control', 'city', null])],
+  klaipeda: [R(1800, 1871, ['the Kingdom of Prussia (Memel)', 'the King of Prussia', 'colony', 'prussia']), R(1871, 1920, ['the German Empire (Memel)', 'the Kaiser', 'colony', 'germanEmpire']),
+    R(1920, 1923, ['the Memel Territory, under a French administrator for the Allies', 'the French Prefect', 'colony', null]), R(1923, 1939, ['the Klaipėda Region, autonomous within Lithuania', 'the Directorate', 'city', null]),
+    R(1939, 1945, ['Nazi Germany (Memel)', 'the Führer', 'colony', 'germanEmpire'])],
+  rijeka: [R(1800, 1918, ['Fiume, a corpus separatum of the Kingdom of Hungary', 'the Governor of Fiume', 'colony', 'habsburg']), R(1919, 1920, ['the Italian Regency of Carnaro, D\'Annunzio\'s', 'the Comandante (Gabriele D\'Annunzio)', 'authoritarian', null]),
+    R(1920, 1924, ['the Free State of Fiume', 'the President of the Free State', 'city', null]), R(1924, 1945, ['the Kingdom of Italy (Fiume)', 'the Duce', 'colony', null])],
   // South Africa before the Union of 1910.
   johannesburg: [R(spanOf(563)[0], 1902, SAFRICAN), R(1902, 1910, ['the Transvaal Colony', 'the Governor', 'colony', 'blueEnsign'])],
   pretoria: [R(spanOf(563)[0], 1902, SAFRICAN), R(1902, 1910, ['the Transvaal Colony', 'the Governor', 'colony', 'blueEnsign'])],

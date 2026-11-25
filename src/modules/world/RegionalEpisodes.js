@@ -720,6 +720,13 @@ export const REGIONAL_EPISODES = [
       { id: 'deal', label: '🃏 Train as a croupier', effect: L('You trained as a croupier: good money, shifts round the clock.', '🃏', { stats: { happiness: 3 }, earn: 3000 }) },
       { id: 'no', label: '📚 Stay in school', effect: L('You stayed in school, though half your class left for the casinos.', '📚', { stats: { smarts: 2 } }) },
     ] },
+  { id: 'vu.coconutWar', icon: '🥥', title: 'The Coconut War', when: W(['VU'], 1980, 1980, 14),
+    text: 'On the eve of independence Jimmy Stevens and his Nagriamel movement, backed by French planters and an American libertarian foundation, have declared Espiritu Santo the Republic of Vemerana. The British and French can\'t agree what to do; Papua New Guinea is sending troops.',
+    options: [
+      { id: 'vanuaaku', label: '🇻🇺 Back the independence government', effect: L('You stood with Father Walter Lini\'s government. The PNG troops ended the rebellion within weeks, and Vanuatu was born on 30 July.', '🇻🇺', { stats: { happiness: 4 } }) },
+      { id: 'nagriamel', label: '🥥 Side with Nagriamel', effect: L('You sided with the rebels. When the PNG troops came, many of them were arrested.', '🥥', { stats: { stress: 10 }, risk: [0.3, 'You were arrested and jailed after the rebellion.', { happiness: -12 }] }) },
+      { id: 'away', label: '🏡 Keep out of it', effect: L('You kept your head down until it was over.', '🏡', { stats: { stress: 3 } }) },
+    ] },
   { id: 'bn.oil', icon: '🛢️', title: 'Independence', when: W(['BN'], 1984, 1984, 10),
     text: 'Brunei is fully independent at last, on the first of January, rich with oil.',
     options: [

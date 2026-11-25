@@ -18,6 +18,7 @@ import { enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
+import { regionRegimeAt } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, y, lived = 20) {
@@ -76,5 +77,40 @@ t('Macau: Portuguese until 1999, then the Macao SAR', () => {
   const { state } = life('MO', 2005);
   assert.equal(autonomyHere(state)?.of, 'CN');
   assert.ok(entries(state).some((x) => /Portuguese flag came down/.test(x)));
+});
+function hebrides(side) {
+  const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+  const s = engine.newLife({ countryId: 'VU', startYear: 1930, firstName: 'Ka', lastName: 'Tari', gender: 'male' });
+  for (let i = 0; i < 40 && s.character.alive; i++) {
+    for (let k = 0; k < 10 && s.prompts.length; k++) { const q = s.prompts[0]; engine.resolvePrompt(q.id, q.type === 'condominium.school' ? side : q.options.at(-1).id); }
+    s.stats.health = 95; engine.ageUp();
+  }
+  s.prompts = [];
+  return s;
+}
+t('the New Hebrides: two rulers, and the side your school put you on', () => {
+  for (const side of ['GB', 'FR']) {
+    const s = hebrides(side);
+    assert.equal(s.condominium.VU, side);
+    assert.equal(colonyHere(s).ruler, side);
+    assert.match(regimeHere(s).name, /London and Paris/);
+    assert.equal(honoursSystem(s)[0]?.via, side);
+  }
+});
+t('the Anglo-Egyptian Sudan: a condominium in name, British in practice', () => {
+  const { state } = life('SD', 1930);
+  assert.equal(colonyHere(state).ruler, 'GB');
+  assert.match(regimeHere(state).name, /London and Cairo/);
+});
+t('treaty ports, leased territories and international cities', () => {
+  assert.match(regionRegimeAt('shanghai', 1930).name, /International Settlement/);
+  assert.match(regionRegimeAt('qingdao', 1905).name, /German leased territory/);
+  assert.match(regionRegimeAt('weihai', 1920).name, /British leased territory/);
+  assert.match(regionRegimeAt('dalian', 1930).name, /Kwantung/);
+  assert.match(regionRegimeAt('zhanjiang', 1930).name, /French leased territory/);
+  assert.match(regionRegimeAt('tangier', 1950).name, /International Zone/);
+  assert.match(regionRegimeAt('klaipeda', 1921).name, /Memel Territory/);
+  assert.match(regionRegimeAt('rijeka', 1922).name, /Free State of Fiume/);
+  assert.equal(regionRegimeAt('shanghai', 1960), null);
 });
 console.log(`territories: ${n} passed`);

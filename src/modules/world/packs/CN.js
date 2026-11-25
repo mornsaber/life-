@@ -68,6 +68,9 @@ export const CN = {
       'CN-SC': prov('Sichuan', { population: 'mega', disasters: { earthquake: 0.03, flood: 0.04 } }),
       'CN-HB': prov('Hubei', { disasters: { flood: 0.07 } }),
       'CN-ZJ': prov('Zhejiang', { disasters: { hurricane: 0.06, flood: 0.04 } }),
+      // The old leased territories and treaty ports (world/HistoricalData.js REGION_STATES).
+      'CN-SD': prov('Shandong', { population: 'mega', disasters: { flood: 0.03, hurricane: 0.02 } }),
+      'CN-LN': prov('Liaoning', { disasters: { blizzard: 0.03, flood: 0.02 } }),
     },
     cities: {
       beijing: { name: 'Beijing', icon: '🏯', type: 'Capital region', state: 'CN-BJ', col: 1.2, market: 1.1, locality: 0.25, transit: 85, fare: ppp(1500), walkable: true, size: 'mega', population: [21800000, 21800000] },
@@ -76,10 +79,14 @@ export const CN = {
       shenzhen: { name: 'Shenzhen', icon: '💻', type: 'High-cost metro', state: 'CN-GD', col: 1.15, market: 1.15, locality: 0.25, transit: 80, fare: ppp(1300), walkable: true, size: 'mega', population: [17800000, 17800000] },
       chengdu: { name: 'Chengdu', icon: '🐼', type: 'Major metro', state: 'CN-SC', col: 0.85, market: 0.8, locality: 0.18, transit: 70, fare: ppp(1100), walkable: true, size: 'mega', population: [21400000, 21400000] },
       wuhan: { name: 'Wuhan', icon: '🌉', type: 'Major metro', state: 'CN-HB', col: 0.85, market: 0.8, locality: 0.18, transit: 70, fare: ppp(1100), walkable: true, size: 'enterprise', population: [13700000, 13700000] },
+      qingdao: { name: 'Qingdao', icon: '🍺', type: 'Coastal metro', state: 'CN-SD', col: 0.9, market: 0.85, locality: 0.2, transit: 60, fare: ppp(1100), walkable: true, size: 'enterprise', population: [10000000, 10000000] },
+      weihai: { name: 'Weihai', icon: '⚓', type: 'Coastal city', state: 'CN-SD', col: 0.75, market: 0.7, locality: 0.16, transit: 40, fare: ppp(900), walkable: true, size: 'large', population: [2900000, 2900000] },
+      dalian: { name: 'Dalian', icon: '🚢', type: 'Coastal metro', state: 'CN-LN', col: 0.85, market: 0.8, locality: 0.18, transit: 60, fare: ppp(1000), walkable: true, size: 'enterprise', population: [7400000, 7400000] },
+      zhanjiang: { name: 'Zhanjiang', icon: '🦐', type: 'Coastal city', state: 'CN-GD', col: 0.7, market: 0.65, locality: 0.15, transit: 40, fare: ppp(900), walkable: true, size: 'large', population: [7000000, 7000000] },
       hangzhou: { name: 'Hangzhou', icon: '🍵', type: 'Major metro', state: 'CN-ZJ', col: 1.0, market: 1.0, locality: 0.22, transit: 70, fare: ppp(1200), walkable: true, size: 'enterprise', population: [12500000, 12500000] },
     },
     hometowns: ['beijing', 'shanghai', 'guangzhou', 'shenzhen', 'chengdu', 'chengdu', 'wuhan', 'hangzhou'],
-    population: { 'CN-BJ': 21.8e6, 'CN-SH': 24.8e6, 'CN-GD': 127e6, 'CN-SC': 83.7e6, 'CN-HB': 58.3e6, 'CN-ZJ': 66.3e6 },
+    population: { 'CN-SD': 101e6, 'CN-LN': 42e6, 'CN-BJ': 21.8e6, 'CN-SH': 24.8e6, 'CN-GD': 127e6, 'CN-SC': 83.7e6, 'CN-HB': 58.3e6, 'CN-ZJ': 66.3e6 },
   },
   offices: {
     cn_deputy: { country: 'CN', name: 'Deputy to the National People\'s Congress', icon: '🏛️', level: 4, term: 5, termLimit: 0, salary: 0, minAge: 18, residency: 0, cost: 20000, requires: ['cityCouncil', 'mayor'], fullTime: false, pension: 'electedOfficials', kind: 'legislative' },

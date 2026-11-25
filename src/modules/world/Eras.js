@@ -295,8 +295,8 @@ const RULER = { DK: 'Danish', RO: 'Romanian', HT: 'Haitian', BR: 'Brazilian', ID
 /** Where an empire was ruled from, by year: St Petersburg until 1918, Constantinople until 1923, Kyoto before 1869… */
 const CAPITAL_THEN = { RU: [[1712, 'Moscow'], [1918, 'St Petersburg']], TR: [[1923, 'Constantinople']], JP: [[1869, 'Kyoto']], CN: [[1928, 'Peking'], [1949, 'Nanking']], BR: [[1960, 'Rio de Janeiro']], AU: [[1927, 'Melbourne']], PK: [[1959, 'Karachi'], [1967, 'Rawalpindi']], IT: [[1865, 'Turin'], [1871, 'Florence']], NZ: [[1865, 'Auckland']], US: [[1800, 'Philadelphia']], DE: [[1871, 'Berlin']], TZ: [[1996, 'Dar es Salaam']], NG: [[1991, 'Lagos']] };
 export const rulerCapital = (cc, y) => CAPITAL_THEN[cc]?.find(([until]) => y < until)?.[1] ?? RULER_CAPITAL[cc] ?? 'abroad';
-export const RULER_CAPITAL = { DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Brasília', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Beijing', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Ankara', AU: 'Canberra', PK: 'Islamabad', MY: 'Kuala Lumpur', DE: 'Berlin' };
-export const RULER_NAME = { DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
+export const RULER_CAPITAL = { EG: 'Cairo', DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Brasília', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Beijing', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Ankara', AU: 'Canberra', PK: 'Islamabad', MY: 'Kuala Lumpur', DE: 'Berlin' };
+export const RULER_NAME = { EG: 'Egypt', DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
 const S = (ruler, name, until, o = {}) => ({ ruler, name, until, ...o });
 const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', noMovement: true });
 
@@ -320,7 +320,7 @@ export const COLONIES = {
   LK: [S('GB', 'British Ceylon', 1948)], MM: [S('GB', 'British Burma', 1948, { from: 1885 })], MY: [S('GB', 'British Malaya', 1957, { war: true, from: 1874 })],
   SG: [S('GB', 'the Straits Settlements', 1963, { from: 1819 }), S('MY', 'a state of Malaysia', 1965, { leader: 'the Prime Minister of Malaysia', noMovement: true })],
   KE: [S('GB', 'Kenya Colony', 1963, { war: true, from: 1895 })], NG: [S('GB', 'Colonial Nigeria', 1960, { from: 1900 })], GH: [S('GB', 'the Gold Coast', 1957, { from: 1874 })],
-  GM: [S('GB', 'the Gambia Colony', 1965)], SD: [S('GB', 'the Anglo-Egyptian Sudan', 1956, { leader: 'the Governor-General', from: 1899 })],
+  GM: [S('GB', 'the Gambia Colony', 1965)], SD: [S('GB', 'the Anglo-Egyptian Sudan', 1956, { leader: 'the Governor-General', from: 1899, rulers: ['GB', 'EG'], nominal: true })],
   MW: [S('GB', 'Nyasaland', 1964, { from: 1891 })], SO: [S('IT', 'Italian Somaliland', 1960, { from: 1889 })], JM: [S('GB', 'the Colony of Jamaica', 1962)],
   BS: [S('GB', 'the Bahamas', 1973)], CY: [OTTOMAN('Ottoman Cyprus'), S('GB', 'British Cyprus', 1960, { war: true, from: 1878 })], MT: [S('GB', 'the Crown Colony of Malta', 1964)],
   IE: [S('GB', 'Ireland, ruled from Westminster', 1922, { war: true, leader: 'the Lord Lieutenant' })],
@@ -336,7 +336,7 @@ export const COLONIES = {
   QA: [S('GB', 'Qatar, a British protectorate', 1971, { leader: 'the Political Agent', noMovement: true, from: 1916 })],
   AE: [S('GB', 'the Trucial States', 1971, { leader: 'the Political Agent', noMovement: true, from: 1820 })],
   BN: [S('GB', 'the British protectorate of Brunei', 1984, { leader: 'the High Commissioner', noMovement: true, from: 1888 })],
-  SB: [S('GB', 'the British Solomon Islands', 1978, { from: 1893 })], VU: [S('GB', 'the New Hebrides (an Anglo-French condominium)', 1980, { leader: 'the Resident Commissioners', from: 1906 })],
+  SB: [S('GB', 'the British Solomon Islands', 1978, { from: 1893 })], VU: [S('GB', 'the New Hebrides (an Anglo-French condominium)', 1980, { leader: 'the British and French Resident Commissioners', from: 1906, rulers: ['GB', 'FR'] })],
   TO: [S('GB', 'Tonga, a British protected state', 1970, { leader: 'the British Agent', noMovement: true, from: 1900 })],
   PG: [S('AU', 'the Territory of Papua and New Guinea', 1975, { leader: 'the Administrator', from: 1906 })],
   MH: [S('DE', 'German New Guinea (the Marshall Islands)', 1914, { noMovement: true, from: 1885 }), S('JP', 'the South Seas Mandate', 1945, { noMovement: true }), S('US', 'the Trust Territory of the Pacific Islands', 1986, { leader: 'the High Commissioner' })],
@@ -371,11 +371,24 @@ export function colonyStage(state, cc) {
     if ((rec?.done ?? []).includes(i)) continue;
     const st = stages[i];
     if (st.from && y < st.from) return null;
-    return { ...st, index: i, armyOf: st.armyOf ?? (LAND_EMPIRES.includes(st.ruler) ? st.ruler : null) };
+    // A condominium has two rulers; you live under the one whose side you're on (Condominium.js).
+    const ruler = st.rulers ? condominiumSide(state, cc, st) : st.ruler;
+    return { ...st, ruler, index: i, armyOf: st.armyOf ?? (LAND_EMPIRES.includes(ruler) ? ruler : null) };
   }
   return null;
 }
 export const colonyHere = (state) => colonyStage(state, state.character.countryId ?? 'US');
+/**
+ * Whose side of a condominium a life is on: the New Hebrides' British or French administration
+ * (schools, courts, police, hospitals, honours: the islanders themselves were neither's subjects).
+ * A nominal condominium (the Anglo-Egyptian Sudan) is its first ruler's in practice.
+ */
+export function condominiumSide(state, cc, st) {
+  if (st.nominal) return st.rulers[0];
+  const here = (state.character?.countryId ?? 'US') === cc;
+  const side = here ? state.condominium?.[cc] ?? state.character?.posting?.home?.countryId : null;
+  return st.rulers.includes(side) ? side : st.rulers[0];
+}
 /**
  * Territories under another state's sovereignty that govern themselves: Hong Kong and Macau after
  * their handovers ("one country, two systems"). Their own laws, courts, police, money and civil
@@ -417,7 +430,7 @@ export const isColonialRule = (cc, st) => Boolean(st) && st.ruler !== cc && OVER
 /** The colonial administration you live under, or null (also null in a Soviet republic or an Ottoman province). */
 export const colonialHere = (state) => { const cc = state.character.countryId ?? 'US'; const st = colonyStage(state, cc); return isColonialRule(cc, st) ? st : null; };
 /** The overseas territories a country rules in the year being played (not Europe's own subject nations: Ireland, Poland, Finland...). */
-export const empireColonies = (state, cc) => (state?.era && OVERSEAS_EMPIRES.includes(cc) ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && colonyStage(state, id)?.ruler === cc) : []);
+export const empireColonies = (state, cc) => (state?.era && OVERSEAS_EMPIRES.includes(cc) ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && (colonyStage(state, id)?.ruler === cc || COLONIES[id]?.some((s) => s.rulers?.includes(cc) && !s.nominal && colonyStage(state, id)?.name === s.name))) : []);
 /** Colonial work is open: you live in a colony, or your country still rules one. */
 const COLONIAL_OPEN = new WeakMap();
 export const colonialWorkOpen = (state) => {
@@ -613,7 +626,7 @@ export function eraLayer(state) {
     const st = colonyStage(state, cc);
     if (!st) continue;
     if (st.ruler === 'RU' && out.RU?.kind === 'totalitarian') { out[cc] = { ...out.RU, name: `${st.name}, a Soviet republic ruled from Moscow` }; continue; }
-    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${rulerCapital(st.ruler, y)}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
+    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${(st.rulers ?? [st.ruler]).map((r) => rulerCapital(r, y)).join(' and ')}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
   }
   // Your own city's state, where it wasn't yet (or no longer) the country's: Bavaria, the Two Sicilies, East Germany.
   const here = state.character?.countryId ?? 'US';
