@@ -21,7 +21,14 @@
  *               Ireland   British honours until the Free State (1922); none since.
  *               India     British honours, with the Star of India (1861) and the Indian Empire
  *                         (1878), until 1947; the Padma awards and Bharat Ratna from 1954.
- *   Colonies    the ruling power's honours.
+ *   Colonies    the ruling power's honours (an MBE, OBE or CMG, a knighthood, now and then a
+ *               baronetcy; a peerage almost never).
+ *   After independence  a Commonwealth realm sent its own list to the Queen (knighthoods, but no
+ *               peerages) until it founded its own order, and often alongside it: Jamaica's Order
+ *               of Distinction (1969), Barbados (1980), the Bahamas (2016); Papua New Guinea and
+ *               Tuvalu still do. A new republic gave nothing until its first order: Kenya's
+ *               Burning Spear (1966), Nigeria's Niger (1963), Ghana's Volta (1960), Sri Lanka's
+ *               honours (stopped 1956, its own from 1986).
  *   Elsewhere   each order from its founding: Rising Sun (1875), Légion d'honneur (1802),
  *               Ordre national du Mérite (1963), Prussia's Red Eagle until 1918 and the
  *               Bundesverdienstkreuz from 1951, the Crown of Italy (1868–1946) and the Italian
@@ -30,7 +37,8 @@
  *               Belisario Domínguez medal (1953), the Philippines' Lakandula (2003).
  */
 import { ORDERS, CHIVALRY } from './Honours.js';
-import { yearNow, colonyHere } from './Eras.js';
+import { yearNow, colonyHere, colonyStage } from './Eras.js';
+import { COUNTRIES } from './Countries.js';
 import { dominionMode as historyMode, statuteOverride, DOMINION_HONOURS as DOMINIONS } from '../politics/StatuteBook.js';
 
 const R = (...c) => c.map((x) => (Array.isArray(x) ? x : [x, 1]));
@@ -39,12 +47,66 @@ const R = (...c) => c.map((x) => (Array.isArray(x) ? x : [x, 1]));
 export { DOMINION_HONOURS } from '../politics/StatuteBook.js';
 /** The honours mode a dominion is in this year: history's, unless a bill changed whether citizens take British honours. */
 export function dominionMode(cc, y, state = null) {
-  const mode = historyMode(cc, y);
+  const mode = historyMode(cc, y) ?? afterIndependence(cc, y, state);
   const o = state ? statuteOverride(state, 'imperialHonours', cc) : undefined;
-  if (o === true && !['british', 'britishNoTitles', 'dual'].includes(mode)) return ownOrders(cc, y) ? 'dual' : 'british';
-  if (o === false && ['british', 'britishNoTitles', 'dual'].includes(mode)) return ownOrders(cc, y) ? 'national' : 'none';
+  if (o === true && !BRITISH_MODES.includes(mode)) return ownOrders(cc, y) ? 'dual' : 'british';
+  if (o === false && BRITISH_MODES.includes(mode)) return ownOrders(cc, y) ? 'national' : 'none';
   return mode;
 }
+
+const BRITISH_MODES = ['british', 'britishNoTitles', 'dual', 'realm'];
+/**
+ * Former colonies after independence: [from, until, mode]. 'realm' British honours on the
+ * country's own list (titles, but no peerages or baronetcies); 'dual' that and its own order;
+ * 'none' nothing yet; 'national' its own. Not listed: its own honours from independence.
+ */
+export const AFTER_INDEPENDENCE = {
+  PK: [[0, 1957, 'realm'], [1957, 9999, 'national']],
+  LK: [[0, 1956, 'realm'], [1956, 1986, 'none'], [1986, 9999, 'national']],
+  MY: [[0, 1958, 'none'], [1958, 9999, 'national']],
+  BD: [[0, 1976, 'none'], [1976, 9999, 'national']],
+  GH: [[0, 1960, 'realm'], [1960, 9999, 'national']],
+  NG: [[0, 1963, 'realm'], [1963, 9999, 'national']],
+  SL: [[0, 1971, 'realm'], [1971, 1972, 'none'], [1972, 9999, 'national']],
+  TZ: [[0, 1962, 'realm'], [1962, 1967, 'none'], [1967, 9999, 'national']],
+  UG: [[0, 1963, 'realm'], [1963, 2001, 'none'], [2001, 9999, 'national']],
+  KE: [[0, 1964, 'realm'], [1964, 1966, 'none'], [1966, 9999, 'national']],
+  MW: [[0, 1966, 'realm'], [1966, 9999, 'national']],
+  ZM: [[0, 1966, 'none'], [1966, 9999, 'national']],
+  GM: [[0, 1970, 'realm'], [1970, 9999, 'national']],
+  BW: [[0, 1967, 'none'], [1967, 9999, 'national']],
+  MT: [[0, 1974, 'realm'], [1974, 1990, 'none'], [1990, 9999, 'national']],
+  CY: [[0, 1991, 'none'], [1991, 9999, 'national']],
+  MU: [[0, 1992, 'realm'], [1992, 9999, 'national']],
+  JM: [[0, 1969, 'realm'], [1969, 1989, 'dual'], [1989, 9999, 'national']],
+  TT: [[0, 1969, 'realm'], [1969, 1976, 'dual'], [1976, 9999, 'national']],
+  GY: [[0, 1970, 'realm'], [1970, 9999, 'national']],
+  BB: [[0, 1980, 'realm'], [1980, 9999, 'national']],
+  BS: [[0, 2016, 'realm'], [2016, 9999, 'dual']],
+  BZ: [[0, 1991, 'realm'], [1991, 9999, 'dual']],
+  AG: [[0, 1998, 'realm'], [1998, 9999, 'dual']],
+  LC: [[0, 1986, 'realm'], [1986, 9999, 'dual']],
+  KN: [[0, 2005, 'realm'], [2005, 9999, 'dual']],
+  VC: [[0, 9999, 'realm']], GD: [[0, 9999, 'realm']], TV: [[0, 9999, 'realm']],
+  PG: [[0, 2005, 'realm'], [2005, 9999, 'dual']],
+  SB: [[0, 1981, 'realm'], [1981, 9999, 'dual']],
+  FJ: [[0, 1987, 'realm'], [1987, 1995, 'none'], [1995, 9999, 'national']],
+  IL: [[0, 1953, 'none'], [1953, 9999, 'national']],
+  ID: [[0, 1959, 'none'], [1959, 9999, 'national']],
+  DZ: [[0, 1984, 'none'], [1984, 9999, 'national']],
+  CD: [[0, 1966, 'none'], [1966, 9999, 'national']],
+  NA: [[0, 1995, 'none'], [1995, 9999, 'national']],
+  TL: [[0, 2009, 'none'], [2009, 9999, 'national']],
+  FM: [[0, 9999, 'none']], PW: [[0, 9999, 'none']],
+};
+/** The mode once a country rules itself (null while it is still a colony in this life's world). */
+function afterIndependence(cc, y, state) {
+  const rows = AFTER_INDEPENDENCE[cc];
+  if (!rows) return null;
+  if (state && colonyStage(state, cc)) return null;
+  return rows.find(([a, b]) => y >= a && y < b)?.[2] ?? null;
+}
+const modeRows = (cc) => DOMINIONS[cc] ?? AFTER_INDEPENDENCE[cc] ?? [];
 
 /** Grades founded after their order: [country][tier] = year. */
 const TIER_FROM = {
@@ -94,6 +156,12 @@ const italianRoyal = (y) => {
   })) };
 };
 
+/** British honours for a colony or a realm's own list: no peerages, and after independence no baronetcies. */
+function britishOverseas(y, { colony = false } = {}) {
+  const l = britishLadder(y);
+  return { ...l, tiers: l.tiers.filter((t) => !t.peer && (colony || !t.hereditary)) };
+}
+
 /** A country's own honours in a year (not counting what its people got from an empire). null: none. */
 function ownOrders(cc, y) {
   if (cc === 'GB') return britishLadder(y);
@@ -102,7 +170,7 @@ function ownOrders(cc, y) {
   const base = ORDERS[cc];
   if (!base?.tiers?.length || y < (ORDER_FROM[cc] ?? 0)) return null;
   const from = TIER_FROM[cc] ?? {};
-  const tiers = base.tiers.filter((t) => !(from[t.id] > y));
+  const tiers = base.tiers.filter((t) => !(from[t.id] > y) && !(t.from > y) && !(t.until <= y));
   return tiers.length ? { ...base, tiers } : null;
 }
 
@@ -113,6 +181,7 @@ function ownOrders(cc, y) {
 export function ordersAt(cc, y, state = null) {
   const mode = dominionMode(cc, y, state);
   if (mode === 'british' || mode === 'britishNoTitles') return { via: 'GB', ladder: britishLadder(y, { titles: mode === 'british' }) };
+  if (mode === 'realm') return { via: 'GB', ladder: britishOverseas(y) };
   if (mode === 'none') return null;
   const own = ownOrders(cc, y);
   return own ? { via: cc, ladder: own } : null;
@@ -128,7 +197,7 @@ export function honoursSystem(state) {
   if (mode === 'dual') {
     const own = ownOrders(cc, y);
     if (own) out.push({ via: cc, ladder: own });
-    out.push({ via: 'GB', ladder: britishLadder(y) });
+    out.push({ via: 'GB', ladder: DOMINIONS[cc] ? britishLadder(y) : britishOverseas(y) });
   } else if (mode) {
     const o = ordersAt(cc, y, state);
     if (o) out.push(o);
@@ -136,7 +205,9 @@ export function honoursSystem(state) {
     // A colony: the ruling power's honours.
     const col = colonyHere(state);
     const o = col?.ruler && col.ruler !== cc ? ordersAt(col.ruler, y) : ordersAt(cc, y);
-    if (o) out.push(o);
+    // A colonial subject on the British list: knighthoods and now and then a baronetcy, never a peerage.
+    if (o?.via === 'GB' && col) out.push({ ...o, ladder: { ...o.ladder, tiers: o.ladder.tiers.filter((t) => !t.peer) } });
+    else if (o) out.push(o);
   }
   return out.map((x) => ({ ...x, ladder: forGender(x.ladder) })).filter((x) => x.ladder?.tiers?.length);
 }
@@ -172,6 +243,17 @@ const NONE_WHY = {
   IE: () => 'The Irish state gives no honours.',
   IN: () => 'India gave up British honours at independence; the Padma awards come in 1954.',
 };
+/** A new state between independence and its first order. */
+function noneYet(cc, y) {
+  const rows = AFTER_INDEPENDENCE[cc];
+  const row = rows?.find(([a, b]) => y >= a && y < b);
+  if (row?.[2] !== 'none') return null;
+  const name = COUNTRIES[cc]?.name ?? cc;
+  const next = rows.find(([a]) => a >= row[1]);
+  const before = rows[rows.indexOf(row) - 1];
+  if (before?.[2] === 'realm') return `${name} no longer asks for British honours${next ? `; its own national honours come in ${next[0]}.` : '.'}`;
+  return next ? `${name} has no national honours yet; its first come in ${next[0]}.` : `${name} has no order of its own.`;
+}
 export function honoursNote(state) {
   const cc = state.character.countryId ?? 'US';
   const y = yearNow(state);
@@ -181,13 +263,13 @@ export function honoursNote(state) {
     const col = colonyHere(state);
     const britishHere = ordersAt(cc, y)?.via === 'GB' || (col?.ruler === 'GB');
     if (britishHere && state.character.gender === 'female' && y < 1917) return 'The honours list is for men: the Order of the British Empire, the first open to women, comes in 1917.';
-    return NONE_WHY[cc]?.(y) ?? 'No honours are being given here this year.';
+    return NONE_WHY[cc]?.(y) ?? noneYet(cc, y) ?? 'No honours are being given here this year.';
   }
   const british = sys.find((x) => x.via === 'GB');
   if (british && cc !== 'GB') {
     const mode = dominionMode(cc, y, state);
     const titles = british.ladder.tiers.some((t) => t.id === 'knight');
-    return `${mode === 'dual' ? 'Two lists: your own national order, and still ' : 'Your honours come from '}${name('GB')}${titles ? '' : ' (no titles: no knighthoods or peerages)'}${mode === 'dual' ? (statuteOverride(state, 'imperialHonours', cc) != null ? ', by Act of your parliament' : `, until ${DOMINIONS[cc].find(([, , m]) => m === 'dual')?.[1]}`) : ''}.`;
+    return `${mode === 'dual' ? 'Two lists: your own national order, and still ' : 'Your honours come from '}${name('GB')}${mode === 'realm' ? ', on your own government\'s advice to the Crown' : ''}${titles ? '' : ' (no titles: no knighthoods or peerages)'}${mode === 'dual' ? (statuteOverride(state, 'imperialHonours', cc) != null ? ', by Act of your parliament' : (() => { const end = modeRows(cc).find(([, , m]) => m === 'dual')?.[1]; return end && end < 9999 ? `, until ${end}` : ''; })()) : ''}.`;
   }
   return null;
 }

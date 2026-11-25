@@ -33,6 +33,7 @@ import { dynasticStyledName } from './DynasticTitles.js';
 import { councilLetters } from './PrivyCouncil.js';
 import { honoursSystem, ladderTiers, chivalryAt } from './HonoursOfTheDay.js';
 import { yearNow } from './Eras.js';
+import { applyPostColonialOrders } from './PostColonialOrders.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -207,6 +208,7 @@ export const ORDERS = {
   ] },
 };
 fromPacks(ORDERS, 'ORDERS');
+applyPostColonialOrders(ORDERS);
 // Pack tiers without an id get one from their place in the ladder: "already held" and promotions match on it.
 for (const o of Object.values(ORDERS)) for (const [i, t] of (o?.tiers ?? []).entries()) if (!t.id) t.id = `t${i}`;
 // Letters after the name: from the tier's own "(MON)", "(AMN)", where a pack gives them only in the name.
@@ -259,7 +261,11 @@ export function orderOf(cc, t, fallback, gender) {
   if (t.order !== undefined) return t.order;
   if (fallback !== undefined) return fallback;
   const o = ORDERS[cc];
-  return o && o.order !== undefined ? o.order : `${COUNTRIES[cc]?.name ?? cc} order of merit`;
+  if (o && o.order !== undefined) return o.order;
+  // A pack that gave only grade names: the order is the grade's name without its class ("Order of the Lion (Member)").
+  const nm = typeof t.name === 'string' ? t.name : t.name?.[gender === 'female' ? 'female' : 'male'] ?? '';
+  const m = nm.replace(/\s*\([^)]*\)\s*$/, '').match(/\b(?:(?:Grand |National |Royal |Honorary )*(?:Order|Ordre|Orden|Ordem|Ordine)\b.*)$/);
+  return m ? m[0] : null;
 }
 /** Titles that come with a grade: a knighthood (Sir, Dame) or a peerage. These can be declined. */
 export const titular = (t, gender) => Boolean(t.peer || ['Sir', 'Dame', 'Lord', 'Baroness'].includes(tierPrefix(t, gender)));

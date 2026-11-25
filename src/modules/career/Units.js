@@ -17,6 +17,7 @@
 import { GOV_SECTORS } from './Ladder.js';
 import { currentCountry } from '../../core/Locale.js';
 import { STATES } from '../life/States.js';
+import { eraYear } from '../world/Eras.js';
 
 /** Unit kinds: typical staff [min, max]; the agency's own size caps them. */
 export const UNIT_KINDS = {
@@ -163,7 +164,10 @@ function hash(s) {
   for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h >>> 0;
 }
-const pick = (list, n) => list[n % list.length];
+// Units that came late: no drug court before the war on drugs, no digital evidence before computers.
+const UNIT_FROM = [[/Drug|Narcotics/, 1914], [/Drug Court/, 1989], [/Digital|Cyber/, 1980], [/DNA/, 1986], [/Sex Offender/, 1980], [/Pretrial/, 1960], [/Reentry/, 1990], [/High-Risk/, 1970], [/Toxicology/, 1900], [/Firearms & Toolmarks/, 1925], [/Latent Prints/, 1905]];
+const inEra = (name) => !UNIT_FROM.some(([re, y]) => re.test(name) && eraYear() < y);
+const pick = (list, n) => { const ok = list.filter((x) => typeof x !== 'string' || inEra(x)); const l = ok.length ? ok : list; return l[n % l.length]; };
 const COMPASS = ['North', 'South', 'East', 'West', 'Central'];
 const LETTER = (n) => String.fromCharCode(65 + (n % 6));
 
