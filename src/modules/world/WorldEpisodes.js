@@ -20,6 +20,8 @@
  */
 const cc = (s) => s.character.countryId ?? 'US';
 const age = (s) => s.character.age;
+/** Tibet has its own moments of these years (PlaceEpisodes.js: the uprising, the Red Guards at the Jokhang). */
+const inTibet = (s) => s.character.regionId === 'lhasa';
 const male = (s) => s.character.gender === 'male';
 const hap = (s, id) => Boolean(s.era?.events?.[id]);
 const at = (s, id) => s.era?.events?.[id]?.year ?? null;
@@ -117,13 +119,13 @@ export const WORLD_EPISODES = [
       { id: 'ration', label: '📕 Live on the ration', effect: { log: 'You lived on the ration. A judge famously starved to death doing the same.', icon: '📕', stats: { health: -10 } } },
     ] },
   // ---------------- China ----------------
-  { id: 'leapFamine', icon: '🍂', title: 'The Great Leap', when: (s, y) => cc(s) === 'CN' && hap(s, 'prc') && y >= 1959 && y <= 1961 && age(s) >= 10,
+  { id: 'leapFamine', icon: '🍂', title: 'The Great Leap', when: (s, y) => cc(s) === 'CN' && !inTibet(s) && hap(s, 'prc') && y >= 1959 && y <= 1961 && age(s) >= 10,
     text: 'The steel furnaces in the back yards, the quotas reported ten times over, and now nothing to eat.',
     options: [
       { id: 'endure', label: '🍂 Eat what can be found', effect: { log: 'You lived on elm bark and wild grass through the hungry years.', icon: '🍂', stats: { health: -15, happiness: -12 }, risk: [0.08, 'The famine took you.', null, 0, { die: 'starvation' }] } },
       { id: 'hk', label: '🌊 Swim for Hong Kong', effect: { log: 'You swam across Deep Bay at night to Hong Kong.', icon: '🌊', risk: [0.2, 'You drowned in the bay.', null, 0, { die: 'drowned swimming to Hong Kong' }] } },
     ] },
-  { id: 'culturalRev', icon: '📕', title: 'The Cultural Revolution', when: (s, y) => cc(s) === 'CN' && hap(s, 'prc') && y >= 1966 && y <= 1969 && age(s) >= 15 && age(s) <= 24,
+  { id: 'culturalRev', icon: '📕', title: 'The Cultural Revolution', when: (s, y) => cc(s) === 'CN' && !inTibet(s) && hap(s, 'prc') && y >= 1966 && y <= 1969 && age(s) >= 15 && age(s) <= 24,
     text: 'The schools are closed. Red Guards are smashing temples and parading teachers in dunce caps.',
     options: [
       { id: 'guard', label: '📕 Put on the armband', effect: { log: 'You marched with the Red Guards. Years later you could not look your old teacher in the eye.', icon: '📕', stats: { happiness: -4 } } },

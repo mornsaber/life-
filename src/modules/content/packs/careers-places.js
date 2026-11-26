@@ -52,7 +52,7 @@ const careers = {
   },
   hawaiiSugar: {
     id: 'hawaiiSugar', name: 'Sugar Plantation (Hawaii)', icon: '🎋', sector: 'private', payMultiplier: 0.6, fromYear: 1835, untilYear: 2016, minAge: 14,
-    provinces: ['HI'], sizes: { small: 1, medium: 2, large: 3, enterprise: 2 }, union: { chance: 0.5, name: 'the ILWU', strike: true }, entry: {},
+    provinces: ['HI'], replaces: ['plantation'], sizes: { small: 1, medium: 2, large: 3, enterprise: 2 }, union: { chance: 0.5, name: 'the ILWU', strike: true }, entry: {},
     employers: ['the Kōloa Plantation', 'Castle & Cooke', 'Alexander & Baldwin', 'C. Brewer & Co.', 'American Factors', 'Theo H. Davies & Co.'],
     ladder: [
       ['canecutter', 'Cane Cutter', 1, { years: 2 }],

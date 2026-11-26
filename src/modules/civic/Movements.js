@@ -46,7 +46,7 @@ function breakawayYear(main, m, rng) {
   if (m.strength < 60 || rng.chance(0.4)) return false;
   const support = breakawaySupport(m);
   const free = !repressive(state);
-  main.prompt({ type: 'movements.breakaway', icon: '🏳️', title: `${m.name}: The Moment`, text: `The polls say ${Math.round(support * 100)}% would vote for it. ${free ? 'You could force a referendum: a petition, a hunger strike, a coalition that will fall without one.' : 'There will be no referendum under this government. You could declare independence anyway.'}`, data: { support }, options: [
+  main.prompt({ type: 'movements.breakaway', icon: '🏳️', title: `${m.name.replace(/^the /, 'The ')}: The Moment`, text: `The polls say ${Math.round(support * 100)}% would vote for it. ${free ? 'You could force a referendum: a petition, a hunger strike, a coalition that will fall without one.' : 'There will be no referendum under this government. You could declare independence anyway.'}`, data: { support }, options: [
     ...(free ? [{ id: 'referendum', label: '🗳️ Force a referendum', hint: `About ${Math.round(support * 100)}% for` }] : []),
     { id: 'declare', label: '📜 Declare independence', hint: free ? 'Without a vote: the courts, and maybe a cell' : 'Prison, exile, or a new state' },
     { id: 'wait', label: '⏳ Not yet: build more support' },

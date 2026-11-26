@@ -20,11 +20,12 @@ import { CARD_TYPES, cardApr, applyCheck, minimumPayoff } from '../../modules/li
 import { standardDeduction, auditOdds, PASSPORT_THRESHOLD } from '../../modules/life/Taxes.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { moneyDayCard } from './MoneyDayCard.js';
+import { creditBlock } from '../../modules/world/Regimes.js';
 
 /** Your wallet: cards, rewards, payoff strategy and balance transfers. */
 function walletSection(state) {
   const c = state.finances.cards;
-  if (!c || (!hasTech(state, 'creditCards') && !c.held.length)) return '';
+  if (!c || ((!hasTech(state, 'creditCards') || creditBlock(state)) && !c.held.length)) return '';
   const debt = Math.max(0, -state.finances.cash);
   const held = c.held.map((x) => {
     const t = CARD_TYPES[x.typeId];
@@ -131,14 +132,14 @@ function creditLabel(state) {
   const c = CREDIT[state.character.countryId];
   const score = state.housing.credit.score;
   // Before credit scores, a name was good or bad with the bank and the shops.
-  if (!creditScoresExist(state)) return score >= 700 ? 'good name with the bank' : score >= 580 ? 'known to the bank' : 'a bad name with every shop in town';
+  if (!creditScoresExist(state) || creditBlock(state)) return score >= 700 ? 'good name with the bank' : score >= 580 ? 'known to the bank' : 'a bad name with every shop in town';
   if (!c) return `score ${score}`;
   if (c.registry) return score >= 580 ? 'clean' : 'listed';
   return String(score);
 }
 
 const creditTitle = (state) => {
-  if (!creditScoresExist(state)) return 'Credit';
+  if (!creditScoresExist(state) || creditBlock(state)) return 'Credit';
   const name = CREDIT[state.character.countryId]?.name;
   return name ? name[0].toUpperCase() + name.slice(1) : 'Credit score';
 };

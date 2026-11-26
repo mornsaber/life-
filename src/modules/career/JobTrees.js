@@ -202,7 +202,13 @@ export function professionsFor(state) {
   }
   return professionsUncached(state);
 }
-function professionsUncached(state) {
+/** A place's own career stands in for the generic one (Hawaiian sugar for the colonial plantation). */
+function withoutReplaced(list) {
+  const gone = new Set(list.flatMap((p) => p.replaces ?? []));
+  return gone.size ? list.filter((p) => !gone.has(p.id)) : list;
+}
+function professionsUncached(state) { return withoutReplaced(professionsListed(state)); }
+function professionsListed(state) {
   const cc = state?.character?.countryId ?? 'US';
   // One ministry per faith: your own church's clergy career, not three side by side.
   const ministry = state?.community ? clergyCareerFor(state.community.faith?.traditionId ?? state.community.orders?.tradition) : null;
