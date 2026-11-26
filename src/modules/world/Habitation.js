@@ -17,5 +17,12 @@ const BORN_UNTIL = { IO: 1971, SJ: 0 };
 /** Could settle there until this year. */
 const SETTLE_UNTIL = { IO: 1968 };
 
-export const bornIn = (cc, year = 9999) => !NOBODY.includes(cc) && !(year >= (BORN_UNTIL[cc] ?? Infinity));
-export const settleIn = (cc, year = 9999) => !NOBODY.includes(cc) && !(year >= (SETTLE_UNTIL[cc] ?? Infinity));
+/** States that exist only if this world makes them (packs/sketches/Latent.js), and the year each formed. */
+export const LATENT = ['XS', 'XW', 'XQ', 'XC', 'XF', 'XD', 'XR'];
+let FORMED = {};
+export const setFormed = (o = {}) => { FORMED = o ?? {}; };
+export const formedIn = (cc) => FORMED[cc] ?? null;
+const exists = (cc, year) => !LATENT.includes(cc) || (FORMED[cc] != null && year >= FORMED[cc]);
+
+export const bornIn = (cc, year = 9999) => !NOBODY.includes(cc) && exists(cc, year) && !(year >= (BORN_UNTIL[cc] ?? Infinity));
+export const settleIn = (cc, year = 9999) => !NOBODY.includes(cc) && exists(cc, year) && !(year >= (SETTLE_UNTIL[cc] ?? Infinity));

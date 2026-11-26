@@ -379,6 +379,7 @@ const SOVEREIGN_PATTERN = {
   PR: 'US', GU: 'US', VI: 'US', AS: 'US', MP: 'US',
   GF: 'FR', GP: 'FR', MQ: 'FR', RE: 'FR', YT: 'FR', NC: 'FR', PF: 'FR',
   AW: 'NL', CW: 'NL', SX: 'NL', CK: 'NZ', GL: 'DK', FO: 'DK', EH: 'MA',
+  XS: 'GB', XW: 'GB', XQ: 'CA', XC: 'ES', XF: 'BE', XD: 'IQ', XR: 'BA',
   PN: 'GB', IO: 'GB', GS: 'GB', NU: 'NZ', TK: 'NZ', NF: 'AU', CX: 'AU', CC: 'AU', HM: 'AU', WF: 'FR', PM: 'FR', BL: 'FR', MF: 'FR', TF: 'FR', BQ: 'NL', SJ: 'NO', BV: 'NO', AX: 'FI', UM: 'US',
 };
 export function insigniaNation(cc, { police = false } = {}) {

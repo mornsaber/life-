@@ -16,19 +16,20 @@
  *
  * state.world.stateChanges = [{ id, kind, year, ... }]
  */
-import { setDynamicRegions, setDissolved } from './NewStates.js';
+import { setDynamicRegions, setDissolved, setNewStates } from './NewStates.js';
+import { setFormed } from './Habitation.js';
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { yearNow, PRESENT } from './Eras.js';
 
 /** Nations that might leave: the province, what the state would be called, who would lead it, its flag. */
 export const SECESSIONS = {
-  'GB-SCT': { cc: 'GB', name: 'Scotland', state: 'the Republic of Scotland', leader: 'the First Minister of Scotland', flag: 'scotland', support: 0.45, from: 1970, of: 'the United Kingdom' },
-  'GB-WLS': { cc: 'GB', name: 'Wales', state: 'Wales (Cymru), an independent country', leader: 'the First Minister of Wales', flag: 'wales', support: 0.3, from: 1999, of: 'the United Kingdom' },
-  'CA-QC': { cc: 'CA', name: 'Quebec', state: 'the sovereign State of Quebec', leader: 'the Premier of Quebec', flag: 'quebec', support: 0.42, from: 1976, of: 'Canada' },
-  'ES-CT': { cc: 'ES', name: 'Catalonia', state: 'the Catalan Republic', leader: 'the President of the Generalitat', flag: 'catalonia', support: 0.44, from: 1980, of: 'Spain', currency: ['EUR', '€', 'euro', 1, null] },
-  'BE-VAN': { cc: 'BE', name: 'Flanders', state: 'the Republic of Flanders', leader: 'the Minister-President of Flanders', flag: 'flanders', support: 0.3, from: 1993, of: 'Belgium' },
-  'IQ-AR': { cc: 'IQ', name: 'Kurdistan', state: 'the Republic of Kurdistan', leader: 'the President of Kurdistan', flag: 'kurdistan', support: 0.6, from: 1992, of: 'Iraq' },
-  'BA-SRP': { cc: 'BA', name: 'Republika Srpska', state: 'Republika Srpska, an independent state', leader: 'the President of Republika Srpska', flag: 'srpska', support: 0.5, from: 1996, of: 'Bosnia and Herzegovina' },
+  'GB-SCT': { code: 'XS', cc: 'GB', name: 'Scotland', state: 'the Republic of Scotland', leader: 'the First Minister of Scotland', flag: 'scotland', support: 0.45, from: 1970, of: 'the United Kingdom' },
+  'GB-WLS': { code: 'XW', cc: 'GB', name: 'Wales', state: 'Wales (Cymru), an independent country', leader: 'the First Minister of Wales', flag: 'wales', support: 0.3, from: 1999, of: 'the United Kingdom' },
+  'CA-QC': { code: 'XQ', cc: 'CA', name: 'Quebec', state: 'the sovereign State of Quebec', leader: 'the Premier of Quebec', flag: 'quebec', support: 0.42, from: 1976, of: 'Canada' },
+  'ES-CT': { code: 'XC', cc: 'ES', name: 'Catalonia', state: 'the Catalan Republic', leader: 'the President of the Generalitat', flag: 'catalonia', support: 0.44, from: 1980, of: 'Spain', currency: ['EUR', '€', 'euro', 1, null] },
+  'BE-VAN': { code: 'XF', cc: 'BE', name: 'Flanders', state: 'the Republic of Flanders', leader: 'the Minister-President of Flanders', flag: 'flanders', support: 0.3, from: 1993, of: 'Belgium' },
+  'IQ-AR': { code: 'XD', cc: 'IQ', name: 'Kurdistan', state: 'the Republic of Kurdistan', leader: 'the President of Kurdistan', flag: 'kurdistan', support: 0.6, from: 1992, of: 'Iraq' },
+  'BA-SRP': { code: 'XR', cc: 'BA', name: 'Republika Srpska', state: 'Republika Srpska, an independent state', leader: 'the President of Republika Srpska', flag: 'srpska', support: 0.5, from: 1996, of: 'Bosnia and Herzegovina' },
 };
 /** A province that might join another country. */
 export const TRANSFERS = {
@@ -61,6 +62,18 @@ export function applyChanges(state) {
   }
   setDynamicRegions(dyn);
   setDissolved(gone);
+  // The new states are countries of their own from the day they form (packs/sketches/Latent.js).
+  const formed = {};
+  for (const c of changes(state)) if (c.kind === 'secession' && SECESSIONS[c.province].code) formed[SECESSIONS[c.province].code] = c.year;
+  setFormed(formed);
+  const indep = { ...(state.world?.independent ?? {}) };
+  for (const [code, year] of Object.entries(formed)) indep[code] = { year, of: Object.values(SECESSIONS).find((s) => s.code === code).cc };
+  setNewStates(indep);
+}
+/** The new state's city for one of its parent's (the same place, under the new flag), else its capital. */
+export function newStateCity(code, parentCity) {
+  const own = Object.values(FOREIGN_CITIES).filter((c) => c.country === code);
+  return own.find((c) => c.id === `${code.toLowerCase()}_${parentCity}`)?.id ?? own[0]?.id ?? null;
 }
 
 const done = (state, id) => changes(state).some((c) => c.id === id);
@@ -128,7 +141,17 @@ export const StateChangesModule = {
       const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : REINTEGRATIONS[c.id.split(':')[1]].name;
       ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: title, weight: 9, icon: '🗺️' });
       if (!mine) continue;
-      if (c.kind === 'secession') ctx.log(`🏳️ Independence Day: you live in ${SECESSIONS[c.province].state} now. New flags on the public buildings, a new seat at the UN; your old passport still works while the new one is printed.`, '🏳️', 'milestone');
+      if (c.kind === 'secession') {
+        const s = SECESSIONS[c.province];
+        // Its people are its citizens now (keeping the old passport too, as most new states allowed).
+        if (s.code) {
+          const city = newStateCity(s.code, here);
+          if (city) { state.character.countryId = s.code; state.character.regionId = city; }
+          const cit = (state.character.citizenships ??= [cc]);
+          if (!cit.includes(s.code)) cit.unshift(s.code);
+        }
+        ctx.log(`🏳️ Independence Day: you live in ${s.state} now, and you're one of its citizens: a new passport, a new flag on the public buildings, a new seat at the UN. You can keep your ${COUNTRIES[s.cc].demonym ?? 'old'} passport too.`, '🏳️', 'milestone');
+      }
       else if (c.kind === 'transfer') { ctx.log(`🤝 ${TRANSFERS[c.province].name} has joined ${COUNTRIES[TRANSFERS[c.province].to].name}. You're entitled to its citizenship, and most people take it.`, '🤝', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(TRANSFERS[c.province].to)) cit.push(TRANSFERS[c.province].to); }
       else if (c.kind === 'union') { const into = UNIONS[c.cc].into; ctx.log(`🗺️ ${COUNTRIES[c.cc].name} has ceased to exist as a state: it is part of ${COUNTRIES[into].name} now. You are a citizen of ${COUNTRIES[into].name}.`, '🗺️', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(into)) cit.push(into); }
       else ctx.log(`🕊️ ${REINTEGRATIONS[c.id.split(':')[1]].name}: the checkpoints come down.`, '🕊️', 'milestone');

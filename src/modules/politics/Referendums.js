@@ -25,7 +25,7 @@ import { setNewStates } from '../world/NewStates.js';
 import { euMemberIn } from '../world/EuMembership.js';
 import { stateIdOf } from '../life/Regions.js';
 import { abolish } from '../world/Houses.js';
-import { secedeProvince, changeQuestions, enact, changeTitle } from '../world/StateChanges.js';
+import { secedeProvince, changeQuestions, enact, changeTitle, applyChanges } from '../world/StateChanges.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const rec = (state) => { const r = ((state.world ??= {}).referendums ??= { held: {}, pending: [] }); r.later ??= []; return r; };
@@ -39,6 +39,7 @@ export function becomeIndependent(ctx, cc) {
   const of = AUTONOMOUS[cc]?.of ?? null;
   (state.world.independent ??= {})[cc] = { year: yearNow(state), of };
   setNewStates(state.world.independent);
+  applyChanges(state);
   const [form, leader] = NEW_FORM[cc] ?? ['a parliamentary democracy', 'the Prime Minister'];
   const w = (state.world.reforms ??= {});
   w[cc] = { ...(w[cc] ?? {}), kind: 'democracy', name: `independent ${cname(cc).replace(/^the /, '')}, ${form}`, leader, elections: 'free', press: 'free' };

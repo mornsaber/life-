@@ -528,6 +528,12 @@ const OTTOMAN_RULE = (name) => G({ kind: 'colony', name: `${name}, ruled from Co
 const TIMELINES = {
   // Self-governing territories, from the day they governed themselves.
   PR: [[9999, DEMO('the Commonwealth of Puerto Rico, a US territory', 'the Governor')]],
+  // States that exist only if this world makes them (packs/sketches/Latent.js).
+  XS: [[9999, DEMO('the Republic of Scotland', 'the First Minister')]], XW: [[9999, DEMO('Wales (Cymru), an independent country', 'the First Minister')]],
+  XQ: [[9999, DEMO('the sovereign State of Quebec', 'the Prime Minister of Quebec')]], XC: [[9999, DEMO('the Catalan Republic', 'the President of the Generalitat')]],
+  XF: [[9999, DEMO('the Republic of Flanders', 'the Prime Minister')]], XD: [[9999, OLIGARCHY('the Republic of Kurdistan', 'the President of Kurdistan')]],
+  XR: [[9999, OLIGARCHY('Republika Srpska, an independent state', 'the President of the Republic')]],
+
   PN: [[1838, PRECOLONIAL('Pitcairn Island, the Bounty mutineers\' settlement', 'John Adams, the last mutineer')], [9999, DEMO('the Pitcairn Islands, a British Overseas Territory', 'the Mayor')]],
   NU: [[1900, PRECOLONIAL('Niue, under its own patu-iki (king)', 'the patu-iki')], [9999, DEMO('Niue, in free association with New Zealand', 'the Premier')]],
   TK: [[1889, PRECOLONIAL('the Tokelau atolls, under their elders', 'the councils of elders (taupulega)')], [9999, DEMO('Tokelau, a New Zealand territory', 'the Ulu-o-Tokelau')]],

@@ -27,7 +27,7 @@ const year = (engine, state, pick = {}) => {
   state.prompts = [];
   state.stats.health = 95;
   engine.ageUp();
-  for (let i = 0; i < 8 && state.prompts.length; i++) {
+  for (let i = 0; i < 20 && state.prompts.length; i++) {
     const p = state.prompts[0];
     engine.resolvePrompt(p.id, pick[p.type] ?? p.options.find((o) => !o.disabled && o.tone !== 'danger')?.id ?? p.options[0].id);
   }

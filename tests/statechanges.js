@@ -16,6 +16,8 @@ import { sovereignIn } from '../src/modules/world/HistoricalData.js';
 import { secedeProvince, mergeCountry, transferProvince, reintegrate, changeQuestions } from '../src/modules/world/StateChanges.js';
 import { questionsHere } from '../src/modules/politics/Referendums.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
+import { bornIn, settleIn } from '../src/modules/world/Habitation.js';
+import { honoursSystem } from '../src/modules/world/HonoursOfTheDay.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (countryId, regionId, seed = 1) => {
@@ -35,9 +37,16 @@ t('Scotland leaves: two years on, Edinburgh is a new state with its own flag and
   assert.doesNotMatch(regimeHere(state).name ?? '', /Scotland/, 'not yet');
   live(engine, state, 2);
   assert.match(regimeHere(state).name, /Republic of Scotland/);
-  assert.equal(periodFlag(state, 'GB').id, 'scotland');
-  assert.match(periodCountryName(state, 'GB', COUNTRIES.GB.baseName), /Scotland/);
+  assert.equal(state.character.countryId, 'XS', 'a citizen of the new country, living in it');
+  assert.equal(state.character.regionId, 'xs_edinburgh');
+  assert.ok(state.character.citizenships.includes('XS') && state.character.citizenships.includes('GB'));
+  assert.equal(periodFlag(state, 'XS').img, 'XS');
+  assert.equal(COUNTRIES.XS.name, 'Scotland');
   assert.ok(said(state, /Independence Day/));
+  assert.ok(bornIn('XS', 2100) && settleIn('XS', 2100), 'others can move there now');
+  assert.ok(sovereignIn('XS', 2100), 'a sovereign state');
+  assert.match(honoursSystem(state)[0].via, /GB|XS/);
+  state.character.countryId = 'GB';
   state.character.regionId = 'london';
   assert.doesNotMatch(regimeHere(state).name ?? '', /Scotland/);
 });
@@ -72,6 +81,7 @@ t('a head of government can put it to the people', () => {
 });
 t('a new life starts from history\'s map again', () => {
   const { state } = life('GB', 'edinburgh');
+  assert.ok(!bornIn('XS', 2100) && !settleIn('XS', 2100), 'Scotland is not a state in this world');
   assert.doesNotMatch(regimeHere(state).name ?? '', /Republic of Scotland/);
 });
 console.log(`statechanges: ${n} passed`);

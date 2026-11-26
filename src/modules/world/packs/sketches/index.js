@@ -8,5 +8,6 @@ import * as Territories from './Territories.js';
 import * as Dependencies from './Dependencies.js';
 import * as Overseas from './Overseas.js';
 import * as Remote from './Remote.js';
+import * as Latent from './Latent.js';
 
-export const SKETCHES = [Europe, Eurasia, Africa, Americas, Pacific, Territories, Dependencies, Overseas, Remote].flatMap((m) => Object.values(m));
+export const SKETCHES = [Europe, Eurasia, Africa, Americas, Pacific, Territories, Dependencies, Overseas, Remote, Latent].flatMap((m) => Object.values(m));
