@@ -52,6 +52,7 @@ const tests = {
     assert.match(why(s, 'de_borderPatrol'), /Not founded|not|Needs/i);
   },
   'NATO and the EU by year'() {
+    life('EE', 2020); // our history (a 1938 world, still waiting on 1991, would say not yet)
     assert.ok(!memberIn(NATO_MEMBERS, 'EE', 1965) && memberIn(NATO_MEMBERS, 'EE', 2010));
     assert.ok(!memberIn(EU_MEMBERS, 'ES', 1980) && memberIn(EU_MEMBERS, 'ES', 1990));
     assert.ok(memberIn(NATO_MEMBERS, 'GB', 1950));

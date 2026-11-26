@@ -11,7 +11,7 @@
  *   periodCurrency    the money of the day (ISO 4217 history and official conversion rates)
  *   warsStarting / warsEnding   Correlates of War wars our countries fought
  */
-import { independentSince, dynamicRegionState, dissolvedInto, breakupSovereign } from './NewStates.js';
+import { independentSince, dynamicRegionState, dissolvedInto, breakupSovereign, regionHistoryYear } from './NewStates.js';
 import { REGIME_YEARS } from './data/regimes.js';
 import { DEMOGRAPHY, DEMOGRAPHY_YEARS } from './data/demography.js';
 import { US_NAMES_BY_DECADE } from './data/names.js';
@@ -209,9 +209,12 @@ export const REGION_STATES = {
   simferopol: [R(2014, null, CRIMEA)], sevastopol: [R(2014, null, CRIMEA)],
 };
 /** The state a city belonged to in a year, or null. */
+/** The East German cities, whose GDR years follow this world's fall of the Wall (History.js sovietCollapse). */
+export const GDR_CITIES = () => Object.keys(REGION_STATES).filter((id) => REGION_STATES[id].some((r) => r.name === GDR[0]));
 export function regionStateAt(regionId, year) {
   const redrawn = dynamicRegionState(regionId, year);
   if (redrawn !== undefined) return redrawn;
+  year = regionHistoryYear(regionId, year);
   return (REGION_STATES[regionId] ?? []).find((r) => year >= r.from && (r.to == null || year < r.to)) ?? null;
 }
 

@@ -14,7 +14,7 @@
  * A life started today has all of this behind it: nothing here runs for it.
  */
 import { Random, clamp } from '../../core/Random.js';
-import { BREAKUPS, setBreakups } from './NewStates.js';
+import { BREAKUPS, setBreakups, setMembershipShift, SATELLITES } from './NewStates.js';
 import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
@@ -39,7 +39,7 @@ import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
 import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
-import { warsStarting, recordedWar, warIntensity, demographyAt } from './HistoricalData.js';
+import { warsStarting, recordedWar, warIntensity, demographyAt, GDR_CITIES } from './HistoricalData.js';
 import { postAbroad, postingOf, endPosting, liveAtPosting, settleAtPosting } from './Posting.js';
 /** Your own country, while posted abroad too. */
 const homeCc = (state) => postingOf(state)?.home?.countryId ?? state.character.countryId ?? 'US';
@@ -640,7 +640,27 @@ function breakupLayer(state) {
   }
   return out;
 }
-export const sync = (state) => { setBreakups(breakupLayer(state)); setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); setEraState(state); };
+/** Years later than ours each country could join the EU and NATO (world/NewStates.js membershipShift). */
+function membershipShifts(state) {
+  const out = {};
+  for (const [cc, h] of Object.entries(breakupLayer(state))) if (!BREAKUPS.velvetDivorce[cc]) out[cc] = h.here - h.ours;
+  const era = state.era;
+  if (era && era.start <= EVENTS.sovietCollapse.at) {
+    const rec = era.events?.sovietCollapse;
+    const d = rec ? rec.year - EVENTS.sovietCollapse.at : Infinity;
+    for (const cc of SATELLITES) out[cc] = Math.max(out[cc] ?? 0, d);
+  }
+  return out;
+}
+/** East Germany ends the year before this world's Soviet collapse (1990, in ours). */
+function heldRegions(state) {
+  const era = state.era;
+  if (!era || era.start > EVENTS.sovietCollapse.at) return {};
+  const rec = era.events?.sovietCollapse;
+  const here = rec ? rec.year - 1 : Infinity;
+  return Object.fromEntries(GDR_CITIES().map((id) => [id, { ours: 1990, here }]));
+}
+export const sync = (state) => { setBreakups(breakupLayer(state), heldRegions(state)); setMembershipShift(membershipShifts(state)); setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); setEraState(state); };
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {

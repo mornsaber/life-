@@ -1,6 +1,7 @@
 /**
- * EEC/EU membership by year (no imports: safe for any module to use).
+ * EEC/EU membership by year (imports only world/NewStates.js, which imports nothing: safe for any module to use).
  */
+import { membershipShift } from './NewStates.js';
 /** Membership of the EEC/EU by year, for record sharing (Britain until it left in 2020). */
 const EU_YEARS = {
   BE: [1958], DE: [1958], FR: [1958], IT: [1958], LU: [1958], NL: [1958], DK: [1973], IE: [1973], GB: [1973, 2021], GR: [1981], ES: [1986], PT: [1986], AT: [1995], FI: [1995], SE: [1995],
@@ -9,4 +10,9 @@ const EU_YEARS = {
 /** Membership a referendum in this world changed: { [cc]: [from, until?] } (world/Referendums.js). */
 let OVERRIDE = {};
 export const setEuOverrides = (o = {}) => { OVERRIDE = o ?? {}; };
-export const euMemberIn = (cc, y) => { const m = OVERRIDE[cc] ?? EU_YEARS[cc]; return Boolean(m) && y >= m[0] && !(m[1] <= y); };
+export const euMemberIn = (cc, y) => {
+  const m = OVERRIDE[cc] ?? EU_YEARS[cc];
+  // A world where the Wall stood longer: the East joins later, or not yet (world/NewStates.js).
+  const late = OVERRIDE[cc] ? 0 : membershipShift(cc);
+  return Boolean(m) && y >= m[0] + late && !(m[1] <= y);
+};

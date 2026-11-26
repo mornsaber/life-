@@ -53,7 +53,7 @@ export const WORLD_EPISODES = [
       { id: 'stay', label: '🍞 Stay and endure', effect: { log: 'You lived through the siege on the bread ration and wallpaper paste.', icon: '🍞', stats: { health: -20, happiness: -15 }, risk: [0.25, 'You died in the siege winter.', null, 0, { die: 'starvation in the siege' }] } },
       { id: 'road', label: '🧊 Leave over the Road of Life', effect: { log: 'You were evacuated over the frozen lake in the back of a lorry.', icon: '🧊', stats: { health: -8 }, risk: [0.08, 'The lorry went through the ice.', null, 0, { die: 'drowned on the Road of Life' }] } },
     ] },
-  { id: 'vouchers', icon: '📜', title: 'Privatisation Vouchers', when: (s, y) => cc(s) === 'RU' && hap(s, 'sovietCollapse') && y >= 1992 && y <= 1994 && age(s) >= 18,
+  { id: 'vouchers', icon: '📜', title: 'Privatisation Vouchers', when: (s, y) => cc(s) === 'RU' && hap(s, 'sovietCollapse') && y >= s.era.events.sovietCollapse.year + 1 && y <= s.era.events.sovietCollapse.year + 3 && age(s) >= 18,
     text: 'Every citizen gets a voucher for a share of the nation\'s factories. Men in leather jackets are buying them for a bottle of vodka.',
     options: [
       { id: 'sell', label: '🍾 Sell it for cash', effect: { log: 'You sold your voucher for a few thousand roubles. Someone else became an oligarch.', icon: '🍾', earn: 30 } },

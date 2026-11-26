@@ -34,7 +34,9 @@ import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
 import { eraFlag, START_ERAS, periodText } from '../src/modules/world/Eras.js';
 import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
 import { periodCountryName as pcn, periodFlag as pflag } from '../src/modules/world/Eras.js';
-import { sovereignIn as sovIn } from '../src/modules/world/HistoricalData.js';
+import { sovereignIn as sovIn, regionStateAt as regionAt } from '../src/modules/world/HistoricalData.js';
+import { euMemberIn as euMember } from '../src/modules/world/EuMembership.js';
+import { memberIn as natoIn, NATO_MEMBERS as NATO_LIST } from '../src/modules/content/packs/careers-intl-orgs.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { holySeeOf } from '../src/modules/world/HolySee.js';
 import { currentYear } from '../src/core/State.js';
@@ -59,6 +61,30 @@ function live(engine, state, years) {
 const allText = (state) => state.log.flatMap((b) => b.entries.map((e) => e.text));
 
 const tests = {
+  'where the Wall never fell: a Soviet Estonia keeps the ruble and stays out of the EU and NATO; Leipzig stays in the GDR'() {
+    const { engine, state } = life({ countryId: 'EE', startYear: 1975 });
+    (state.era.skipped ??= []).push('sovietCollapse');
+    state.character.age = 35;
+    engine.hydrate(state);
+    assert.equal(sovIn('EE', 2010), false);
+    assert.equal(euMember('EE', 2010), false);
+    assert.equal(euMember('PL', 2010), false, 'Poland is still in the bloc');
+    assert.equal(natoIn(NATO_LIST, 'EE', 2010), false);
+    assert.match(pcn(state, 'EE', 'Estonia'), /Soviet/);
+    assert.equal(regionAt('leipzig', 2010)?.name, 'the German Democratic Republic (East Germany)');
+    const late = life({ countryId: 'EE', startYear: 1975 });
+    late.state.era.events.sovietCollapse = { year: 2000 };
+    late.state.character.age = 35;
+    late.engine.hydrate(late.state);
+    assert.equal(sovIn('EE', 2005), true);
+    assert.equal(euMember('EE', 2010), false, 'nine years late: 2013');
+    assert.equal(euMember('EE', 2014), true);
+    assert.equal(regionAt('leipzig', 1995)?.name, 'the German Democratic Republic (East Germany)');
+    assert.equal(regionAt('leipzig', 2000)?.name ?? null, null, 'reunified');
+    const today = life({ countryId: 'EE' });
+    today.engine.hydrate(today.state);
+    assert.equal(euMember('EE', 2010), true, 'our history, for a life begun today');
+  },
   'history\'s breakups can come early, late or not at all; after our date they stand'() {
     const { engine, state } = life({ countryId: 'HR', startYear: 1975 });
     (state.era.skipped ??= []).push('yugoslaviaBreakup', 'velvetDivorce');

@@ -13,6 +13,7 @@
  *
  * state.era = { start, events: { [id]: { year, ended?, outcome? } }, colonies: { [cc]: { done: [stage…], since, pressure, joined, loyal } } }
  */
+import { historyYear } from './NewStates.js';
 import { PERIOD_RUNGS, COUNTRY_RUNGS, PROFESSION_RUNGS } from './PeriodRungs.js';
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
@@ -829,7 +830,7 @@ export function periodCurrency(cc, currency) {
     if (local?.currency && currency) { const [code, symbol, name, perModern, fx] = local.currency; const c = { code, symbol, name, perUsd: perModern == null ? null : currency.perUsd * perModern, perModern, fx }; return ERA_YEAR >= PRESENT || ERA_YEAR == null ? { ...currency, code, symbol, name, perUsd: perModern == null ? currency.perUsd : currency.perUsd * perModern } : ofTheDay(c, currency); }
   }
   if (ERA_YEAR >= PRESENT) return currency;
-  return ofTheDay(dataCurrency(cc, ERA_YEAR, currency), currency);
+  return ofTheDay(dataCurrency(cc, historyYear(cc, ERA_YEAR), currency), currency);
 }
 /**
  * Money of the day: before 1914 (or where no fixed rate links an old currency to today's), today's
@@ -1364,7 +1365,7 @@ export function periodCountryName(state, cc, name) {
     UA: soviet('the Ukrainian SSR') ?? (y < 1917 ? 'the Russian Empire (Ukraine)' : null), BY: soviet('the Byelorussian SSR'), KZ: soviet('the Kazakh SSR'), UZ: soviet('the Uzbek SSR'), GE: soviet('the Georgian SSR'),
     AM: soviet('the Armenian SSR'), AZ: soviet('the Azerbaijan SSR'), EE: y >= 1940 ? soviet('the Estonian SSR') : y < 1918 ? 'the Russian Empire (Estonia)' : null, LV: y >= 1940 ? soviet('the Latvian SSR') : null, LT: y >= 1940 ? soviet('the Lithuanian SSR') : null,
     FI: y < 1917 ? 'the Grand Duchy of Finland (Russian Empire)' : null,
-    DE: !hap(state, 'germanUnification') ? 'Prussia (the German Confederation)' : y < 1919 ? 'the German Empire' : y < 1933 ? 'the Weimar Republic' : y < 1945 ? 'Nazi Germany' : y < 1949 ? 'Allied-occupied Germany' : y < 1990 ? 'West Germany' : null,
+    DE: !hap(state, 'germanUnification') ? 'Prussia (the German Confederation)' : y < 1919 ? 'the German Empire' : y < 1933 ? 'the Weimar Republic' : y < 1945 ? 'Nazi Germany' : y < 1949 ? 'Allied-occupied Germany' : !brokeUp(state, 'sovietCollapse', 1991, y + 1) ? 'West Germany' : null,
     IT: !hap(state, 'italianUnification') ? 'the Kingdom of Sardinia (the Italian states)' : y < 1946 ? 'the Kingdom of Italy' : null,
     JP: !hap(state, 'meiji') ? 'Tokugawa Japan' : y < 1947 ? 'the Empire of Japan' : null,
     CN: !hap(state, 'xinhai') ? 'Qing China' : !hap(state, 'prc') ? 'the Republic of China' : null,

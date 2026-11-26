@@ -27,7 +27,7 @@ import { citizenshipsOf } from '../../world/Countries.js';
 import { eraYear } from '../../world/Eras.js';
 import { sovereignIn } from '../../world/HistoricalData.js';
 import { euMemberIn } from '../../world/EuMembership.js';
-import { newStateMember } from '../../world/NewStates.js';
+import { newStateMember, membershipShift } from '../../world/NewStates.js';
 
 /** EU and NATO members (citizenship gates). */
 /** Every country that has been in the EEC/EU (Britain 1973–2020); memberIn() says who was in, when. */
@@ -68,7 +68,7 @@ export function orgMember(org, cc, y = eraYear()) {
 export const citizenOf = (state, org) => citizenshipsOf(state).some((c) => orgMember(org, c));
 
 /** Was this country a member in the year being played? */
-export const memberIn = (list, cc, y = eraYear()) => (list === EU_MEMBERS ? euMemberIn(cc, y) : list.includes(cc) && !(((list === NATO_MEMBERS ? NATO_JOINED : {})[cc] ?? 0) > y));
+export const memberIn = (list, cc, y = eraYear()) => (list === EU_MEMBERS ? euMemberIn(cc, y) : list.includes(cc) && !(((list === NATO_MEMBERS ? (NATO_JOINED[cc] ?? 0) + (NATO_JOINED[cc] > 1990 ? membershipShift(cc) : 0) : 0)) > y));
 export const citizenOfAny = (state, list) => citizenshipsOf(state).some((c) => memberIn(list, c));
 
 export const passed = (state, comp) => Boolean(state.intlOrgs?.competitions?.[comp]?.passed);

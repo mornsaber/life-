@@ -22,6 +22,10 @@ const W = (ccs, from, to, min = 16, max = 99) => (s, y) => ccs.includes(cc(s)) &
 /** …and only if the timeline's event has happened in this world. */
 const WH = (id, ccs, from, to, min = 16) => (s, y) => hap(s, id) && W(ccs, from, to, min)(s, y);
 const L = (log, icon, more = {}) => ({ log, icon, ...more });
+/** The year this world's breakup came (History.js), or null: our 1991 for a life begun after it. */
+const since = (s, id) => s.era?.events?.[id]?.year ?? null;
+/** In one of these countries, from–to years after this world's event, at least this old. */
+const WA = (id, ccs, from, to, min = 16) => (s, y) => { const e = since(s, id); return e != null && ccs.includes(cc(s)) && y >= e + from && y <= e + to && age(s) >= min; };
 
 const EASTERN_BLOC = ['PL', 'HU', 'CZ', 'SK', 'RO', 'BG', 'DE'];
 const POST_SOVIET = ['RU', 'UA', 'BY', 'KZ', 'UZ', 'KG', 'TJ', 'TM', 'AZ', 'AM', 'GE', 'MD', 'EE', 'LV', 'LT'];
@@ -299,13 +303,13 @@ export const REGIONAL_EPISODES = [
       { id: 'signs', label: '🪧 Take down the road signs', effect: L('You took down the road signs so the tanks got lost, and argued with Russian boys in the square.', '🪧', { stats: { stress: 6 } }) },
       { id: 'leave', label: '🚂 Leave while the border is open', effect: L('You left for Vienna while the border was still open.', '🚂', { emigrate: 'AT' }) },
     ] },
-  { id: 'eb.wall', icon: '🧱', title: 'The Wall Comes Down', when: W(EASTERN_BLOC, 1989, 1990, 10),
+  { id: 'eb.wall', icon: '🧱', title: 'The Wall Comes Down', when: WA('sovietCollapse', EASTERN_BLOC, 0, 1, 10),
     text: 'The borders are opening. In Berlin people are dancing on the Wall; in Prague they\'re jangling keys in Wenceslas Square.',
     options: [
       { id: 'cross', label: '🎉 Go and see it', effect: L('You crossed where nobody had crossed for forty years, and someone gave you a banana.', '🎉', { stats: { happiness: 10 } }) },
       { id: 'wait', label: '🤔 Wait and see', effect: L('You waited to see what it meant. It meant everything changed.', '🤔') },
     ] },
-  { id: 'ps.vouchers', icon: '🧾', title: 'Shock Therapy', when: W([...POST_SOVIET.filter((c) => c !== 'RU'), 'PL', 'RO', 'BG'], 1991, 1995, 18),
+  { id: 'ps.vouchers', icon: '🧾', title: 'Shock Therapy', when: WA('sovietCollapse', [...POST_SOVIET.filter((c) => c !== 'RU'), 'PL', 'RO', 'BG'], 0, 4, 18),
     text: 'Prices have been freed overnight. Your savings are worth a loaf of bread, and the state factory hasn\'t paid wages in months.',
     options: [
       { id: 'trade', label: '🧳 Become a shuttle trader', effect: L('You carried bags of goods from Turkey and China to sell in the market. It kept the family going.', '🧳', { earn: 300, stats: { stress: 6 } }) },
@@ -317,13 +321,13 @@ export const REGIONAL_EPISODES = [
       { id: 'leave', label: '🚌 Get the children away', effect: L('You got the children on a bus to relatives far away.', '🚌', { stats: { stress: 8 } }) },
       { id: 'stay', label: '🏠 Believe the radio', effect: L('You believed the radio. Your thyroid did not.', '🏠', { stats: { health: -8 } }) },
     ] },
-  { id: 'ps.balticWay', icon: '🤝', title: 'The Baltic Way', when: W(['EE', 'LV', 'LT'], 1989, 1989, 8),
+  { id: 'ps.balticWay', icon: '🤝', title: 'The Baltic Way', when: (s, y) => W(['EE', 'LV', 'LT'], 1989, 1989, 8)(s, y) && !(since(s, 'sovietCollapse') < y),
     text: 'Two million people are going to hold hands in a human chain from Tallinn to Vilnius.',
     options: [
       { id: 'chain', label: '🤝 Join the chain', effect: L('You held hands with strangers on the road for fifteen minutes, and sang.', '🤝', { stats: { happiness: 8 } }) },
     ] },
   // ---- Yugoslavia ----
-  { id: 'yu.war', icon: '💥', title: 'The War', when: W(YUGOSLAV, 1991, 1999, 12),
+  { id: 'yu.war', icon: '💥', title: 'The War', when: WA('yugoslaviaBreakup', YUGOSLAV, 0, 8, 12),
     text: 'Yugoslavia is breaking apart, and neighbours have become enemies. The shelling has reached your town.',
     options: [
       { id: 'flee', label: '🚌 Get out', effect: L('You got out on a convoy, with one bag, and became a refugee in Germany.', '🚌', { emigrate: 'DE' }) },
