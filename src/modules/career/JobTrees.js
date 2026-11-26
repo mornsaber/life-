@@ -169,8 +169,12 @@ for (const [cc, byProfession] of Object.entries(PROFESSION_TITLES)) {
     (LOCAL_VARIANTS[id] ??= {})[cc] = { ...prior, levels: prior.levels.map((l) => (titles[l.id] ? { ...l, title: titles[l.id] } : l)) };
   }
 }
+/** Each career as defined, before any country's own titles: for checks that go by a rank's standard name. */
+const BASE_PROFESSIONS = {};
+export const baseProfession = (id) => BASE_PROFESSIONS[id] ?? PROFESSIONS[id] ?? NATIONAL_PROFESSIONS[id] ?? null;
 for (const [id, byCountry] of Object.entries(LOCAL_VARIANTS)) {
   const base = PROFESSIONS[id];
+  BASE_PROFESSIONS[id] = base;
   Object.defineProperty(PROFESSIONS, id, { get: () => byCountry[currentCountry()] ?? base, enumerable: true, configurable: true });
 }
 

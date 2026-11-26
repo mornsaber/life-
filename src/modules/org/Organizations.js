@@ -34,7 +34,7 @@ import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, bodyType, businessOrgType } from './OrgTypes.js';
-import { getProfession, professionsFor } from '../career/JobTrees.js';
+import { getProfession, professionsFor, baseProfession } from '../career/JobTrees.js';
 import { localAgency, serviceAuthority, serviceBody, isNationalService } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS, layerExists } from './Vacancies.js';
@@ -539,7 +539,7 @@ export function deptCeiling(org, deptId, profession, size) {
   ladder.forEach((l, i) => {
     if (i >= orgTop) return;
     // The rung's own name as well as the one it goes by here (a Chief Executive is "Managing Director" in some places and years).
-    const base = profession?.levels?.find((x) => x.id === l.id)?.title ?? l.title;
+    const base = (baseProfession(profession?.id) ?? profession)?.levels?.find((x) => x.id === l.id)?.title ?? l.title;
     // The era's name for a chief executive (Managing Director, Senior Partner) heads the firm when it's the ladder's top rung.
     const eraHead = l.grade === topGrade && /^(?:managing director|senior partner)$/i.test(l.title.trim());
     if (sameTitle(l.title, orgHead?.title) || eraHead || [l.title, base].some((n) => ORG_TOP.test(n) && !UNDER.test(n))) orgTop = i;

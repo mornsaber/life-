@@ -11,6 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const quick = process.argv.includes('--quick');
 const AUDITS = [
   ['Organisational units by year', 'orgunits.mjs', ['--strict']],
+  ['Org charts across careers', 'orgchart-audit.mjs', quick ? ['--quick', '--strict'] : ['--strict']],
   ['Rank badges against titles', 'insignia-audit.mjs', []],
   ['Degree gates before 1900', 'degree-gates.mjs', ['--strict']],
   ['American words abroad', 'foreign-terms.mjs', quick ? ['GB:1960', 'DE:1990', 'IN:1990', '--strict'] : ['--strict']],
@@ -21,7 +22,7 @@ for (const [name, file, args] of AUDITS) {
   const t0 = Date.now();
   const r = spawnSync(process.execPath, [join(here, file), ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   const lines = (r.stdout ?? '').trim().split('\n');
-  const summary = lines.filter((l) => /flags\.|jobs looked at|lives|issues/.test(l)).slice(-2).join(' · ') || lines.at(-1) || '';
+  const summary = lines.filter((l) => /flags\.|jobs looked at|charts looked at|lives|issues/.test(l)).slice(-2).join(' · ') || lines.at(-1) || '';
   const ok = r.status === 0;
   if (!ok) failed++;
   console.log(`${ok ? '✔' : '✘'} ${name} (${((Date.now() - t0) / 1000).toFixed(0)}s): ${summary}`);
