@@ -46,6 +46,19 @@ export const REINTEGRATIONS = {
   transnistria: { cc: 'MD', cities: ['tiraspol'], name: 'Moldova, whole again', support: 0.3, from: 1992 },
 };
 
+/**
+ * What a war's end does to the map, by the war (world/War.js theatres) and how it ended. A conquest
+ * puts cities under the victor: its flag, its rulers, its money; a whole country conquered is gone.
+ */
+export const WAR_MAP = {
+  koreanWar: { victory: { union: 'KP' }, defeat: { id: 'southKorea', ccs: ['KR'], into: 'KP', name: 'South Korea under the North\'s occupation', leader: 'the Workers\' Party of Korea', kind: 'authoritarian', flag: 'KP', currency: ['KPW', '₩', 'North Korean won', 7, null] } },
+  loc: { defeat: { id: 'kashmir', cities: ['srinagar'], name: 'Pakistani-held Kashmir', leader: 'the Pakistani administration in Muzaffarabad', kind: 'authoritarian', flag: 'PK', currency: ['PKR', 'Rs ', 'Pakistani rupee', 3.4, null] } },
+  natoEast: { defeat: { id: 'baltics', ccs: ['EE', 'LV', 'LT'], into: 'RU', name: 'the Russian-occupied Baltic states', leader: 'the Russian-installed administration', kind: 'authoritarian', flag: 'RU', currency: ['RUB', '₽', 'Russian ruble', 90, null] } },
+  taiwan: { defeat: { id: 'taiwan', ccs: ['TW'], into: 'CN', name: 'Taiwan under the People\'s Republic', leader: 'the Chinese Communist Party', kind: 'authoritarian', flag: 'CN', currency: ['CNY', '¥', 'renminbi', 0.23, null] } },
+  mindanao: { rebels: { id: 'bangsamoro', cities: ['davao', 'mati', 'samal'], name: 'the rebel-held zone of Mindanao (the Bangsamoro fighters\' territory)', leader: 'the rebel command', kind: 'authoritarian', flag: null } },
+};
+const OUTCOME = (o) => (/clear victory|insurgency broken/.test(o) ? 'victory' : /defeat and lost territory/.test(o) ? 'defeat' : /armed groups in control/.test(o) ? 'rebels' : null);
+
 const citiesOf = (cc, province) => Object.values(FOREIGN_CITIES).filter((c) => c.country === cc && (!province || c.state === province)).map((c) => c.id);
 const changes = (state) => ((state.world ??= {}).stateChanges ??= []);
 
@@ -58,6 +71,13 @@ export function applyChanges(state) {
     if (c.kind === 'secession') { const s = SECESSIONS[c.province]; row(citiesOf(s.cc, c.province), { from: c.year, to: null, name: s.state, leader: s.leader, kind: 'democracy', flag: s.flag, currency: s.currency ?? null }); }
     if (c.kind === 'transfer') { const s = TRANSFERS[c.province]; row(citiesOf(s.cc, c.province), { from: c.year, to: null, name: s.state, leader: s.leader, kind: 'democracy', flag: s.flag, currency: s.currency ?? null }); }
     if (c.kind === 'union') { const u = UNIONS[c.cc]; gone[c.cc] = { year: c.year, into: u.into }; row(citiesOf(c.cc), { from: c.year, to: null, name: u.name, leader: u.leader, kind: 'democracy', flag: u.flag, currency: u.currency ?? null }); }
+    if (c.kind === 'conquest') {
+      const w = Object.values(WAR_MAP).flatMap((m) => Object.values(m)).find((x) => x.id === c.key);
+      if (w) {
+        row(w.cities ?? w.ccs.flatMap((cc) => citiesOf(cc)), { from: c.year, to: null, name: w.name, leader: w.leader, kind: w.kind, flag: w.flag, currency: w.currency ?? null });
+        for (const cc of w.ccs ?? []) gone[cc] = { year: c.year, into: w.into };
+      }
+    }
     if (c.kind === 'reintegration') { const r = REINTEGRATIONS[c.id.split(':')[1]]; row(r.cities, { from: c.year, to: null, clear: true }); }
   }
   setDynamicRegions(dyn);
@@ -124,10 +144,26 @@ function roll(state, y, salt) {
 /** The year-by-year odds of each change happening on its own, after the present. */
 const DRIFT = 0.003;
 
+/** A war's end redraws the map (WAR_MAP). */
+function warEnded(ctx, war, outcome) {
+  const how = OUTCOME(outcome ?? '');
+  const m = WAR_MAP[war?.id]?.[how];
+  if (!m) return;
+  const { state } = ctx;
+  if (m.union) { mergeCountry(ctx, m.union, 0); return; }
+  if (!redraw(ctx, { id: `conquest:${m.id}`, kind: 'conquest', key: m.id, year: yearNow(state), announced: true })) return;
+  const here = state.character.regionId;
+  const cc = state.character.countryId ?? 'US';
+  const mine = (m.cities ?? []).includes(here) || (m.ccs ?? []).includes(cc);
+  if (mine) ctx.log(`🏴 The war is lost, and your home with it: you live in ${m.name} now.`, '🏴', 'bad');
+  ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: `The map changes: ${m.name}`, weight: 9, icon: '🗺️' });
+}
+
 export const StateChangesModule = {
   id: 'stateChanges',
   order: 34.5,
   init(state) { applyChanges(state); },
+  setup(engine) { engine.bus.on('world:peace', ({ ctx, war, outcome }) => { if (ctx) warEnded(ctx, war, outcome); }); },
   onAgeUp(ctx) {
     const { state } = ctx;
     const y = yearNow(state);
@@ -135,7 +171,7 @@ export const StateChangesModule = {
     const here = state.character.regionId;
     // The day it happens.
     for (const c of changes(state)) {
-      if (c.year !== y || c.announced) continue;
+      if (c.year !== y || c.announced || c.kind === 'conquest') continue;
       c.announced = true;
       const mine = c.kind === 'union' ? c.cc === cc : c.kind === 'reintegration' ? REINTEGRATIONS[c.id.split(':')[1]].cities.includes(here) : FOREIGN_CITIES[here]?.state === c.province && cc === (SECESSIONS[c.province] ?? TRANSFERS[c.province]).cc;
       const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : REINTEGRATIONS[c.id.split(':')[1]].name;

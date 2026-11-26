@@ -84,4 +84,21 @@ t('a new life starts from history\'s map again', () => {
   assert.ok(!bornIn('XS', 2100) && !settleIn('XS', 2100), 'Scotland is not a state in this world');
   assert.doesNotMatch(regimeHere(state).name ?? '', /Republic of Scotland/);
 });
+t('a war\'s end can redraw the map', () => {
+  const tw = life('TW', 'taipei');
+  tw.ctx.emit('world:peace', { war: { id: 'taiwan' }, outcome: 'ended in defeat and lost territory' });
+  assert.match(regimeHere(tw.state).name, /People's Republic/);
+  assert.equal(periodFlag(tw.state, 'TW').img, 'CN');
+  assert.equal(sovereignIn('TW', 2200), false);
+  assert.ok(said(tw.state, /The war is lost/));
+  const kr = life('KR', 'seoul');
+  kr.ctx.emit('world:peace', { war: { id: 'koreanWar' }, outcome: 'ended in a clear victory' });
+  assert.ok(kr.state.world.stateChanges.some((c) => c.id === 'union:KP'), 'victory reunifies Korea');
+  const ph = life('PH', 'davao');
+  ph.ctx.emit('world:peace', { war: { id: 'mindanao' }, outcome: 'ended in a deal that left armed groups in control of territory' });
+  assert.match(regimeHere(ph.state).name, /rebel-held/);
+  const gb = life('GB', 'london');
+  gb.ctx.emit('world:peace', { war: { id: 'natoEast' }, outcome: 'ended in a clear victory' });
+  assert.equal(gb.state.world.stateChanges.length, 0, 'a victory far away changes nothing');
+});
 console.log(`statechanges: ${n} passed`);
