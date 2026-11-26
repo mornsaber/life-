@@ -36,6 +36,9 @@ import { addLevelGate, leaveJob } from './CareerEngine.js';
 
 export { compose, VOCATIONS, packFor, vocationOf, peekVocation, setVocationsEnabled } from './vocations/registry.js';
 import { VOCATIONS, packFor, vocationOf, peekVocation } from './vocations/registry.js';
+import { registerLetters } from '../world/Honours.js';
+/** Letters a course gives for life (silk: KC or QC), for the post-nominals (world/Honours.js). */
+registerLetters((state) => Object.values(VOCATIONS).flatMap((pack) => (pack.courses ?? []).filter((c) => c.letters && peekVocation(state, pack).courses[c.id] != null).map((c) => c.letters(state))));
 
 /**
  * The vocations' own random stream (a seed kept in the save), so adding a pack never shifts the

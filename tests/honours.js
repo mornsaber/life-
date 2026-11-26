@@ -30,6 +30,20 @@ const grandee = (state) => {
 const tier = (cc, id) => ORDERS[cc].tiers.find((t) => t.id === id);
 
 const tests = {
+  'post-nominals in their order of precedence: one set per order, the DSO between CBE and LVO, no letters for a foreigner\'s honorary award, silk and the seat last'() {
+    const { state } = life();
+    state.honors = [];
+    addHonor(state, { id: 'm.mc', source: 'military', name: 'Military Cross', post: 'MC', precedence: 20 });
+    addHonor(state, { id: 'o.mbe', source: 'order', country: 'GB', order: 'Order of the British Empire', grade: 0, name: 'MBE', post: 'MBE' });
+    addHonor(state, { id: 'm.dso', source: 'military', name: 'DSO', post: 'DSO', order: 'Distinguished Service Order', grade: 0, precedence: 10 });
+    addHonor(state, { id: 'o.cvo', source: 'order', country: 'GB', order: 'Royal Victorian Order', grade: 2, name: 'CVO', post: 'CVO' });
+    addHonor(state, { id: 'm.obe', source: 'military', name: 'OBE (Military)', post: 'OBE', order: 'Order of the British Empire', grade: 1, precedence: 30 });
+    addHonor(state, { id: 'o.fr', source: 'order', country: 'FR', order: 'Légion d\'honneur', grade: 0, name: 'Chevalier', post: 'LH' });
+    assert.equal(postNominals(state), 'CVO, DSO, OBE, MC');
+    state.vocation = { law: { courses: { silk: 50 }, inCourse: null, postings: [], awards: [], record: [], history: ['silk'] } };
+    state.politics.office = { id: 'gb_mp' };
+    assert.match(postNominals(state), /MC, (KC|QC), MP$/);
+  },
   'a knighthood is offered first; declining it leaves you plain Mr, and it isn\'t offered again for years'() {
     const { engine, state, ctx } = life();
     grandee(state);

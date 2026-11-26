@@ -437,16 +437,45 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
   return t;
 }
 
-/** Post-nominal letters from the orders you hold (highest grade of each order). */
+/**
+ * The order letters are written in (the British and Commonwealth order of wear, with each realm's
+ * own order beside its peers): the VC and GC first, then the Garter and the Thistle, the national
+ * orders' top grades, the Bath and the OM, knighthoods, companionships, the DSO between the CBE and
+ * the LVO, then OBE and MBE, then the decorations and medals for gallantry and service.
+ */
+const LETTER_ORDER = ['VC', 'GC', 'CV', 'KG', 'LG', 'KT', 'LT', 'KP', 'AK', 'AD', 'AC', 'CC', 'ONZ', 'GNZM', 'GCB', 'OM', 'GCSI', 'GCMG', 'GCIE', 'GCVO', 'GBE', 'CH',
+  'KCB', 'DCB', 'KCSI', 'KCMG', 'DCMG', 'KCIE', 'KCVO', 'DCVO', 'KBE', 'DBE', 'AO', 'OC', 'CMM', 'KNZM', 'DNZM', 'CNZM', 'CB', 'CSI', 'CMG', 'CIE', 'CVO', 'CBE', 'DSO',
+  'LVO', 'OBE', 'AM', 'CM', 'OMM', 'ONZM', 'ISO', 'MVO', 'MBE', 'OAM', 'MMM', 'MNZM', 'CGC', 'SC', 'SG', 'SMV', 'RRC', 'DSC', 'MC', 'DFC', 'AFC', 'MSC', 'CSC', 'ARRC',
+  'DCM', 'CGM', 'GM', 'MG', 'MMV', 'DSM', 'MM', 'DFM', 'AFM', 'QGM', 'KPM', 'QPM', 'QFSM', 'KFSM', 'RVM', 'BEM'];
+const letterRank = (post) => { const i = LETTER_ORDER.indexOf(post); return i < 0 ? null : i; };
+/** Letters from your work (King's Counsel, a fellowship): registered by career/Vocations.js. */
+const LETTER_SOURCES = [];
+export const registerLetters = (fn) => { LETTER_SOURCES.push(fn); };
+/** May you use this honour's letters? Your own country's, and the Crown's for a British subject or a citizen of a realm; a foreigner's honorary award carries none. */
+const ownHonour = (state, h) => !h.country || isCitizen(state, h.country) || (h.country === 'GB' && (state.character.citizenships ?? [state.character.countryId]).some((c) => ['GB', 'CA', 'AU', 'NZ', 'JM', 'BS', 'BB', 'BZ', 'PG', 'SB', 'TV', 'GD', 'LC', 'VC', 'AG', 'KN'].includes(c) || COUNTRIES[c]?.commonwealth));
+
+/** Post-nominal letters, in their order of precedence. */
 export function postNominals(state) {
   // A monarch is sovereign of the orders, and doesn't use their letters.
   if (state.royal?.reigning) return '';
-  // Orders first, then the seat you sit in (MP, MSP, TD…).
-  // The VC and George Cross come first; then the orders; then gallantry decorations (DSO, MC…); then office.
-  const supreme = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) <= 1);
-  const orders = state.honors.filter((h) => h.source === 'order' && h.post && !h.declined);
-  const gallantry = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) > 1).sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99));
-  return [baronetLetters(state), ...[...supreme, ...orders, ...gallantry].map((h) => h.post)].concat(councilLetters(state), officeLetters(state), religiousPost(state)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+  const held = state.honors.filter((h) => h.post && !h.declined && ['order', 'military', 'civil'].includes(h.source) && ownHonour(state, h));
+  // One set of letters per order: a CBE supersedes an OBE (civil or military division alike).
+  const byOrder = new Map();
+  const rest = [];
+  for (const h of held) {
+    if (!h.order) { rest.push(h); continue; }
+    const prev = byOrder.get(h.order);
+    const rank = (x) => letterRank(x.post) ?? 999 - (x.grade ?? 0);
+    if (!prev || rank(h) < rank(prev)) byOrder.set(h.order, h);
+  }
+  // Known letters by the order of wear; others by group (the highest awards, then orders, then decorations), in award order.
+  const group = (h) => (h.source === 'military' && (h.precedence ?? 99) <= 1 ? 0 : h.source === 'order' ? 1 : 2);
+  const list = [...byOrder.values(), ...rest].map((h, i) => ({ post: h.post, key: letterRank(h.post) ?? (group(h) === 0 ? -1 : group(h) === 1 ? 300 + i : 500 + (h.precedence ?? 99) + i / 1000) }));
+  list.sort((a, b) => a.key - b.key);
+  // Then the Privy Council (a peer's PC), letters from your work (KC), and the seat you sit in (MP).
+  const work = LETTER_SOURCES.flatMap((fn) => fn(state) ?? []);
+  return [baronetLetters(state), ...list.map((x) => x.post), councilLetters(state), state.character.peerage && (state.privyCouncil ?? []).some((x) => x.council === 'GB' && x.until == null) ? 'PC' : null, ...work, officeLetters(state), religiousPost(state)]
+    .filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
 /** A military rank to put before a higher style (a peer's, a bought title's), or null. */

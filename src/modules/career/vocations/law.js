@@ -33,7 +33,9 @@ export const LAW = {
   courses: [
     { id: 'pupillage', name: (s) => (commonLaw(s) ? (y(s) < 1990 ? 'pupillage in chambers (or articles of clerkship)' : 'pupillage or a training contract') : 'a clerkship with a judge'), icon: '📜', professions: ['law', 'prosecution', 'publicDefender'], minGrade: 1, cost: 0, years: 1, perf: 6 },
     { id: 'advocacy', name: (s) => (y(s) < 1970 ? 'a course in advocacy at the Inns' : 'an advanced advocacy course'), icon: '🎙️', professions: ['law', 'prosecution', 'publicDefender'], minGrade: 4, cost: 2500, perf: 4 },
-    { id: 'silk', name: (s) => (commonLaw(s) ? `appointment as ${silk(s)}` : 'board certification as a specialist'), icon: '🎗️', professions: ['law'], minGrade: 7, minYears: 12, cost: 4000, passRate: 0.4, perf: 5, gateGrade: 10, post: null },
+    { id: 'silk', name: (s) => (commonLaw(s) ? `appointment as ${silk(s)}` : 'board certification as a specialist'), icon: '🎗️', professions: ['law'], minGrade: 7, minYears: 12, cost: 4000, passRate: 0.4, perf: 5, gateGrade: 10, post: null,
+      // Silk's letters: QC under a queen, KC under a king (the letters change with the monarch).
+      letters: (s) => (commonLaw(s) ? silk(s).match(/\((\w+)\)/)[1] : null) },
     { id: 'paralegal', name: (s) => (y(s) < 1975 ? 'a legal executive\'s certificate' : 'a paralegal certificate'), icon: '📑', from: 1963, professions: ['legalSupport'], minGrade: 1, cost: 2000, perf: 6 },
     { id: 'judicialCollege', name: (s) => (cc(s) === 'GB' && y(s) >= 2011 ? 'the Judicial College induction' : 'judicial education'), icon: '👨‍⚖️', from: 1960, professions: ['courts'], minGrade: 3, cost: 0, perf: 3 },
     { id: 'investigation', name: 'a certified fraud examiner course', icon: '🔎', from: 1988, professions: ['oig', 'prosecution'], minGrade: 3, cost: 1500, perf: 4 },
