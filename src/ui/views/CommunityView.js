@@ -19,6 +19,7 @@ import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/co
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, causesNow, TACTICS } from '../../modules/civic/Activism.js';
+import { breakawayHere } from '../../modules/world/StateChanges.js';
 import { movementOf, STRATEGIES , STAGES, stageOf, strategyLabel } from '../../modules/civic/Movements.js';
 import { sectOf, STYLES as SECT_STYLES } from '../../modules/community/Sects.js';
 import { MEASURES } from '../../modules/civic/Local.js';
@@ -258,7 +259,7 @@ function schoolCard(state) {
 
 function movementBlock(state, a) {
   const m = movementOf(state);
-  if (m) return `<h4 class="sub">${esc(m.name)}</h4>${kv([['Size', esc(STAGES[stageOf(m.members)].label)], ['Members', m.members.toLocaleString()], ['Funds', money(m.funds)], ['Strength', `${m.strength}/100`], ['Campaign wins', String(m.wins)], ['Standing', m.underground ? '🕯️ Underground' : m.exile ? '✈️ Led from exile' : m.triumph ? `🏆 Won in ${m.triumph}` : m.fading ? '🍂 Fading' : 'In the open'], ['Strategy', esc(strategyLabel(m.strategy, yearNow(state)))]])}<p class="fine">Each year you choose a strategy; at strength 60+ campaigns start to win.</p>`;
+  if (m) return `<h4 class="sub">${esc(m.name)}</h4>${kv([['Size', esc(STAGES[stageOf(m.members)].label)], ['Members', m.members.toLocaleString()], ['Funds', money(m.funds)], ['Strength', `${m.strength}/100`], ['Campaign wins', String(m.wins)], ['Standing', m.underground ? '🕯️ Underground' : m.exile ? '✈️ Led from exile' : m.triumph ? `🏆 Won in ${m.triumph}` : m.fading ? '🍂 Fading' : 'In the open'], ['Strategy', esc(strategyLabel(m.strategy, yearNow(state)))]])}<p class="fine">${m.breakaway ? 'Each year you choose a strategy; at strength 60+ you can push for independence: a referendum, or a declaration.' : 'Each year you choose a strategy; at strength 60+ campaigns start to win.'}</p>`;
   if (!a?.cause) return '';
   return `<div class="toggle-row">${button('🏛️ Found a movement', 'movements.found', { variant: 'small', disabled: (a.influence ?? 0) < 25, hint: (a.influence ?? 0) < 25 ? 'Needs influence 25+' : 'Members, money, strategy — and backlash' })}</div>`;
 }
@@ -274,7 +275,8 @@ function activismCard(state) {
   const a = state.civic?.activism;
   if (state.character.age < 14) return '';
   const war = atWar(state);
-  const causes = causesNow(state, yearNow(state), war).map(([id, c]) => button(`${c.icon} ${c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
+  const bh = breakawayHere(state);
+  const causes = causesNow(state, yearNow(state), war).map(([id, c]) => button(`${c.icon} ${c.breakaway && bh ? `Independence for ${bh.name}` : c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
   const tactics = a?.cause ? Object.entries(TACTICS).map(([id, t]) => button(t.label, 'civic.protest', { arg: id, variant: 'small', hint: t.desc, disabled: (t.minInfluence && a.influence < t.minInfluence) || (state.yearly['civic.protest'] ?? 0) >= 2 })).join('') : '';
   return card('Causes & Protest', `
     ${a ? kv([['Cause', a.cause ? `${CAUSES[a.cause].icon} ${esc(CAUSES[a.cause].name)}` : '—'], ['Influence', `${a.influence}/100`], ['Protests', String(a.protests)], ['Arrests', a.arrests ? `<span class="neg">${a.arrests}</span>` : '0']]) : '<p class="muted">Pick a cause. Influence moves ballot measures, earns the activists\' endorsement and helps you on election day — and civil disobedience can get you arrested.</p>'}

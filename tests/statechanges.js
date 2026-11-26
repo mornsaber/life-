@@ -15,6 +15,7 @@ import { periodFlag, periodCountryName, autonomyOf, yearNow } from '../src/modul
 import { sovereignIn } from '../src/modules/world/HistoricalData.js';
 import { secedeProvince, mergeCountry, transferProvince, reintegrate, changeQuestions, recognise } from '../src/modules/world/StateChanges.js';
 import { questionsHere } from '../src/modules/politics/Referendums.js';
+import { causesNow } from '../src/modules/civic/Activism.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { bornIn, settleIn } from '../src/modules/world/Habitation.js';
 import { honoursSystem } from '../src/modules/world/HonoursOfTheDay.js';
@@ -121,5 +122,27 @@ t('a Puerto Rico Congress admits is a state, not a territory', () => {
   const a = autonomyOf(pr.state, 'PR');
   assert.match(a.name, /State of Puerto Rico/);
   assert.ok(a.statehood);
+});
+t('you can lead a breakaway movement and force the question', () => {
+  const { engine, state } = life('GB', 'edinburgh');
+  assert.ok(causesNow(state, 2020).some(([id]) => id === 'independence'), 'the cause is open in Edinburgh');
+  assert.ok(!causesNow(life('GB', 'london').state, 2020).some(([id]) => id === 'independence'), 'not in London');
+  (state.civic ??= {}).activism = { cause: 'independence', influence: 60 };
+  engine.dispatch('movements.found');
+  const m = state.civic.movement;
+  assert.equal(m.breakaway, 'secession:GB-SCT');
+  assert.match(m.name, /Scotland Independence Movement/);
+  m.strength = 90; m.members = 600000;
+  let forced = false;
+  for (let i = 0; i < 12 && !forced; i++) {
+    state.prompts = []; state.stats.health = 95; engine.ageUp();
+    for (const p of [...state.prompts]) {
+      if (p.type === 'movements.breakaway') { engine.resolvePrompt(p.id, 'referendum'); forced = true; }
+      else engine.resolvePrompt(p.id, p.options.find((o) => !o.disabled)?.id ?? p.options[0].id);
+    }
+    m.strength = Math.max(m.strength, 90);
+  }
+  assert.ok(forced, 'the moment came');
+  assert.ok(said(state, /referendum you forced/));
 });
 console.log(`statechanges: ${n} passed`);

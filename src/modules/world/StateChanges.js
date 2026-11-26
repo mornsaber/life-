@@ -138,6 +138,21 @@ export function recognise(ctx, id, delay = 1) {
 }
 export const reintegrate = (ctx, id, delay = 1) => redraw(ctx, { id: `reintegration:${id}`, kind: 'reintegration', year: yearNow(ctx.state) + delay });
 
+export const changeDone = (state, q) => done(state, q);
+/**
+ * The breakaway cause where you live: your province's independence (Scotland, Quebec, Bougainville),
+ * or your land's recognition (Somaliland, Western Sahara). A movement can start a generation before
+ * any government would put the question.
+ */
+export function breakawayHere(state) {
+  const cc = state.character.countryId ?? 'US';
+  const here = state.character.regionId;
+  const y = yearNow(state);
+  const prov = FOREIGN_CITIES[here]?.state;
+  for (const [p, s] of Object.entries(SECESSIONS)) if (s.cc === cc && prov === p && y >= s.from - 30 && !done(state, `secession:${p}`)) return { q: `secession:${p}`, name: s.name, support: s.support };
+  for (const [id, r] of Object.entries(RECOGNITIONS)) if (r.cc === cc && (!r.cities || r.cities.includes(here)) && y >= r.from && !done(state, `recognition:${id}`) && !done(state, `reintegration:${id}`)) return { q: `recognition:${id}`, name: r.cities ? 'Somaliland' : 'Western Sahara', support: r.support };
+  return null;
+}
 /** What a head of government here could put to the people. */
 export function changeQuestions(state) {
   const cc = state.character.countryId ?? 'US';

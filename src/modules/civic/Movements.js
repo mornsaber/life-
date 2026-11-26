@@ -23,6 +23,36 @@ import { priceLevel } from '../world/Countries.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { yearNow } from '../world/Eras.js';
 import { regimeHere } from '../world/Regimes.js';
+import { breakawayHere, changeDone, enact, changeTitle } from '../world/StateChanges.js';
+
+/**
+ * A breakaway movement (m.breakaway = 'secession:GB-SCT' or 'recognition:somaliland'): its strength is
+ * the support it can win. At strength 60, push: a referendum where the state allows one, a
+ * declaration of independence where it won't. The day the question is settled, by you or by
+ * anyone, is its triumph.
+ */
+const breakawaySupport = (m) => Math.min(0.85, (m.base ?? 0.3) + (m.strength - 30) / 200 + stageOf(m.members) * 0.02);
+function breakawayYear(main, m, rng) {
+  const { state } = main;
+  if (changeDone(state, m.breakaway)) {
+    m.triumph = yearNow(state);
+    main.emit('fame:buzz', { amount: 25 });
+    main.stat('happiness', 20);
+    main.emit('news:story', { tier: 'national', headline: `${changeTitle(m.breakaway)}: the cause is won`, weight: 9, icon: '🏳️', you: true });
+    main.log(`${m.name} has won what it was founded for. Your name is on the lists of the founders, and on a street before long.`, '🏳️', 'milestone');
+    state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + 30);
+    return true;
+  }
+  if (m.strength < 60 || rng.chance(0.4)) return false;
+  const support = breakawaySupport(m);
+  const free = !repressive(state);
+  main.prompt({ type: 'movements.breakaway', icon: '🏳️', title: `${m.name}: The Moment`, text: `The polls say ${Math.round(support * 100)}% would vote for it. ${free ? 'You could force a referendum: a petition, a hunger strike, a coalition that will fall without one.' : 'There will be no referendum under this government. You could declare independence anyway.'}`, data: { support }, options: [
+    ...(free ? [{ id: 'referendum', label: '🗳️ Force a referendum', hint: `About ${Math.round(support * 100)}% for` }] : []),
+    { id: 'declare', label: '📜 Declare independence', hint: free ? 'Without a vote: the courts, and maybe a cell' : 'Prison, exile, or a new state' },
+    { id: 'wait', label: '⏳ Not yet: build more support' },
+  ] });
+  return true;
+}
 
 export const STRATEGIES = {
   organise: { label: '🚪 Organise door to door', growth: [0.08, 0.2], strength: 4, cost: 0 },
@@ -101,6 +131,7 @@ export function movementTick(main) {
     if (rng.chance(0.15)) commitOffense(main, { offenseId: 'disorderly', caught: true, evidence: 0.9, context: 'organising for a banned movement' });
     return main.log(`${m.name} underground: ${m.members.toLocaleString()} sworn members, strength ${m.strength}/100.`, '🕯️', 'info');
   }
+  if (m.breakaway && m.triumph) return;
   const s = STRATEGIES[m.strategy] ?? STRATEGIES.organise;
   const growth = rng.float(...s.growth) + (state.economy?.phase === 'recession' && ['labor', 'housing'].includes(m.cause) ? 0.1 : 0);
   m.members = Math.max(10, Math.round(m.members * (1 + growth) + rng.int(0, 40)));
@@ -111,7 +142,8 @@ export function movementTick(main) {
   m.stage = Math.max(m.stage ?? 0, stage);
   main.log(`${m.name}: ${m.members.toLocaleString()} members, strength ${m.strength}/100.`, CAUSES[m.cause]?.icon ?? '✊', 'info');
   if (s.arrest && rng.chance(s.arrest)) { commitOffense(main, { offenseId: 'disorderly', caught: true, evidence: 0.9, context: 'direct action with your movement' }); m.strength += 3; }
-  if (m.strength >= 60 && rng.chance(0.35)) {
+  if (m.breakaway && breakawayYear(main, m, rng)) return;
+  if (!m.breakaway && m.strength >= 60 && rng.chance(0.35)) {
     m.wins += 1;
     m.strength -= 25;
     const win = rng.pick(y < 1945 ? WINS_OLD : WINS);
@@ -136,6 +168,35 @@ export function movementTick(main) {
 }
 
 export const MovementResolvers = {
+  breakaway(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const m = movementOf(state);
+    if (!m?.breakaway || optionId === 'wait') return ctx.log('You held back. Next year, perhaps, with more on your side.', '⏳', 'info');
+    if (optionId === 'referendum') {
+      m.referendums = (m.referendums ?? 0) + 1;
+      const yes = Math.max(0.05, Math.min(0.95, data.support + rng.float(-0.08, 0.08)));
+      if (yes > 0.5) {
+        const done = enact(ctx, m.breakaway);
+        m.strength = Math.max(0, m.strength - 20);
+        return ctx.log(`🗳️ The referendum you forced: ${Math.round(yes * 100)}% for. ${done || 'It is done.'}`, '🗳️', 'milestone');
+      }
+      m.strength = Math.max(0, m.strength - 35);
+      m.members = Math.round(m.members * 0.8);
+      ctx.stat('happiness', -10);
+      return ctx.log(`🗳️ The referendum you forced: ${Math.round(yes * 100)}% for, ${Math.round((1 - yes) * 100)}% against. "Settled for a generation," the government says. You don't believe it.`, '🗳️', 'bad');
+    }
+    // A declaration without a vote.
+    const free = !repressive(state);
+    if (rng.chance(free ? 0.1 : 0.15)) {
+      const done = enact(ctx, m.breakaway);
+      return ctx.log(`📜 You read the declaration from the steps, and this time it held: ${done || 'a new state.'}`, '📜', 'milestone');
+    }
+    m.strength = Math.max(0, m.strength - 30);
+    commitOffense(ctx, { offenseId: 'disorderly', caught: true, evidence: 0.95, context: free ? 'declaring independence the courts said was unlawful' : 'declaring independence against the state' });
+    if (!free) { m.underground = true; m.members = Math.round(m.members * 0.3); }
+    ctx.stat('stress', 15);
+    ctx.log(free ? '📜 You declared independence. The courts struck it down within a week, and the police came for the leaders.' : '📜 You declared independence. The army was in the streets by morning; the movement is underground now.', '📜', 'bad');
+  },
   strategy(ctx, data, optionId) {
     const m = movementOf(ctx.state);
     if (!m) return;
@@ -202,6 +263,12 @@ export const MovementActions = {
     if ((a.influence ?? 0) < 25) return ctx.toast('You need a following first (influence 25+)', 'warn');
     if (movementOf(state)) return ctx.toast('You already lead a movement', 'warn');
     const cause = CAUSES[a.cause];
+    if (cause.breakaway) {
+      const b = breakawayHere(state);
+      if (!b) return ctx.toast('There is no independence cause where you live now', 'warn');
+      state.civic.movement = { name: name || `the ${b.name} Independence Movement`, cause: a.cause, breakaway: b.q, base: b.support, since: state.character.age, members: 150 + a.influence * 10, funds: 0, strength: 10 + Math.round(a.influence / 4), wins: 0, strategy: 'organise' };
+      return ctx.log(`You founded ${state.civic.movement.name}, and gave a speech about a flag that doesn't fly yet.`, '🏳️', 'milestone');
+    }
     state.civic.movement = { name: name || `The ${cause.name} Movement`, cause: a.cause, since: state.character.age, members: 150 + a.influence * 10, funds: 0, strength: 10 + Math.round(a.influence / 4), wins: 0, strategy: 'organise' };
     ctx.log(`You founded ${state.civic.movement.name}: ${state.civic.movement.members} founding members around a kitchen table.`, cause.icon, 'milestone');
   },

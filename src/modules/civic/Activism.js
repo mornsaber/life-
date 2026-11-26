@@ -7,6 +7,8 @@
  *
  * state.civic.activism = { cause, influence (0–100), protests, arrests, years, organizer }
  */
+import { breakawayHere } from '../world/StateChanges.js';
+
 export const CAUSES = {
   climate: { name: 'Climate action', icon: '🌍', allies: ['editorial'], from: 1988 },
   labor: { name: 'Workers\' rights', icon: '✊', allies: ['labor'] },
@@ -31,6 +33,8 @@ export const CAUSES = {
   disarmament: { name: 'Ban the Bomb', icon: '☮️', allies: ['editorial'], from: 1957, until: 1992 },
   antiApartheid: { name: 'Anti-apartheid', icon: '✊', allies: ['editorial'], from: 1959, until: 1995 },
   gayRights: { name: 'Gay liberation', icon: '🏳️‍🌈', allies: ['editorial'], from: 1969 },
+  // Your homeland's independence, where there is a cause for it (world/StateChanges.js breakawayHere).
+  independence: { name: 'Independence', icon: '🏳️', allies: ['party'], breakaway: true },
 };
 /** When history won the cause, country by country (cause → { cc: year, '*': year }). */
 export const VICTORIES = {
@@ -44,7 +48,7 @@ export const VICTORIES = {
 };
 export const victoryYear = (cause, cc) => VICTORIES[cause]?.[cc] ?? VICTORIES[cause]?.['*'] ?? null;
 /** The causes of the year and the country (not one already won here). */
-export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && !((c.fromHere?.[state.character.countryId ?? 'US'] ?? c.from) > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
+export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && (!c.breakaway || breakawayHere(state)) && !((c.fromHere?.[state.character.countryId ?? 'US'] ?? c.from) > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
 
 /**
  * Protest tactics. arrest: chance of arrest; influence: what it builds;
