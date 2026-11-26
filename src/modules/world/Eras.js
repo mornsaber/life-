@@ -462,6 +462,10 @@ export function autonomyOf(state, cc) {
   // A referendum in this world made it independent (politics/Referendums.js).
   if (state?.world?.independent?.[cc]) return null;
   if (state?.era && (colonyStage(state, cc) || yearNow(state) < a.from)) return null;
+  // Congress admitted it: a state of the Union, not a territory (politics/Referendums.js statehood).
+  const st = state?.world?.statehood?.[cc];
+  if (st != null && yearNow(state) >= st) return { ...a, name: `the State of ${a.short ?? cc}`, head: 'the Governor', statehood: st, news: `${a.short ?? cc} becomes a state`,
+    handover: `${a.short ?? cc} is a state of the Union now: two senators, its seats in the House, and a vote for the President.` };
   return a;
 }
 export const autonomyHere = (state) => autonomyOf(state, state.character?.countryId ?? 'US');

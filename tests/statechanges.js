@@ -11,9 +11,9 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { regimeHere } from '../src/modules/world/Regimes.js';
-import { periodFlag, periodCountryName } from '../src/modules/world/Eras.js';
+import { periodFlag, periodCountryName, autonomyOf, yearNow } from '../src/modules/world/Eras.js';
 import { sovereignIn } from '../src/modules/world/HistoricalData.js';
-import { secedeProvince, mergeCountry, transferProvince, reintegrate, changeQuestions } from '../src/modules/world/StateChanges.js';
+import { secedeProvince, mergeCountry, transferProvince, reintegrate, changeQuestions, recognise } from '../src/modules/world/StateChanges.js';
 import { questionsHere } from '../src/modules/politics/Referendums.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { bornIn, settleIn } from '../src/modules/world/Habitation.js';
@@ -100,5 +100,26 @@ t('a war\'s end can redraw the map', () => {
   const gb = life('GB', 'london');
   gb.ctx.emit('world:peace', { war: { id: 'natoEast' }, outcome: 'ended in a clear victory' });
   assert.equal(gb.state.world.stateChanges.length, 0, 'a victory far away changes nothing');
+});
+t('the world can recognise a state: Somaliland, the Sahrawi Republic', () => {
+  const so = life('SO', 'hargeisa');
+  recognise(so.ctx, 'somaliland');
+  live(so.engine, so.state, 1);
+  assert.match(regimeHere(so.state).name, /recognised/);
+  const eh = life('EH', 'eh_laayoune');
+  recognise(eh.ctx, 'sahrawi');
+  live(eh.engine, eh.state, 1);
+  assert.match(regimeHere(eh.state).name, /Sahrawi/);
+  assert.ok(sovereignIn('EH', 2200));
+  const bh = life('BH', 'manama');
+  assert.ok(questionsHere(bh.state).some((x) => x.q === 'union:BH'));
+  assert.ok(questionsHere(life('PG', 'arawa').state).some((x) => x.q === 'secession:PG-NSB'));
+});
+t('a Puerto Rico Congress admits is a state, not a territory', () => {
+  const pr = life('PR', null);
+  (pr.state.world.statehood ??= {}).PR = yearNow(pr.state);
+  const a = autonomyOf(pr.state, 'PR');
+  assert.match(a.name, /State of Puerto Rico/);
+  assert.ok(a.statehood);
 });
 console.log(`statechanges: ${n} passed`);

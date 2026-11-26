@@ -150,6 +150,7 @@ const DRAW = {
   catalonia: () => wrap(`${bands(['#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09'])}<path d="M0,0 L24,22.5 L0,45 Z" fill="#0F47AF"/>${star(8, 22.5, 4, '#fff')}`, 'The Estelada of an independent Catalonia'),
   flanders: () => wrap(`<rect width="${W}" height="${H}" fill="#FFDE00"/><text x="30" y="32" font-size="22" text-anchor="middle">🦁</text>`, 'The Flemish Lion'),
   kurdistan: () => wrap(`${bands(['#ED2024', '#fff', '#278E43'])}<circle cx="30" cy="22.5" r="6" fill="#FEBD11"/>`, 'The flag of Kurdistan, with the sun'),
+  bougainville: () => wrap(`<rect width="${W}" height="${H}" fill="#0033A0"/><path d="M0,45 L60,0 L60,45 Z" fill="#000" opacity="0"/><circle cx="30" cy="22.5" r="11" fill="#000"/><circle cx="30" cy="22.5" r="6" fill="#C8102E"/><path d="M24,22.5 h12" stroke="#fff" stroke-width="1.4"/>`, 'The flag of Bougainville (the upi headdress)'),
   srpska: () => wrap(`${bands(['#C6363C', '#0C4076', '#fff'])}`, 'The flag of Republika Srpska'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };

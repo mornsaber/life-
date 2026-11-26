@@ -23,6 +23,7 @@ export const HISTORIC_PROVINCES = {
   GE: { 'GE-AB': { like: 'GE-02', name: 'Abkhazia' } },
   CY: { 'CY-04': { like: 'CY-01', name: 'Kyrenia District' } },
   AZ: { 'AZ-NK': { like: 'AZ-02', name: 'Nagorno-Karabakh' } },
+  PG: { 'PG-NSB': { like: 'PG-WHM', name: 'the Autonomous Region of Bougainville' } },
   UA: { 'UA-14': { like: 'UA-12', name: 'Donetsk Oblast' }, 'UA-43': { like: 'UA-51', name: 'Crimea' } },
 };
 
@@ -37,5 +38,6 @@ export const HISTORIC_TOWNS = {
   GE: { sukhumi: T('Sukhumi, Abkhazia', '🌴', 'GE-AB', 65000) },
   CY: { kyrenia: T('Kyrenia (Girne)', '⛵', 'CY-04', 33000), famagusta: T('Famagusta (Gazimağusa)', '🏰', 'CY-04', 40000) },
   AZ: { stepanakert: T('Stepanakert (Khankendi), Karabakh', '⛰️', 'AZ-NK', 55000) },
+  PG: { arawa: T('Arawa, Bougainville', '⛏️', 'PG-NSB', 40000), buka: T('Buka, Bougainville', '🏝️', 'PG-NSB', 20000) },
   UA: { donetsk: T('Donetsk', '⛏️', 'UA-14', 900000, BIG), simferopol: T('Simferopol, Crimea', '🏖️', 'UA-43', 340000, BIG), sevastopol: T('Sevastopol, Crimea', '⚓', 'UA-43', 450000, BIG) },
 };

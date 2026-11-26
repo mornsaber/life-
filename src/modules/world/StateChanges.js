@@ -29,6 +29,7 @@ export const SECESSIONS = {
   'ES-CT': { code: 'XC', cc: 'ES', name: 'Catalonia', state: 'the Catalan Republic', leader: 'the President of the Generalitat', flag: 'catalonia', support: 0.44, from: 1980, of: 'Spain', currency: ['EUR', '€', 'euro', 1, null] },
   'BE-VAN': { code: 'XF', cc: 'BE', name: 'Flanders', state: 'the Republic of Flanders', leader: 'the Minister-President of Flanders', flag: 'flanders', support: 0.3, from: 1993, of: 'Belgium' },
   'IQ-AR': { code: 'XD', cc: 'IQ', name: 'Kurdistan', state: 'the Republic of Kurdistan', leader: 'the President of Kurdistan', flag: 'kurdistan', support: 0.6, from: 1992, of: 'Iraq' },
+  'PG-NSB': { cc: 'PG', name: 'Bougainville', state: 'the Republic of Bougainville', leader: 'the President of Bougainville', flag: 'bougainville', support: 0.6, from: 2001, of: 'Papua New Guinea' },
   'BA-SRP': { code: 'XR', cc: 'BA', name: 'Republika Srpska', state: 'Republika Srpska, an independent state', leader: 'the President of Republika Srpska', flag: 'srpska', support: 0.5, from: 1996, of: 'Bosnia and Herzegovina' },
 };
 /** A province that might join another country. */
@@ -38,12 +39,19 @@ export const TRANSFERS = {
 /** Countries that might merge into another. */
 export const UNIONS = {
   KP: { into: 'KR', name: 'Korea, reunified', leader: 'the President of Korea', flag: 'KR', currency: ['KRW', '₩', 'won', null, null], support: 0.5, from: 1991 },
+  BH: { into: 'SA', name: 'the Gulf Union (Bahrain, in union with Saudi Arabia)', leader: 'the King of Saudi Arabia', flag: 'SA', currency: ['SAR', '﷼', 'Saudi riyal', 10, null], support: 0.3, from: 2011 },
   MD: { into: 'RO', name: 'Romania (the former Republic of Moldova)', leader: 'the President of Romania', flag: 'RO', currency: ['RON', 'lei ', 'leu', null, null], support: 0.35, from: 1991 },
 };
 /** Breakaway states that might end, their cities handed back. */
 export const REINTEGRATIONS = {
   northCyprus: { cc: 'CY', cities: ['kyrenia', 'famagusta'], name: 'Cyprus, reunified', support: 0.45, from: 1983 },
   transnistria: { cc: 'MD', cities: ['tiraspol'], name: 'Moldova, whole again', support: 0.3, from: 1992 },
+  somaliland: { cc: 'SO', cities: ['hargeisa', 'berbera'], name: 'Somalia reunited with Somaliland', support: 0.2, from: 1995 },
+};
+/** States that exist in fact, recognised by the world: their own country from then on. */
+export const RECOGNITIONS = {
+  somaliland: { cc: 'SO', cities: ['hargeisa', 'berbera'], name: 'the Republic of Somaliland (recognised)', leader: 'the President of Somaliland', flag: 'somaliland', support: 0.4, from: 1995, label: 'Somaliland recognised as a state' },
+  sahrawi: { cc: 'EH', name: 'the Sahrawi Arab Democratic Republic', leader: 'the President of the SADR', support: 0.35, from: 1976, label: 'the Sahrawi Republic independent', whole: true },
 };
 
 /**
@@ -78,6 +86,10 @@ export function applyChanges(state) {
         for (const cc of w.ccs ?? []) gone[cc] = { year: c.year, into: w.into };
       }
     }
+    if (c.kind === 'recognition') {
+      const r = RECOGNITIONS[c.id.split(':')[1]];
+      if (r.cities) row(r.cities, { from: c.year, to: null, name: r.name, leader: r.leader, kind: 'democracy', flag: r.flag, currency: null });
+    }
     if (c.kind === 'reintegration') { const r = REINTEGRATIONS[c.id.split(':')[1]]; row(r.cities, { from: c.year, to: null, clear: true }); }
   }
   setDynamicRegions(dyn);
@@ -108,6 +120,22 @@ export function redraw(ctx, change) {
 export const secedeProvince = (ctx, province, delay = 2) => redraw(ctx, { id: `secession:${province}`, kind: 'secession', province, year: yearNow(ctx.state) + delay });
 export const transferProvince = (ctx, province, delay = 2) => redraw(ctx, { id: `transfer:${province}`, kind: 'transfer', province, year: yearNow(ctx.state) + delay });
 export const mergeCountry = (ctx, cc, delay = 1) => redraw(ctx, { id: `union:${cc}`, kind: 'union', cc, year: yearNow(ctx.state) + delay });
+/** The world recognises a state: Somaliland's cities under their own flag; Western Sahara free of Morocco. */
+export function recognise(ctx, id, delay = 1) {
+  const r = RECOGNITIONS[id];
+  const year = yearNow(ctx.state) + delay;
+  if (!redraw(ctx, { id: `recognition:${id}`, kind: 'recognition', year })) return false;
+  if (r.whole) {
+    // The ruler's stage ends, and the country is its own (world/NewStates.js).
+    const rec = ((ctx.state.era ??= {}).colonies ??= {})[r.cc] ??= { done: [], pressure: 0 };
+    rec.done = [...new Set([...(rec.done ?? []), 0, 1, 2, 3])];
+    (ctx.state.world.independent ??= {})[r.cc] = { year, of: null };
+    const w = (ctx.state.world.reforms ??= {});
+    w[r.cc] = { kind: 'democracy', name: r.name, leader: r.leader, elections: 'free', press: 'free' };
+    applyChanges(ctx.state);
+  }
+  return true;
+}
 export const reintegrate = (ctx, id, delay = 1) => redraw(ctx, { id: `reintegration:${id}`, kind: 'reintegration', year: yearNow(ctx.state) + delay });
 
 /** What a head of government here could put to the people. */
@@ -118,6 +146,7 @@ export function changeQuestions(state) {
   for (const [p, s] of Object.entries(SECESSIONS)) if (s.cc === cc && y >= s.from && !done(state, `secession:${p}`)) out.push({ q: `secession:${p}`, label: `🏳️ Independence for ${s.name}`, support: s.support });
   for (const [p, s] of Object.entries(TRANSFERS)) if (s.cc === cc && y >= s.from && !done(state, `transfer:${p}`)) out.push({ q: `transfer:${p}`, label: `🤝 ${s.name} to join ${COUNTRIES[s.to].name}`, support: s.support });
   for (const [from, u] of Object.entries(UNIONS)) if ((cc === from || cc === u.into) && y >= u.from && !done(state, `union:${from}`)) out.push({ q: `union:${from}`, label: `🤝 Union: ${COUNTRIES[from].name} into ${COUNTRIES[u.into].name}`, support: u.support });
+  for (const [id, r] of Object.entries(RECOGNITIONS)) if (r.cc === cc && y >= r.from && !done(state, `recognition:${id}`) && !done(state, `reintegration:${id}`)) out.push({ q: `recognition:${id}`, label: `🏳️ ${r.label}`, support: r.support });
   for (const [id, r] of Object.entries(REINTEGRATIONS)) if (r.cc === cc && y >= r.from && !done(state, `reintegration:${id}`)) out.push({ q: `reintegration:${id}`, label: `🕊️ ${r.name}`, support: r.support });
   return out;
 }
@@ -128,11 +157,12 @@ export function enact(ctx, q) {
   if (kind === 'transfer') return transferProvince(ctx, key) && `${TRANSFERS[key].name} will join ${COUNTRIES[TRANSFERS[key].to].name}.`;
   if (kind === 'union') return mergeCountry(ctx, key) && `${COUNTRIES[key].name} will join ${COUNTRIES[UNIONS[key].into].name}.`;
   if (kind === 'reintegration') return reintegrate(ctx, key) && `${REINTEGRATIONS[key].name}.`;
+  if (kind === 'recognition') return recognise(ctx, key) && `${RECOGNITIONS[key].label}.`;
   return null;
 }
 export const changeTitle = (q) => {
   const [kind, key] = q.split(':');
-  return kind === 'secession' ? `${SECESSIONS[key].name}'s independence` : kind === 'transfer' ? `${TRANSFERS[key].name} joining ${COUNTRIES[TRANSFERS[key].to].name}` : kind === 'union' ? `union with ${COUNTRIES[UNIONS[key].into].name}` : `${REINTEGRATIONS[key].name}`;
+  return kind === 'secession' ? `${SECESSIONS[key].name}'s independence` : kind === 'transfer' ? `${TRANSFERS[key].name} joining ${COUNTRIES[TRANSFERS[key].to].name}` : kind === 'union' ? `union with ${COUNTRIES[UNIONS[key].into].name}` : kind === 'recognition' ? RECOGNITIONS[key].label : `${REINTEGRATIONS[key].name}`;
 };
 
 /** A number in [0, 1) fixed by the life, the year and the question (the life's dice stay untouched). */
@@ -173,8 +203,9 @@ export const StateChangesModule = {
     for (const c of changes(state)) {
       if (c.year !== y || c.announced || c.kind === 'conquest') continue;
       c.announced = true;
-      const mine = c.kind === 'union' ? c.cc === cc : c.kind === 'reintegration' ? REINTEGRATIONS[c.id.split(':')[1]].cities.includes(here) : FOREIGN_CITIES[here]?.state === c.province && cc === (SECESSIONS[c.province] ?? TRANSFERS[c.province]).cc;
-      const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : REINTEGRATIONS[c.id.split(':')[1]].name;
+      const rk = c.id.split(':')[1];
+      const mine = c.kind === 'union' ? c.cc === cc : c.kind === 'recognition' ? (RECOGNITIONS[rk].cities ? RECOGNITIONS[rk].cities.includes(here) : RECOGNITIONS[rk].cc === cc) : c.kind === 'reintegration' ? REINTEGRATIONS[c.id.split(':')[1]].cities.includes(here) : FOREIGN_CITIES[here]?.state === c.province && cc === (SECESSIONS[c.province] ?? TRANSFERS[c.province]).cc;
+      const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : c.kind === 'recognition' ? RECOGNITIONS[rk].label : REINTEGRATIONS[c.id.split(':')[1]].name;
       ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: title, weight: 9, icon: '🗺️' });
       if (!mine) continue;
       if (c.kind === 'secession') {
@@ -190,6 +221,7 @@ export const StateChangesModule = {
       }
       else if (c.kind === 'transfer') { ctx.log(`🤝 ${TRANSFERS[c.province].name} has joined ${COUNTRIES[TRANSFERS[c.province].to].name}. You're entitled to its citizenship, and most people take it.`, '🤝', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(TRANSFERS[c.province].to)) cit.push(TRANSFERS[c.province].to); }
       else if (c.kind === 'union') { const into = UNIONS[c.cc].into; ctx.log(`🗺️ ${COUNTRIES[c.cc].name} has ceased to exist as a state: it is part of ${COUNTRIES[into].name} now. You are a citizen of ${COUNTRIES[into].name}.`, '🗺️', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(into)) cit.push(into); }
+      else if (c.kind === 'recognition') ctx.log(`🏳️ ${RECOGNITIONS[rk].label}: embassies open, and your passport is good for the world now.`, '🏳️', 'milestone');
       else ctx.log(`🕊️ ${REINTEGRATIONS[c.id.split(':')[1]].name}: the checkpoints come down.`, '🕊️', 'milestone');
     }
     // After the present, the map moves on its own now and then.
@@ -198,6 +230,7 @@ export const StateChangesModule = {
     for (const [p, s] of Object.entries(SECESSIONS)) if (pick(`secession:${p}`, s.support >= 0.4)) secedeProvince(ctx, p);
     for (const p of Object.keys(TRANSFERS)) if (pick(`transfer:${p}`, true)) transferProvince(ctx, p);
     for (const from of Object.keys(UNIONS)) if (pick(`union:${from}`, true)) mergeCountry(ctx, from);
-    for (const id of Object.keys(REINTEGRATIONS)) if (pick(`reintegration:${id}`, true)) reintegrate(ctx, id);
+    for (const id of Object.keys(REINTEGRATIONS)) if (pick(`reintegration:${id}`, true) && !done(state, `recognition:${id}`)) reintegrate(ctx, id);
+    for (const id of Object.keys(RECOGNITIONS)) if (pick(`recognition:${id}`, true) && !done(state, `reintegration:${id}`)) recognise(ctx, id);
   },
 };

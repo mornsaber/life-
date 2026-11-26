@@ -204,6 +204,9 @@ export const HISTORIC = [
     { yesText: 'Oui: New Caledonia will become independent.', noText: 'Non, 53 to 47.', onYes: (ctx) => { becomeIndependent(ctx, 'NC'); return 'Kanaky-New Caledonia will be an independent country.'; }, skip: (state) => Boolean(state.world.independent?.NC) }),
   R('nc2021', 'NC', 2021, 0.035, 'Independence (the third vote)', 'The third and last vote, held in the middle of the Covid epidemic. The independence parties asked for a delay, were refused, and have called a boycott.', ['🇳🇨 Oui', '🇫🇷 Non'],
     { yesText: 'Oui, against everything: New Caledonia will be independent.', noText: 'Non, 96 per cent, on a turnout of 44. The FLNKS says it does not recognise the result.', onYes: (ctx) => { becomeIndependent(ctx, 'NC'); return 'Kanaky-New Caledonia will be an independent country.'; }, skip: (state) => Boolean(state.world.independent?.NC) }),
+  R('pg2019', 'PG', 2019, 0.977, 'Bougainville\'s independence', 'Twenty years after the end of the civil war over the Panguna copper mine, Bougainville votes: greater autonomy within Papua New Guinea, or independence?', ['🏝️ Independence', '🇵🇬 Greater autonomy'],
+    { yesText: 'Independence, 97.7 per cent. The result must still be ratified by Papua New Guinea\'s parliament.', noText: 'Greater autonomy within Papua New Guinea.', region: 'PG-NSB',
+      onYes: (ctx) => (ctx.rng.chance(0.5) ? secede(ctx, 'PG-NSB', 'Bougainville', 'Port Moresby ratified it: Bougainville will be independent.') : 'Port Moresby has not ratified it. The talks go on.') }),
   R('pr2020', 'PR', 2020, 0.525, 'Statehood', 'Puerto Rico votes on whether to ask to become the 51st state.', ['⭐ Vote for statehood', '✖️ Vote no'],
     { yesText: 'Statehood wins. It is up to Congress now.', noText: 'No: Puerto Rico stays a Commonwealth.', onYes: (ctx) => statehood(ctx, 'PR') }),
 ];
