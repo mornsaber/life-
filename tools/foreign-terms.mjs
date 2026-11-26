@@ -41,7 +41,7 @@ for (const cell of cells) {
     const log = state.log.flatMap((b) => b.entries.map((e) => localizeHtml(`<p>${e.text}</p>`, countryOf(state)).replace(/<[^>]+>/g, ''))).filter((t) => US.test(t));
     for (const t of log.slice(0, 4)) hits.add(`log: ${t.slice(0, 140)}`);
     // News of other countries' wars and laws is world news, not a mistake.
-    for (const h of [...hits]) if (/War breaks out in United States|Civil Rights Act|Holloman/.test(h)) hits.delete(h);
+    for (const h of [...hits]) if (/War breaks out in United States|United States goes to war|Civil Rights Act|Holloman/.test(h)) hits.delete(h);
     total += hits.size;
     console.log(`${cell} ${branch} [${state.military.history.at(-1)?.nation ?? '-'}]: ${hits.size ? [...hits].slice(0, 8).join('\n    ') : 'clean'}`);
   }

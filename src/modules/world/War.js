@@ -204,7 +204,7 @@ function warYear(ctx, cc, war, rng) {
   const escalate = 0.1 + (war.front < -30 ? 0.12 : 0) + (war.years === 1 ? 0.05 : 0);
   if (war.intensity < 4 && rng.chance(escalate)) {
     war.intensity += 1;
-    if (war.homeFront > 0 && war.kind === 'interstate') war.homeFront = clamp(war.homeFront + rng.float(0.05, 0.2), 0, 1);
+    if (war.homeFront > 0 && war.kind === 'interstate' && !war.scripted) war.homeFront = clamp(war.homeFront + rng.float(0.05, 0.2), 0, 1);
     log(`📰 The war escalated: ${rng.pick(['new fronts opened', 'the adversary called up its reserves', 'allies were drawn in', ...(yearNow(ctx.state) >= 1944 ? ['missiles struck military bases'] : []), ...(yearNow(ctx.state) >= 1915 ? ['the air war widened'] : [])])}. ${INTENSITY_LABEL[war.intensity].replace(/ war$/, '')} war now.`, '🔥', 'warn');
   } else if (war.intensity > 1 && (war.support < 35 || rng.chance(0.08))) {
     war.intensity -= 1;

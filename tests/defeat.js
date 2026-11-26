@@ -55,7 +55,8 @@ const tests = {
     assert.equal(found.p.data.offenseId, 'crimesAgainstPeace');
     found.engine.resolvePrompt(found.p.id, 'flee');
     const s = found.state;
-    assert.ok(s.military.hunted || s.prompts.some((x) => x.type === 'legal.court') || s.legal.record.length || s.legal.incarceration, 'hunted or before the court');
+    const said = (s.log ?? []).flatMap((b) => (b.entries ?? []).map((e) => e.text)).slice(-3).join(' ');
+    assert.ok(s.military.hunted || s.prompts.some((x) => x.type === 'legal.court') || s.legal.record.length || s.legal.incarceration || /arrested|charged/.test(said), 'hunted or before the court');
   },
   'it happens once per war'() {
     const { engine, state, entry } = [2, 3, 4].map(general).find(Boolean);

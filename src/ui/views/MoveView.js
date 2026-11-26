@@ -22,7 +22,8 @@ import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, natural
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
 import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
-import { cityStateOfDay, innerBorder, getEraState, hasTech, yearNow } from '../../modules/world/Eras.js';
+import { cityStateOfDay, innerBorder, getEraState, hasTech, yearNow, periodCountryName } from '../../modules/world/Eras.js';
+import { shortStateName } from '../../modules/world/StartCountries.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
 import { flagImg, flagFrom } from '../Flags.js';
 
@@ -245,7 +246,9 @@ const bestRoute = (routes) => routes.filter((r) => r.ok && r.kind !== 'irregular
  */
 function worldCard(state, ui) {
   const here = state.character.countryId ?? 'US';
-  const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
+  // Only places that are there to settle in this year (no Quebec as a state of its own unless this world made one; no Antarctica).
+  const others = Object.values(COUNTRIES).filter((c) => c.id !== here && settleIn(c.id, yearNow(state)));
+  const placeName = (id) => { const n = shortStateName(periodCountryName(state, id, COUNTRIES[id].name)); return n[0].toUpperCase() + n.slice(1); };
   const routesFor = Object.fromEntries(others.map((c) => [c.id, routesTo(state, c.id)]));
   const open = (id) => Boolean(bestRoute(routesFor[id] ?? []));
   const best = others.map((c) => ({ c, r: bestRoute(routesFor[c.id]) })).filter((x) => x.r)
@@ -254,15 +257,15 @@ function worldCard(state, ui) {
   const cc = COUNTRIES[ui.place] && ui.place !== here ? ui.place : null;
   // Two steps instead of one long list: a region, then its countries (by default only those you can move to).
   const all = ui.moveAll === '1';
-  const areas = Object.entries(CONTINENT).map(([name, ids]) => ({ name, ids: ids.filter((id) => COUNTRIES[id] && id !== here) })).filter((a) => a.ids.length);
+  const areas = Object.entries(CONTINENT).map(([name, ids]) => ({ name, ids: ids.filter((id) => COUNTRIES[id] && id !== here && settleIn(id, yearNow(state))) })).filter((a) => a.ids.length);
   const area = areas.find((a) => a.name === ui.moveArea) ?? areas.find((a) => a.ids.includes(cc)) ?? null;
   const areaChips = `<div class="btn-row">${areas.map((a) => { const n = a.ids.filter(open).length; return button(`${a.name}${n ? ` · ${n} ✓` : ''}`, 'ui.set', { arg: `moveArea=${a.name}`, variant: area?.name === a.name ? 'tiny primary' : 'tiny ghost' }); }).join('')}</div>`;
-  const shown = area ? area.ids.filter((id) => all || open(id) || id === cc).sort((x, y) => Number(open(y)) - Number(open(x)) || COUNTRIES[x].name.localeCompare(COUNTRIES[y].name)) : [];
-  const countryBtns = area ? `<div class="btn-row">${shown.map((id) => button(`${flagImg(id)} ${COUNTRIES[id].name}${open(id) ? ' ✓' : ''}`, 'ui.set', { arg: `place=${id}`, variant: id === cc ? 'tiny primary' : 'tiny ghost' })).join('') || '<span class="muted">No legal route to anywhere here.</span>'}</div>
+  const shown = area ? area.ids.filter((id) => all || open(id) || id === cc).sort((x, y) => Number(open(y)) - Number(open(x)) || placeName(x).replace(/^The /, '').localeCompare(placeName(y).replace(/^The /, ''))) : [];
+  const countryBtns = area ? `<div class="btn-row">${shown.map((id) => button(`${flagImg(id)} ${placeName(id)}${open(id) ? ' ✓' : ''}`, 'ui.set', { arg: `place=${id}`, variant: id === cc ? 'tiny primary' : 'tiny ghost' })).join('') || '<span class="muted">No legal route to anywhere here.</span>'}</div>
     <div class="btn-row">${button(all ? 'Only where I can move' : `Show all ${area.ids.length}`, 'ui.set', { arg: `moveAll=${all ? '0' : '1'}`, variant: 'tiny' })}</div>` : '<p class="fine">Pick a region to see its countries.</p>';
-  const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${flagImg(c.id)} ${c.name}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now.</p>';
+  const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${flagImg(c.id)} ${placeName(c.id)}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now.</p>';
   const block = departureBlock(state);
-  return card('Move & Travel Abroad', `${block ? `<p class="why">${esc(block)}</p>` : ''}${chips}<h4 class="sub">Browse by region</h4>${areaChips}${countryBtns}${cc ? countryPanel(state, cc, routesFor[cc], here) : ''}`, { icon: '🌍', accent: 'cyan', summary: cc ? `${flagImg(cc)} ${esc(COUNTRIES[cc].name)}` : visited.length ? `${visited.length} visited` : '' });
+  return card('Move & Travel Abroad', `${block ? `<p class="why">${esc(block)}</p>` : ''}${chips}<h4 class="sub">Browse by region</h4>${areaChips}${countryBtns}${cc ? countryPanel(state, cc, routesFor[cc], here) : ''}`, { icon: '🌍', accent: 'cyan', summary: cc ? `${flagImg(cc)} ${esc(placeName(cc))}` : visited.length ? `${visited.length} visited` : '' });
 }
 
 /** Everything about one country: facts, a trip, the routes to move there, retiring there. */

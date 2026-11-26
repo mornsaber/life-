@@ -794,10 +794,19 @@ const WAR_WORDS = /war|rebellion|revolt|revolution|insurrection|uprising|conflic
  * A Correlates of War name as a title: "First Argentina War" is the First Argentine Civil War;
  * "Second Carlist" the Second Carlist War; a small rising ("Karbala") a revolt.
  */
+/** The country a civil war is fought in: the one it is named after, else the side that lost the most. */
+function civilHost(w) {
+  const sides = (w.a ?? []).filter((cc) => COUNTRIES[cc]);
+  const named = sides.find((cc) => [COUNTRIES[cc].baseName ?? COUNTRIES[cc].name, COUNTRIES[cc].name, COUNTRIES[cc].demonym].some((n) => n && w.name.includes(n)));
+  return named ?? [...sides].sort((x, y) => (w.deaths?.[y] ?? 0) - (w.deaths?.[x] ?? 0))[0] ?? w.a?.[0];
+}
+/** The names the wars are known by, where the record's own is a battlefield (Assam, 1962). */
+const KNOWN_AS = { 160: 'the Sino-Indian War' };
 function warTitle(w) {
+  if (KNOWN_AS[w.id]) return KNOWN_AS[w.id];
   const n = w.name.replace(/,? Phase \d+$/i, '').replace(/^(\w+)'s (.+)$/, '$2 in $1').trim();
   if (w.kind !== 'civil') return WAR_WORDS.test(n) ? `the ${n}` : `the ${n} War`;
-  const own = COUNTRIES[w.a?.[0]];
+  const own = COUNTRIES[civilHost(w)];
   const m = n.replace(/ War$/, '').match(/^((?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth) )?(.+)$/);
   if (own && m && [own.baseName ?? own.name, own.demonym].includes(m[2])) return `the ${m[1] ?? ''}${own.demonym} Civil War`;
   // "Indonesia Darul Islam": the Darul Islam Rebellion in Indonesia.
@@ -831,7 +840,11 @@ function dataWars(ctx) {
       const civil = w.kind === 'civil';
       const foes = civil ? (w.rebels && !/^-?\d+$/.test(w.rebels) ? `the ${w.rebels.replace(/^the /i, '')}` : 'the rebels')
         : (w.a.includes(cc) ? w.b : w.a).filter((c) => COUNTRIES[c]).map((c) => periodCountryName(state, c, COUNTRIES[c].name)).join(', ') || 'the enemy';
-      joinWar(ctx, cc, { id: `cow.${w.id}`, name: title, adversary: foes, operation: title, intensity: warIntensity(w, cc), homes: { [cc]: civil ? 0.5 : 0.08 }, internal: civil, own: true, scripted: true });
+      // A civil war is fought at home only in its own country (the first side); a state that sends troops
+      // into someone else's (India in Sri Lanka, 1987) fights it abroad. How close it comes scales with the dead.
+      const ownCivil = civil && cc === civilHost(w);
+      const home = ownCivil ? (dead >= 100000 ? 0.5 : dead >= 10000 ? 0.35 : 0.2) : civil ? 0 : 0.08;
+      joinWar(ctx, cc, { id: `cow.${w.id}`, name: title, adversary: foes, operation: title, intensity: warIntensity(w, cc), homes: { [cc]: home }, internal: ownCivil, own: true, scripted: true });
     }
   }
 }

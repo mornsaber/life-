@@ -96,12 +96,14 @@ export function addStory(state, { tier = 'national', headline, weight = 1, icon 
   n.current.push(auto ? { tier, headline, weight, icon, you, auto } : { tier, headline, weight, icon, you });
 }
 
+/** A war at home breaks out in the country; one fought abroad, the country goes to it. */
+const warHeadline = (war, cc) => { const name = COUNTRIES[cc]?.name ?? cc; return (war?.homeFront ?? 0) > 0.1 || !war?.name ? `War breaks out in ${name}` : `${name} goes to war: ${war.name.replace(/^the /, 'the ')}`; };
 /** What changed in the world since last year, seen by the newsroom. */
 function worldWatch(state) {
   const n = ensure(state);
   const seen = n.seen;
   const wars = Object.keys(state.world?.wars ?? {});
-  for (const cc of wars) if (!(seen.wars ?? []).includes(cc)) addStory(state, { auto: true, tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: `War breaks out in ${COUNTRIES[cc]?.name ?? cc}`, weight: 8, icon: '⚔️' });
+  for (const cc of wars) if (!(seen.wars ?? []).includes(cc)) addStory(state, { auto: true, tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: warHeadline(state.world.wars[cc], cc), weight: 8, icon: '⚔️' });
   for (const cc of seen.wars ?? []) if (!wars.includes(cc)) addStory(state, { auto: true, tier: 'world', headline: `Ceasefire holds in ${COUNTRIES[cc]?.name ?? cc}`, weight: 5, icon: '🕊️' });
   seen.wars = wars;
   const juntas = Object.keys(state.world?.juntas ?? {});
