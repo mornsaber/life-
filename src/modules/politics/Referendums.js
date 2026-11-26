@@ -195,6 +195,17 @@ export const HISTORIC = [
     { yesText: 'Apruebo, 78 per cent: a convention will write a new constitution.', noText: 'Rechazo: the 1980 constitution stays.' }),
   R('cl2022', 'CL', 2022, 0.381, 'The new constitution', 'The convention\'s draft: a plurinational state, rights of nature, the Senate abolished.', ['✅ Apruebo', '✖️ Rechazo'],
     { yesText: 'Apruebo: Chile has a new constitution.', noText: 'Rechazo, 62 per cent: the draft is rejected.', skip: (state) => (state.world.referendums.held.cl2020?.yes ?? 100) <= 50 }),
+  /* ---- The territories ---- */
+  R('yt2009', 'YT', 2009, 0.955, 'Becoming a department', 'Mayotte votes on becoming France\'s 101st department: French law, French welfare, and the end of the cadis\' courts and polygamy.', ['🇫🇷 Vote yes', '✖️ Vote no'],
+    { yesText: 'Yes, 95 per cent: Mayotte will be a department from 2011.', noText: 'No: Mayotte stays a collectivity.' }),
+  R('fk2013', 'FK', 2013, 0.998, 'The sovereignty referendum', 'Argentina still claims the Malvinas. The islanders are asked whether they want to remain a British Overseas Territory.', ['🇬🇧 Vote yes', '✖️ Vote no'],
+    { yesText: 'Yes: 1,513 votes to 3. Buenos Aires calls it meaningless.', noText: 'Astonishingly, no. London says it will open talks.' }),
+  R('nc2018', 'NC', 2018, 0.433, 'Independence (the first vote)', 'Thirty years after Matignon, the Nouméa Accord\'s promise: should New Caledonia attain full sovereignty and become independent?', ['🇳🇨 Oui', '🇫🇷 Non'],
+    { yesText: 'Oui: New Caledonia will become independent.', noText: 'Non, 57 to 43: closer than Paris expected.', onYes: (ctx) => { becomeIndependent(ctx, 'NC'); return 'Kanaky-New Caledonia will be an independent country.'; } }),
+  R('nc2020', 'NC', 2020, 0.467, 'Independence (the second vote)', 'Under the Accord, a second vote two years on.', ['🇳🇨 Oui', '🇫🇷 Non'],
+    { yesText: 'Oui: New Caledonia will become independent.', noText: 'Non, 53 to 47.', onYes: (ctx) => { becomeIndependent(ctx, 'NC'); return 'Kanaky-New Caledonia will be an independent country.'; }, skip: (state) => Boolean(state.world.independent?.NC) }),
+  R('nc2021', 'NC', 2021, 0.035, 'Independence (the third vote)', 'The third and last vote, held in the middle of the Covid epidemic. The independence parties asked for a delay, were refused, and have called a boycott.', ['🇳🇨 Oui', '🇫🇷 Non'],
+    { yesText: 'Oui, against everything: New Caledonia will be independent.', noText: 'Non, 96 per cent, on a turnout of 44. The FLNKS says it does not recognise the result.', onYes: (ctx) => { becomeIndependent(ctx, 'NC'); return 'Kanaky-New Caledonia will be an independent country.'; }, skip: (state) => Boolean(state.world.independent?.NC) }),
   R('pr2020', 'PR', 2020, 0.525, 'Statehood', 'Puerto Rico votes on whether to ask to become the 51st state.', ['⭐ Vote for statehood', '✖️ Vote no'],
     { yesText: 'Statehood wins. It is up to Congress now.', noText: 'No: Puerto Rico stays a Commonwealth.', onYes: (ctx) => statehood(ctx, 'PR') }),
 ];
@@ -212,7 +223,7 @@ function statehood(ctx, cc) {
 
 /* ---- Questions a government can put ---- */
 /** Support for independence where a territory might hold the vote. */
-const INDEPENDENCE_SUPPORT = { PR: 0.05, GL: 0.4, FO: 0.45, GI: 0.02, BM: 0.25, KY: 0.1, JE: 0.12, GG: 0.1, IM: 0.1 };
+const INDEPENDENCE_SUPPORT = { PR: 0.05, GL: 0.4, FO: 0.45, GI: 0.02, BM: 0.25, KY: 0.1, JE: 0.12, GG: 0.1, IM: 0.1, NC: 0.45, PF: 0.3, GF: 0.05, GP: 0.06, MQ: 0.08, RE: 0.03, CW: 0.08, AW: 0.06, SX: 0.05, VG: 0.12, TC: 0.08, AI: 0.05, GU: 0.1, VI: 0.06, CK: 0.15, FK: 0.01, MS: 0.03, SH: 0.01, AS: 0.05, MP: 0.03, YT: 0.02 };
 const SECESSION = { 'GB-SCT': { name: 'Scotland', support: 0.45, from: 1970, of: 'the United Kingdom' }, 'CA-QC': { name: 'Quebec', support: 0.42, from: 1976, of: 'Canada' } };
 /** The questions open to you, as head of government (or a legislator tabling a bill). */
 export function questionsHere(state) {

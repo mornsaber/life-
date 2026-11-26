@@ -20,6 +20,8 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { regionRegimeAt } from '../src/modules/world/Eras.js';
 import { mandateKind } from '../src/modules/world/Mandates.js';
+import { insigniaNation } from '../src/ui/Insignia.js';
+import { existsSync } from 'node:fs';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, y, lived = 20) {
@@ -145,5 +147,27 @@ t('mandates: answerable to Geneva, then to New York', () => {
   assert.match(colonyHere(tz).name, /trust territory/);
   assert.equal(mandateKind(life('NA', 1975).state), 'revoked');
   assert.equal(mandateKind(life('KE', 1950).state), null);
+});
+t('the rest of the world\'s territories: history, government, honours, flags and insignia', () => {
+  const name = (s) => colonyHere(s)?.name ?? autonomyHere(s)?.name ?? regimeHere(s).name;
+  assert.match(name(life('FK', 1982, 1).state), /Argentine-occupied|Crown Colony/);
+  assert.match(name(life('FK', 2000).state), /self-governing British/);
+  assert.match(name(life('GU', 1943).state), /Japanese-occupied Guam/);
+  assert.match(name(life('MP', 1960).state), /Trust Territory of the Pacific/);
+  assert.match(name(life('NC', 2000).state), /Matignon/);
+  assert.match(name(life('MQ', 1970).state), /overseas department/);
+  assert.match(name(life('CW', 1970).state), /Kingdom of the Netherlands/);
+  assert.match(name(life('EH', 1990).state), /Moroccan administration/);
+  assert.match(name(life('VI', 1900).state), /Danish West Indies/);
+  for (const [cc, via] of [['AI', 'GB'], ['GU', 'US'], ['GP', 'FR'], ['AW', 'NL'], ['CK', 'NZ']]) {
+    const s = life(cc, 2000).state;
+    assert.ok(autonomyHere(s), cc);
+    assert.equal(presidencyInEra(s, cc), false, cc);
+    assert.ok(workBlock(s, getProfession('foreignService')), cc);
+    if (via !== 'NZ') assert.equal(honoursSystem(s)[0]?.via, via, cc);
+  }
+  for (const [cc, pattern] of [['FK', 'GB'], ['GU', 'US'], ['NC', 'FR'], ['CW', 'NL'], ['GL', 'DK'], ['EH', 'MA']]) assert.equal(insigniaNation(cc), pattern, cc);
+  assert.equal(insigniaNation('HK', { police: true }), 'GB');
+  for (const cc of ['AI', 'VG', 'TC', 'MS', 'FK', 'SH', 'GU', 'VI', 'AS', 'MP', 'GF', 'GP', 'MQ', 'RE', 'YT', 'NC', 'PF', 'AW', 'CW', 'SX', 'CK', 'EH']) assert.ok(COUNTRIES[cc] && existsSync(`icons/flags/${cc.toLowerCase()}.svg`), cc);
 });
 console.log(`territories: ${n} passed`);

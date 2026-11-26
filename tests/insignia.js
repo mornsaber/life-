@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { militaryInsignia, rankInsignia } from '../src/ui/Insignia.js';
 
-const US_PATTERN = ['US', 'LR', 'MH'];
+const US_PATTERN = ['US', 'LR', 'MH', 'PR', 'GU', 'VI', 'AS', 'MP'];
 const CODES = ['OR-2', 'OR-4', 'OR-5', 'OR-7', 'OR-9', 'OF-1', 'OF-2', 'OF-3', 'OF-4', 'OF-5', 'OF-6', 'OF-7', 'OF-8', 'OF-9', 'OF-10'];
 const RANKS = ['cpl', 'sgt', 'ssgt', 'lt', 'capt', 'major', 'col', '1star', '2star', '3star', '4star'];
 const wellFormed = (s) => s === '' || (/^<svg [^>]*viewBox="0 0 [\d.]+ [\d.]+"/.test(s) && s.endsWith('</svg>') && !/undefined|NaN/.test(s));

@@ -894,6 +894,151 @@ export const REGIONAL_EPISODES = [
     options: [
       { id: 'vote', label: '🗳️ Vote yes', effect: L('You voted for the constitution.', '🗳️', { stats: { happiness: 3 } }) },
     ] },
+  // ---- The rest of the world's territories ----
+  { id: 'ai.revolution', icon: '🏝️', title: 'The Anguilla Revolution', when: W(['AI'], 1967, 1969, 12),
+    text: 'The islanders have thrown the St Kitts police off Anguilla and won\'t be ruled from Basseterre. Now British paratroopers are wading ashore at dawn, expecting a fight.',
+    options: [
+      { id: 'cheer', label: '🇬🇧 Go down to the beach and cheer them', effect: L('You cheered the paratroopers in. There was no fight: what Anguillans wanted was Britain, not St Kitts. The newspapers called it the Bay of Piglets.', '🇬🇧', { stats: { happiness: 5 } }) },
+      { id: 'committee', label: '📣 Stand with the Island Council', effect: L('You stood with Ronald Webster\'s council. Anguilla got its way: a dependency of Britain on its own.', '📣', { stats: { stress: 4, happiness: 4 } }) },
+    ] },
+  { id: 'vg.offshore', icon: '🏦', title: 'The offshore boom', when: W(['VG'], 1984, 1995, 18),
+    text: 'The BVI\'s new International Business Companies Act has made Road Town a place to register companies by the hundred thousand. Every office on Main Street wants staff.',
+    options: [
+      { id: 'agent', label: '🏦 Work for a registered agent', effect: L('You filed incorporations all day for clients you never met. It paid better than anything else on Tortola.', '🏦', { earn: 3000, stats: { stress: 3 } }) },
+      { id: 'boats', label: '⛵ Stay with the charter yachts', effect: L('You stayed with the charter boats: the Baths, Jost Van Dyke, Anegada. Less money, more sea.', '⛵', { stats: { happiness: 4 } }) },
+    ] },
+  { id: 'tc.directrule', icon: '⚖️', title: 'Direct rule', when: W(['TC'], 2009, 2009, 18),
+    text: 'After an inquiry found "a high probability of systemic corruption", London has suspended the constitution and the Governor rules alone.',
+    options: [
+      { id: 'relief', label: '🧹 Good: clean house', effect: L('You thought it was overdue. The Premier fled; elections came back in 2012.', '🧹') },
+      { id: 'angry', label: '✊ March against colonial rule', effect: L('You marched on Grand Turk against London taking the islands\' democracy away.', '✊', { stats: { stress: 4 } }) },
+    ] },
+  { id: 'ms.volcano', icon: '🌋', title: 'The Soufrière Hills', when: W(['MS'], 1995, 1997, 6),
+    text: 'The volcano that had slept for centuries is awake. Plymouth is under ash; the south of the island is an exclusion zone; two-thirds of the people will leave.',
+    options: [
+      { id: 'stay', label: '🏘️ Stay, in the safe north', effect: L('You stayed in the north, in a shelter and then a new house at Brades. Plymouth is buried, a modern Pompeii.', '🏘️', { stats: { stress: 10 } }) },
+      { id: 'uk', label: '✈️ Go to Britain', effect: L('You left for Britain, with the right of abode the islanders were given.', '✈️', { stats: { stress: 6 }, emigrate: 'GB' }) },
+    ] },
+  { id: 'fk.1982', icon: '⚓', title: 'Liberation', when: W(['FK'], 1982, 1982, 8),
+    text: 'Seventy-four days of Argentine occupation are over. The Royal Marines are in Stanley; there are minefields across the peat that will take decades to clear.',
+    options: [
+      { id: 'welcome', label: '🇬🇧 Welcome them in', effect: L('You stood on Ross Road as the paratroopers came in. Sheep farms, a fishing licence boom, a big new airfield at Mount Pleasant: the islands were never the same.', '🇬🇧', { stats: { happiness: 8, stress: 4 } }) },
+      { id: 'mines', label: '🚧 Keep the children off the beaches', effect: L('You put up the red-and-white signs yourself. The last minefield was cleared in 2020.', '🚧', { stats: { stress: 4 } }) },
+    ] },
+  { id: 'sh.napoleon', icon: '🎩', title: 'The Emperor at Longwood', when: W(['SH'], 1815, 1821, 10),
+    text: 'A British warship has brought Napoleon Bonaparte to St Helena. He lives at Longwood House on the windy plateau, guarded by two thousand soldiers.',
+    options: [
+      { id: 'serve', label: '🍽️ Find work at Longwood', effect: L('You carried water and firewood to Longwood. The Emperor once asked your name. He died there in 1821.', '🍽️', { earn: 30 }) },
+      { id: 'watch', label: '🔭 Watch the ships on the signal hill', effect: L('You watched the guard ships from Ladder Hill, for the French rescue that never came.', '🔭') },
+    ] },
+  { id: 'sh.airport', icon: '✈️', title: 'An airport at last', when: W(['SH'], 2016, 2017, 14),
+    text: 'For centuries the only way to St Helena was the sea; the RMS St Helena takes five days from Cape Town. Now there is an airport, and the wind shear has delayed the first flights for a year.',
+    options: [
+      { id: 'fly', label: '✈️ Take one of the first flights', effect: L('You flew to Johannesburg in six hours. Nobody your grandparents knew had ever left so fast.', '✈️', { stats: { happiness: 5 } }) },
+      { id: 'ship', label: '🚢 Take the RMS, one last time', effect: L('You took the old RMS on its last voyages. She was retired in 2018.', '🚢') },
+    ] },
+  { id: 'gu.liberation', icon: '🇺🇸', title: 'Liberation Day', when: W(['GU'], 1944, 1944, 6),
+    text: 'After thirty-one months of Japanese occupation, the Americans have landed at Asan and Agat. The people marched to the camp at Manengon are walking home.',
+    options: [
+      { id: 'walk', label: '🚶 Walk home from Manengon', effect: L('You walked out of the camp into the American lines, thin and alive.', '🚶', { stats: { health: -3, happiness: 10 } }) },
+      { id: 'scout', label: '🧭 Guide the Marines through the jungle', effect: L('You guided a Marine patrol through the hills you knew. Liberation Day, 21 July, became your holiday too.', '🧭', { stats: { stress: 8 } }) },
+    ] },
+  { id: 'vi.1917', icon: '🇩🇰', title: 'Transfer Day', when: W(['VI'], 1917, 1917, 8),
+    text: 'The Dannebrog is coming down over Charlotte Amalie and the Stars and Stripes is going up: Denmark has sold the islands to the United States.',
+    options: [
+      { id: 'watch', label: '🎺 Watch the ceremony at the fort', effect: L('You watched the flags change at Fort Christian. You\'d be an American citizen in ten years.', '🎺') },
+      { id: 'leave', label: '⛵ Keep Danish nationality', effect: L('You kept your Danish nationality, as the treaty allowed, and stayed on as a foreigner in your own town.', '⛵') },
+    ] },
+  { id: 'as.army', icon: '🎖️', title: 'The recruiter comes to Pago Pago', when: W(['AS'], 1980, 2020, 17, 24),
+    text: 'An Army recruiter has set up at the high school. Per head, more American Samoans enlist than anyone else under the flag, though they can\'t vote for the President.',
+    options: [
+      { id: 'enlist', label: '🎖️ Sign up', effect: L('You signed up. The cannery or the Army: most of your class took one or the other.', '🎖️', { stats: { stress: 3 } }) },
+      { id: 'no', label: '🐟 Stay home', effect: L('You stayed home, near your aiga and the village.', '🐟') },
+    ] },
+  { id: 'mp.saipan', icon: '⛰️', title: 'Marpi Point', when: W(['MP'], 1944, 1944, 8),
+    text: 'The Americans have taken Saipan. Japanese soldiers are telling civilians the Americans will torture them; families are walking to the cliffs at Marpi Point.',
+    options: [
+      { id: 'surrender', label: '🏳️ Walk down to the American lines', effect: L('You walked down the hill with your hands up and a white cloth. The Americans gave you water.', '🏳️', { stats: { stress: 10 } }) },
+      { id: 'hide', label: '🕳️ Hide in a cave until it\'s over', effect: L('You hid in a cave for three weeks. When you came out, the island was American.', '🕳️', { stats: { health: -6, stress: 12 } }) },
+    ] },
+  { id: 'gf.bagne', icon: '⛓️', title: 'The last convicts', when: W(['GF'], 1946, 1953, 10),
+    text: 'France is closing the bagne at last. The surviving convicts of Saint-Laurent and Devil\'s Island are being shipped home, ghosts in striped clothes.',
+    options: [
+      { id: 'watch', label: '⛓️ Watch the camp close', effect: L('You watched the last convicts go down to the river. The camp became a museum.', '⛓️') },
+      { id: 'help', label: '🍲 Bring food to the libérés', effect: L('You brought soup to the freed men who had nowhere to go.', '🍲', { stats: { happiness: 3 } }) },
+    ] },
+  { id: 'gf.kourou', icon: '🚀', title: 'Kourou', when: W(['GF'], 1968, 1990, 16),
+    text: 'France has built a spaceport at Kourou, close to the equator: engineers from Paris, contracts for anyone who can drive, weld or cook.',
+    options: [
+      { id: 'work', label: '🚀 Work at the Centre spatial', effect: L('You got a job at the space centre. You watched Ariane rockets go up from your own country.', '🚀', { earn: 2500 }) },
+      { id: 'skip', label: '🌳 Stay on the river', effect: L('You stayed on the river. The rockets went up over the forest anyway.', '🌳') },
+    ] },
+  { id: 'gp.lkp', icon: '✊', title: 'The general strike', when: W(['GP', 'MQ'], 2009, 2009, 16),
+    text: 'Forty-four days of general strike against "pwofitasyon": the price of food and fuel, and who owns the shops. The island has stopped.',
+    options: [
+      { id: 'march', label: '✊ March with the LKP', effect: L('You marched with the collective. They won a 200-euro pay rise for the lowest paid.', '✊', { stats: { stress: 5, happiness: 4 } }) },
+      { id: 'queue', label: '⛽ Queue for petrol and wait', effect: L('You queued for petrol and waited it out.', '⛽', { stats: { stress: 5 } }) },
+    ] },
+  { id: 'mq.pelee', icon: '🌋', title: 'Mount Pelée', when: W(['MQ'], 1902, 1902, 8),
+    text: 'The mountain above Saint-Pierre has been rumbling for weeks. The governor says there is nothing to fear; there is an election on.',
+    options: [
+      { id: 'leave', label: '🏃 Leave Saint-Pierre now', effect: L('You left for Fort-de-France on 7 May. The next morning a cloud of fire killed nearly everyone in Saint-Pierre: twenty-eight thousand people.', '🏃', { stats: { stress: 15 } }) },
+      { id: 'stay', label: '🏠 Trust the governor', effect: L('You stayed outside the town, on a hillside farm, and watched the cloud come down on Saint-Pierre. One of the few survivors was a prisoner in a stone cell.', '🏠', { stats: { stress: 20 }, risk: [0.2, 'The burns on your arms never healed well.', { health: -15 }] }) },
+    ] },
+  { id: 're.creuse', icon: '🚂', title: 'The children sent to France', when: W(['RE'], 1963, 1982, 6, 16),
+    text: 'The prefecture is sending children from poor families to the Creuse and other emptying villages in France, "for their future". Your parents have been visited.',
+    options: [
+      { id: 'refuse', label: '🏠 Your mother refuses', effect: L('Your mother refused. Over two thousand were sent; France apologised in 2014.', '🏠') },
+      { id: 'go', label: '✈️ You are sent', effect: L('You were sent to a farm in the Creuse. You didn\'t see Réunion again for thirty years.', '✈️', { stats: { stress: 15, happiness: -10 } }) },
+    ] },
+  { id: 'yt.1974', icon: '🗳️', title: 'Staying French', when: W(['YT'], 1974, 1976, 16),
+    text: 'The Comoros are voting for independence; Mayotte, on its own, votes to stay with France. The "chatouilleuses", the tickling women, have run the departmentalist campaign.',
+    options: [
+      { id: 'france', label: '🇫🇷 Vote to stay French', effect: L('You voted with the chatouilleuses. Mayotte stayed French; in 2011 it became a department.', '🇫🇷') },
+      { id: 'comoros', label: '🇰🇲 Vote for the Comoros', effect: L('You voted for the Comoros, with the minority. The Comorian state still claims the island.', '🇰🇲', { stats: { stress: 3 } }) },
+    ] },
+  { id: 'nc.ouvea', icon: '🔥', title: 'Les Événements', when: W(['NC'], 1984, 1988, 16),
+    text: 'Kanak activists have burned the ballot boxes; there are barricades on the roads, and settlers with rifles at the farms. In 1988 the Ouvéa cave hostage siege ends with nineteen Kanak dead.',
+    options: [
+      { id: 'flnks', label: '✊ Stand with the FLNKS', effect: L('You stood with Tjibaou and the FLNKS. The Matignon Accords followed; Tjibaou was killed by a hardliner a year later.', '✊', { stats: { stress: 10 } }) },
+      { id: 'loyal', label: '🇫🇷 Stand with the loyalists', effect: L('You stood with Lafleur\'s loyalists. The handshake in Paris brought a peace that held.', '🇫🇷', { stats: { stress: 8 } }) },
+    ] },
+  { id: 'pf.moruroa', icon: '☢️', title: 'The tests at Moruroa', when: W(['PF'], 1966, 1996, 14),
+    text: 'France is testing its bombs at Moruroa and Fangataufa atolls: 193 of them, in the air until 1974, then underground. The Centre d\'expérimentation brings jobs and money to Papeete.',
+    options: [
+      { id: 'work', label: '🏗️ Work for the CEP', effect: L('You worked for the test centre. Good pay; years later, the claims for the cancers began.', '🏗️', { earn: 2000, risk: [0.08, 'You were diagnosed with a thyroid cancer, decades later.', { health: -15 }] }) },
+      { id: 'protest', label: '✊ Protest with Oscar Temaru', effect: L('You marched against the tests. When Chirac resumed them in 1995, Papeete rioted.', '✊', { stats: { stress: 5 } }) },
+    ] },
+  { id: 'aw.statusaparte', icon: '🇦🇼', title: 'Status Aparte', when: W(['AW'], 1986, 1986, 16),
+    text: 'On 1 January 1986 Aruba leaves the Netherlands Antilles: a country of its own within the Kingdom, Betico Croes\'s dream. The same year, the Lago refinery closes.',
+    options: [
+      { id: 'party', label: '🎉 Celebrate on the Plaza', effect: L('You celebrated in Oranjestad. The refinery jobs went, and the hotels came instead.', '🎉', { stats: { happiness: 6 } }) },
+      { id: 'refinery', label: '🏭 Look for work after Lago', effect: L('You lost your refinery job and found one in a new hotel on Palm Beach.', '🏭', { stats: { stress: 6 } }) },
+    ] },
+  { id: 'cw.1969', icon: '🔥', title: 'Trinta di Mei', when: W(['CW'], 1969, 1969, 14),
+    text: 'A strike at the Shell refinery has turned into a march on Willemstad, and the march into a riot: Punda is burning. Dutch marines are being flown in.',
+    options: [
+      { id: 'march', label: '✊ March with the workers', effect: L('You marched with Wilson "Papa" Godett. After the fires, Afro-Curaçaoans began to govern the island.', '✊', { stats: { stress: 10 } }) },
+      { id: 'home', label: '🏠 Stay home and shut the doors', effect: L('You stayed home behind shutters and watched the smoke over Punda.', '🏠', { stats: { stress: 6 } }) },
+    ] },
+  { id: 'sx.irma', icon: '🌀', title: 'Hurricane Irma', when: W(['SX'], 2017, 2017, 6),
+    text: 'A Category 5 hurricane has gone straight over the island. Most roofs are gone; the airport terminal is wrecked; there is looting in Philipsburg.',
+    options: [
+      { id: 'rebuild', label: '🔨 Rebuild', effect: L('You stayed and rebuilt, with Dutch marines handing out water.', '🔨', { stats: { stress: 12 } }) },
+      { id: 'leave', label: '✈️ Go to the Netherlands', effect: L('You flew to the Netherlands on a military flight, with a Dutch passport and nothing else.', '✈️', { stats: { stress: 8 }, emigrate: 'NL' }) },
+    ] },
+  { id: 'ck.1965', icon: '🌺', title: 'Self-government', when: W(['CK'], 1965, 1965, 14),
+    text: 'The Cook Islands govern themselves now, in free association with New Zealand: Albert Henry is Premier, and every Cook Islander keeps a New Zealand passport.',
+    options: [
+      { id: 'stay', label: '🌺 Stay on Rarotonga', effect: L('You stayed on Rarotonga. Within a generation more Cook Islanders would live in New Zealand than at home.', '🌺') },
+      { id: 'nz', label: '✈️ Go to Auckland for work', effect: L('You went to Auckland, like so many, on the passport self-government let you keep.', '✈️', { emigrate: 'NZ' }) },
+    ] },
+  { id: 'eh.greenmarch', icon: '🏜️', title: 'The Green March', when: W(['EH'], 1975, 1976, 12),
+    text: 'Spain is leaving. 350,000 Moroccans are marching across the border, and Moroccan and Mauritanian troops behind them. The Polisario Front has proclaimed a Sahrawi Republic.',
+    options: [
+      { id: 'tindouf', label: '⛺ Flee to the camps at Tindouf', effect: L('You fled across the desert to the camps in Algeria, under Moroccan air raids. The camps are still there.', '⛺', { stats: { stress: 18, health: -6 } }) },
+      { id: 'stay', label: '🏠 Stay in El Aaiún', effect: L('You stayed in El Aaiún under Moroccan rule. The Berm, a sand wall 2,700 kilometres long, divides your country now.', '🏠', { stats: { stress: 10 } }) },
+    ] },
 ];
 
 /** When colonies became countries, for the independence-day moment. */

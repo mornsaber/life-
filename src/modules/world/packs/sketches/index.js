@@ -6,5 +6,6 @@ import * as Americas from './Americas.js';
 import * as Pacific from './Pacific.js';
 import * as Territories from './Territories.js';
 import * as Dependencies from './Dependencies.js';
+import * as Overseas from './Overseas.js';
 
-export const SKETCHES = [Europe, Eurasia, Africa, Americas, Pacific, Territories, Dependencies].flatMap((m) => Object.values(m));
+export const SKETCHES = [Europe, Eurasia, Africa, Americas, Pacific, Territories, Dependencies, Overseas].flatMap((m) => Object.values(m));

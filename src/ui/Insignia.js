@@ -366,7 +366,30 @@ function navalInsignia(kind, n, nation, branch) {
 }
 
 /** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern; naval branches wear sleeve lace. */
+
+/**
+ * Whose pattern of rank a territory's people wear: its sovereign's. A Bermudian, a Falkland Islander or
+ * a Jerseyman in uniform wears British pips and crowns; a Guamanian American chevrons and bars; a
+ * Martinican or a Kanak gendarme French galons; an Aruban marine Dutch stars; a Cook Islander New
+ * Zealand's; Greenland and the Faroes Denmark's; Western Sahara Morocco's. Hong Kong's and Macau's
+ * police keep the British and Portuguese patterns after the handovers; the garrisons are the PLA's.
+ */
+const SOVEREIGN_PATTERN = {
+  GI: 'GB', GG: 'GB', JE: 'GB', IM: 'GB', BM: 'GB', KY: 'GB', AI: 'GB', VG: 'GB', TC: 'GB', MS: 'GB', FK: 'GB', SH: 'GB',
+  PR: 'US', GU: 'US', VI: 'US', AS: 'US', MP: 'US',
+  GF: 'FR', GP: 'FR', MQ: 'FR', RE: 'FR', YT: 'FR', NC: 'FR', PF: 'FR',
+  AW: 'NL', CW: 'NL', SX: 'NL', CK: 'NZ', GL: 'DK', FO: 'DK', EH: 'MA',
+};
+export function insigniaNation(cc, { police = false } = {}) {
+  if (!cc) return cc;
+  const y = eraYear() ?? PRESENT;
+  if (cc === 'HK') return police || y < 1997 ? 'GB' : 'CN';
+  if (cc === 'MO') return police || y < 1999 ? 'PT' : 'CN';
+  return SOVEREIGN_PATTERN[cc] ?? cc;
+}
 export function militaryInsignia(code, nation = null, { branch = null, title = null } = {}) {
+  nation = insigniaNation(nation);
+  if (nation === 'US') nation = null;
   // A colony's force wears its ruler's badges of rank (the King's African Rifles wear British pips).
   nation = (nation && colonialRuler(getEraState(), nation)) ?? nation;
   const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
@@ -939,6 +962,7 @@ function fireInsignia(id, country) {
 
 /** Insignia for a job, if its people wear rank (null otherwise). */
 export function jobInsignia(job, profession, country = 'US') {
+  country = insigniaNation(country, { police: true }) ?? 'US';
   const key = profession?.template ?? profession?.id ?? job?.professionId;
   const id = job?.levelId;
   if (!key || !id) return null;
