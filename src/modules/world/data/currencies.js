@@ -32,9 +32,15 @@ export const CURRENCY_HISTORY = {
   GR: [[2002, 'GRD', '₯', 'drachma', 340.75, 5.18]],
   CY: [[2008, 'CYP', 'C£', 'Cyprus pound', 0.585274, POUND]],
   MT: [[1972, 'MTP', 'M£', 'Maltese pound', 0.4293, POUND], [2008, 'MTL', 'Lm ', 'Maltese lira', 0.4293]],
-  EE: [[2011, 'EEK', 'kr ', 'kroon', 15.6466]],
-  LV: [[2014, 'LVL', 'Ls ', 'lats', 0.702804]],
-  LT: [[2015, 'LTL', 'Lt ', 'litas', 3.4528]],
+  EE: [[1918, 'RUB', 'rub. ', 'rouble', null, 1.94], [1940, 'EEK', 'kr ', 'kroon', null, 3.73], [1992, 'SUR', 'rub. ', 'Soviet rouble', null, 0.7], [2011, 'EEK', 'kr ', 'kroon', 15.6466]],
+  LV: [[1918, 'RUB', 'rub. ', 'rouble', null, 1.94], [1940, 'LVL', 'Ls ', 'lats', null, 5.18], [1993, 'SUR', 'rub. ', 'Soviet rouble', null, 0.7], [2014, 'LVL', 'Ls ', 'lats', 0.702804]],
+  LT: [[1918, 'RUB', 'rub. ', 'rouble', null, 1.94], [1940, 'LTL', 'Lt ', 'litas', null, 10], [1993, 'SUR', 'rub. ', 'Soviet rouble', null, 0.7], [2015, 'LTL', 'Lt ', 'litas', 3.4528]],
+  // The Soviet republics paid in Soviet roubles until their own money came, 1992–93.
+  ...Object.fromEntries(['UA', 'BY', 'MD', 'GE', 'AM', 'AZ', 'KZ', 'UZ', 'TM', 'KG', 'TJ'].map((cc) => [cc, [[1918, 'RUB', 'rub. ', 'rouble', null, 1.94], [1992, 'SUR', 'rub. ', 'Soviet rouble', null, 0.7]]])),
+  // Yugoslavia's dinar, until its republics left (Slovenia's tolar until the euro, Croatia's kuna until 2023).
+  SI: [[1991, 'YUN', 'din. ', 'Yugoslav dinar', null, 15], [2007, 'SIT', 'SIT ', 'tolar', 239.64]],
+  HR: [[1991, 'YUN', 'din. ', 'Yugoslav dinar', null, 15], [2023, 'HRK', 'kn ', 'kuna', 7.5345]],
+  ...Object.fromEntries(['BA', 'MK', 'RS', 'ME'].map((cc) => [cc, [[1992, 'YUN', 'din. ', 'Yugoslav dinar', null, 15]]])),
   MX: [[1993, 'MXP', '$', 'old peso', 1000, 2.0]],
   TR: [[1923, 'TRO', 'LT ', 'Ottoman lira', null, 0.227], [2005, 'TRL', 'TL ', 'old lira', 1000000]],
   PL: [[1995, 'PLZ', 'zł ', 'old złoty', 10000]],
@@ -50,7 +56,7 @@ export const CURRENCY_HISTORY = {
   NG: [[1973, 'NGP', '£', 'Nigerian pound', 0.5, POUND]],
   GM: [[1971, 'GMP', '£', 'Gambian pound', 0.2, POUND]],
   MW: [[1971, 'MWP', '£', 'Malawian pound', 0.5, POUND]],
-  SK: [[2009, 'SKK', 'Sk ', 'Slovak koruna', 30.126]],
+  SK: [[1993, 'CSK', 'Kčs ', 'Czechoslovak koruna', 30.126], [2009, 'SKK', 'Sk ', 'Slovak koruna', 30.126]],
   ME: [[2002, 'DEM', 'DM ', 'Deutsche Mark', 1.95583]],
   XK: [[2002, 'DEM', 'DM ', 'Deutsche Mark', 1.95583]],
 };
