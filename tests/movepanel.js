@@ -25,8 +25,16 @@ const tests = {
   'no wall of buttons: under 40 until you pick a country'() {
     const h = VIEWS.move(life(), {});
     assert.ok(buttons(h) < 40, `${buttons(h)} buttons`);
-    assert.match(h, /data-ui-set="place"/);
+    assert.match(h, /moveArea=/, "browse by region");
     assert.ok(!/migration\.emigrate/.test(h), 'no routes until a country is chosen');
+  },
+  'a region shows its countries you can move to, or all of them; Taiwan moves to the mainland on its compatriot permit'() {
+    const h = VIEWS.move(life(), { moveArea: 'Europe' });
+    assert.match(h, /place=/);
+    const all = VIEWS.move(life(), { moveArea: 'Europe', moveAll: '1' });
+    assert.ok((all.match(/place=/g) ?? []).length >= (h.match(/place=/g) ?? []).length);
+    const tw = VIEWS.move(life('TW', 30), { place: 'CN' });
+    assert.match(tw, /Taiwan Compatriot Permit/);
   },
   'a chosen country: facts compared with home, a trip, the routes'() {
     const h = VIEWS.move(life(), { place: 'DE' });

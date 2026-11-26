@@ -78,7 +78,8 @@ export function moveView(state, ui = {}) {
   const quick = `<div class="btn-row">${cheaper.map((r) => button(`${r.icon} ${r.name}`, 'ui.set', { arg: `moveRegion=${r.id}`, variant: 'tiny ghost', hint: 'Good value' })).join('')}</div>`;
   const body = `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>
     <ul class="move-list">${row(here)}${pick ? row(pick) : ''}</ul>${picker}${pick ? '' : `<p class="fine">Good value for what you'd earn:</p>${quick}`}`;
-  return regimeCard(state) + passportCard(state) + card(`Move within ${esc(COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the country')}`, body, { icon: '🗺️', accent: 'cyan', summary: pick ? `vs ${esc(pick.name)}` : '' }) + cityCard(state) + lifeMap(state) + expatLifeCard(state) + worldCard(state, ui) + gapYearCard(state);
+  // Abroad first (it's what most people come here for), then home: moving within the country, your city, the map.
+  return regimeCard(state) + passportCard(state) + worldCard(state, ui) + expatLifeCard(state) + card(`Move within ${esc(COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the country')}`, body, { icon: '🗺️', accent: 'cyan', open: Boolean(pick), summary: pick ? `vs ${esc(pick.name)}` : `${places.length} places` }) + cityCard(state) + gapYearCard(state) + lifeMap(state);
 }
 
 
@@ -204,7 +205,7 @@ function passportCard(state) {
   const classes = state.character.age >= 12 && learnable.length ? `<div class="btn-row">${learnable.slice(0, 6).map((l) => button(`📚 ${l}`, 'migration.study', { arg: l, variant: 'tiny ghost', hint: money(LANGUAGE_CLASS_COST), disabled: Boolean(state.yearly['migration.study']) })).join('')}</div>` : '';
   const renounce = citizenshipsOf(state).length > 1 ? citizenshipsOf(state).filter((c) => c !== here).map((c) => button(`Renounce ${COUNTRIES[c].demonym}`, 'migration.renounce', { arg: c, variant: 'tiny ghost' })).join('') : '';
   const service = servicePassports(state).map((p) => chip(`${PASSPORT_ICON[p.kind]} ${flagImg(p.country) || (ISSUERS[p.country]?.flag ?? '')} ${PASSPORT_LABEL[p.kind]} · ${esc(p.why)}`, p.kind === 'diplomatic' ? 'honor' : 'cyan')).join(' ');
-  return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => flagImg(c)).join(' ')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
+  return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes ? disclosure('move.languages', '📚 Learn a language', classes) : ''}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => flagImg(c)).join(' ')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
 }
 
 /** A country divided this year (West and East Germany): each side's name, flag and a city on it. */
@@ -246,15 +247,22 @@ function worldCard(state, ui) {
   const here = state.character.countryId ?? 'US';
   const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
   const routesFor = Object.fromEntries(others.map((c) => [c.id, routesTo(state, c.id)]));
+  const open = (id) => Boolean(bestRoute(routesFor[id] ?? []));
   const best = others.map((c) => ({ c, r: bestRoute(routesFor[c.id]) })).filter((x) => x.r)
     .sort((a, b) => (RANK[a.r.kind] ?? 3) - (RANK[b.r.kind] ?? 3) || (b.r.odds ?? 0) - (a.r.odds ?? 0) || a.c.name.localeCompare(b.c.name)).slice(0, 8);
   const visited = state.travel?.countries ?? [];
   const cc = COUNTRIES[ui.place] && ui.place !== here ? ui.place : null;
-  const picker = `<label class="country-pick">Country<select data-ui-set="place" aria-label="Choose a country"><option value="">Choose a country…</option>${Object.entries(CONTINENT).map(([name, ids]) => `<optgroup label="${esc(name)}">${ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here && settleIn(c.id, yearNow(state))).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}"${c.id === cc ? ' selected' : ''}>${c.flag} ${esc(c.name)}${bestRoute(routesFor[c.id]) ? ' ✓' : ''}${visited.includes(c.id) ? ' · visited' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
-  const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${c.flag} ${c.name}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now — study, a job offer, family or savings open most of them.</p>';
+  // Two steps instead of one long list: a region, then its countries (by default only those you can move to).
+  const all = ui.moveAll === '1';
+  const areas = Object.entries(CONTINENT).map(([name, ids]) => ({ name, ids: ids.filter((id) => COUNTRIES[id] && id !== here) })).filter((a) => a.ids.length);
+  const area = areas.find((a) => a.name === ui.moveArea) ?? areas.find((a) => a.ids.includes(cc)) ?? null;
+  const areaChips = `<div class="btn-row">${areas.map((a) => { const n = a.ids.filter(open).length; return button(`${a.name}${n ? ` · ${n} ✓` : ''}`, 'ui.set', { arg: `moveArea=${a.name}`, variant: area?.name === a.name ? 'tiny primary' : 'tiny ghost' }); }).join('')}</div>`;
+  const shown = area ? area.ids.filter((id) => all || open(id) || id === cc).sort((x, y) => Number(open(y)) - Number(open(x)) || COUNTRIES[x].name.localeCompare(COUNTRIES[y].name)) : [];
+  const countryBtns = area ? `<div class="btn-row">${shown.map((id) => button(`${flagImg(id)} ${COUNTRIES[id].name}${open(id) ? ' ✓' : ''}`, 'ui.set', { arg: `place=${id}`, variant: id === cc ? 'tiny primary' : 'tiny ghost' })).join('') || '<span class="muted">No legal route to anywhere here.</span>'}</div>
+    <div class="btn-row">${button(all ? 'Only where I can move' : `Show all ${area.ids.length}`, 'ui.set', { arg: `moveAll=${all ? '0' : '1'}`, variant: 'tiny' })}</div>` : '<p class="fine">Pick a region to see its countries.</p>';
+  const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${flagImg(c.id)} ${c.name}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now.</p>';
   const block = departureBlock(state);
-  return card('The World', `<p class="muted">Holidays, moving abroad and retiring abroad, one country at a time. ✓ marks countries with a legal route open to you.</p>
-    ${block ? `<p class="why">${esc(block)}</p>` : ''}${picker}${chips}${cc ? countryPanel(state, cc, routesFor[cc], here) : ''}`, { icon: '🌍', accent: 'cyan', summary: visited.length ? `${visited.length} visited` : '' });
+  return card('Move & Travel Abroad', `${block ? `<p class="why">${esc(block)}</p>` : ''}${chips}<h4 class="sub">Browse by region</h4>${areaChips}${countryBtns}${cc ? countryPanel(state, cc, routesFor[cc], here) : ''}`, { icon: '🌍', accent: 'cyan', summary: cc ? `${flagImg(cc)} ${esc(COUNTRIES[cc].name)}` : visited.length ? `${visited.length} visited` : '' });
 }
 
 /** Everything about one country: facts, a trip, the routes to move there, retiring there. */

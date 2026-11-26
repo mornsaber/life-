@@ -27,6 +27,7 @@ import { SCHENGEN_MEMBERS } from '../content/packs/careers-intl-orgs.js';
 import { regimeOf, exitBlock, sanctionsOn } from './Regimes.js';
 import { warIn } from './War.js';
 import { yearNow, PRESENT } from './Eras.js';
+import { compatriotRoute, COMPATRIOTS } from './Migration.js';
 
 /** Every country by continent (the empty places of the far south: Antarctica). */
 export const CONTINENT = {
@@ -120,6 +121,9 @@ function entryOfDay(e, y) {
 export function bestEntry(state, dest) {
   // Living there already: residents come and go.
   if (residencesOf(state)[dest] && ['permanent', 'visa', 'refugee'].includes(residencesOf(state)[dest].status)) return { passport: citizenshipsOf(state)[0], kind: 'free', cost: 0, refusal: 0, note: 'you\'re a resident' };
+  // Taiwanese, Hongkongers and the Macanese enter the mainland on their compatriot permits, not a visa.
+  const permit = compatriotRoute(state, dest);
+  if (permit) return { passport: citizenshipsOf(state).find((c) => COMPATRIOTS[c]?.to === dest), kind: 'free', cost: 0, refusal: 0, note: permit.scheme };
   const all = citizenshipsOf(state).map((p) => ({ passport: p, ...entryOfDay(entryWith(p, dest, state), yearNow(state)) }));
   all.sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.refusal ?? 1) - (b.refusal ?? 1));
   return all[0];

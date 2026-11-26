@@ -71,6 +71,9 @@ export function routesTo(state, to) {
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
   // A state that keeps its own people in takes no immigrants either (the Soviet Union, the GDR).
   if (regimeOf(to)?.exit === 'closed') return [{ kind: 'closed', ok: false, odds: 0, fee: 0, reason: 'Closed: it lets no one in to settle', label: '🚧 Closed to immigrants' }];
+  // Compatriots, not foreigners: Beijing treats Taiwan, Hong Kong and Macau residents as its own.
+  const compatriot = compatriotRoute(state, to);
+  if (compatriot && !bannedFrom(state, to)) return [compatriot];
   // EU, Common Travel Area and trans-Tasman citizens just move: no visa, the right to live and work.
   const free = freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
@@ -82,6 +85,25 @@ export function routesTo(state, to) {
     : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
   const asylum = asylumRoute(state, to);
   return [...(asylum ? [asylum] : []), ...visas, irregularRoute(state, to)];
+}
+
+/**
+ * The mainland's own permits for its "compatriots": a Taiwanese moves on the Taiwan Compatriot
+ * Permit (from late 1987, when Taipei let people visit their families across the Strait; a
+ * residence permit like a mainland ID card from 2018), a Hongkonger or a Macanese on the Home
+ * Return Permit. No visa, the right to live and work.
+ */
+export const COMPATRIOTS = {
+  TW: { to: 'CN', from: 1988, permit: (y) => (y >= 2018 ? 'the Taiwan Compatriot Permit and a mainland residence permit' : 'the Taiwan Compatriot Permit (台胞证)') },
+  HK: { to: 'CN', from: 1979, permit: () => 'the Home Return Permit (回乡证)' },
+  MO: { to: 'CN', from: 1979, permit: () => 'the Home Return Permit (回乡证)' },
+};
+export function compatriotRoute(state, to) {
+  const y = yearNow(state);
+  const holds = citizenshipsOf(state).find((c) => COMPATRIOTS[c]?.to === to && y >= COMPATRIOTS[c].from);
+  if (!holds) return null;
+  const permit = COMPATRIOTS[holds].permit(y);
+  return { kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🪪 Live and work on ${permit}`, scheme: permit };
 }
 
 /**
