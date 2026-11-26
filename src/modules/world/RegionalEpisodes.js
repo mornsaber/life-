@@ -1039,6 +1039,85 @@ export const REGIONAL_EPISODES = [
       { id: 'tindouf', label: '⛺ Flee to the camps at Tindouf', effect: L('You fled across the desert to the camps in Algeria, under Moroccan air raids. The camps are still there.', '⛺', { stats: { stress: 18, health: -6 } }) },
       { id: 'stay', label: '🏠 Stay in El Aaiún', effect: L('You stayed in El Aaiún under Moroccan rule. The Berm, a sand wall 2,700 kilometres long, divides your country now.', '🏠', { stats: { stress: 10 } }) },
     ] },
+  // ---- The smallest places ----
+  { id: 'pn.longboat', icon: '🚣', title: 'The longboats', when: W(['PN'], 1850, 2026, 14),
+    text: 'A ship is standing off Bounty Bay. There is no harbour: the whole island launches the longboats through the surf to trade carvings and fruit for flour, letters and news.',
+    options: [
+      { id: 'row', label: '🚣 Take an oar', effect: L('You rowed out through the surf with the men. It was how Pitcairn met the world.', '🚣', { stats: { fitness: 3, happiness: 3 } }) },
+      { id: 'carve', label: '🪵 Sell your carvings', effect: L('You sold your miro-wood carvings on the deck. A ship a month, if you were lucky.', '🪵', { earn: 40 }) },
+    ] },
+  { id: 'nu.heta', icon: '🌀', title: 'Cyclone Heta', when: W(['NU'], 2004, 2004, 6),
+    text: 'Cyclone Heta has thrown the sea up over the cliffs at Alofi: the hospital, the museum, the houses on the clifftop are gone. Many say they will move to Auckland now.',
+    options: [
+      { id: 'stay', label: '🏝️ Stay and rebuild', effect: L('You stayed. Fewer than two thousand of you are left on the Rock.', '🏝️', { stats: { stress: 10 } }) },
+      { id: 'nz', label: '✈️ Go to Auckland', effect: L('You went to Auckland, where twenty thousand Niueans already live.', '✈️', { emigrate: 'NZ' }) },
+    ] },
+  { id: 'tk.vote', icon: '🗳️', title: 'Self-government?', when: W(['TK'], 2006, 2007, 18),
+    text: 'Tokelau votes on self-government in free association with New Zealand, like the Cook Islands and Niue. It needs two-thirds.',
+    options: [
+      { id: 'yes', label: '✅ Vote yes', effect: L('You voted yes. It fell short of two-thirds, twice: 60 per cent in 2006, 64 in 2007.', '✅') },
+      { id: 'no', label: '✖️ Vote no', effect: L('You voted no: better New Zealand\'s territory, with its money, than a country of 1,400 people.', '✖️') },
+    ] },
+  { id: 'nf.2015', icon: '🌲', title: 'The end of self-government', when: W(['NF'], 2015, 2016, 18),
+    text: 'Canberra has abolished the Legislative Assembly. Norfolk will be run like a shire of New South Wales; Islanders will pay Australian income tax.',
+    options: [
+      { id: 'protest', label: '✊ Write to the UN', effect: L('You joined the petition to the UN to put Norfolk on the list of non-self-governing territories.', '✊', { stats: { stress: 4 } }) },
+      { id: 'accept', label: '🤷 Accept the Medicare card', effect: L('You took the Medicare card and the pension. It was hard to say no to.', '🤷') },
+    ] },
+  { id: 'cx.tampa', icon: '🚢', title: 'The Tampa', when: W(['CX'], 2001, 2001, 14),
+    text: 'A Norwegian freighter, the Tampa, has rescued 433 asylum seekers from a sinking boat and is anchored off the island. Canberra will not let them land; the SAS have boarded her.',
+    options: [
+      { id: 'help', label: '🍲 Send food out to the ship', effect: L('You helped send food out to the ship. They were taken to Nauru. Australia built a detention centre on the island.', '🍲', { stats: { stress: 4 } }) },
+      { id: 'watch', label: '👀 Watch from the cliffs', effect: L('You watched the ship from the cliffs for a week.', '👀') },
+    ] },
+  { id: 'cc.1984', icon: '🗳️', title: 'The Act of Self-Determination', when: W(['CC'], 1984, 1984, 18),
+    text: 'Under UN observers, the Cocos Malays vote: independence, free association, or integration with Australia. The Clunies-Ross estate has been bought out; no more plastic tokens.',
+    options: [
+      { id: 'au', label: '🇦🇺 Vote to integrate', effect: L('You voted with the large majority to join Australia.', '🇦🇺') },
+      { id: 'free', label: '🏝️ Vote for free association', effect: L('You voted for free association, with the few.', '🏝️') },
+    ] },
+  { id: 'wf.kings', icon: '👑', title: 'The Lavelua', when: W(['WF'], 1960, 2026, 16),
+    text: 'The King of Uvea, the Lavelua, is choosing his chiefs. Under the French Republic the three kings still allot the land and judge the customary cases.',
+    options: [
+      { id: 'serve', label: '👑 Serve at the royal court', effect: L('You served at the Lavelua\'s court at Mata-Utu: a republic\'s kingdom.', '👑', { stats: { happiness: 3 } }) },
+      { id: 'noumea', label: '✈️ Go to Nouméa for work', effect: L('You went to New Caledonia for work, like half of all Wallisians.', '✈️', { emigrate: 'NC' }) },
+    ] },
+  { id: 'pm.rum', icon: '🥃', title: 'Rum row', when: W(['PM'], 1920, 1933, 16),
+    text: 'America has gone dry. Saint-Pierre\'s warehouses are full of Canadian whisky and French champagne for the rum-runners: Al Capone\'s men stay at the Hôtel Robert.',
+    options: [
+      { id: 'run', label: '🥃 Work the warehouses', effect: L('You loaded cases onto fast boats bound for the New England coast. Saint-Pierre had never been so rich.', '🥃', { earn: 800 }) },
+      { id: 'fish', label: '🐟 Stay with the cod', effect: L('You stayed with the cod. When Prohibition ended, so did the boom.', '🐟') },
+    ] },
+  { id: 'bl.1878', icon: '🇸🇪', title: 'The Swedes leave', when: W(['BL'], 1878, 1878, 10),
+    text: 'Sweden has sold St Barthélemy back to France. The Swedish flag comes down over Gustavia, after ninety-four years.',
+    options: [
+      { id: 'watch', label: '🎺 Watch the ceremony', effect: L('You watched the flags change. The street names stayed Swedish.', '🎺') },
+      { id: 'vote', label: '🗳️ Vote in the plebiscite', effect: L('You voted, with all but one of your neighbours, to return to France.', '🗳️') },
+    ] },
+  { id: 'mf.irma', icon: '🌀', title: 'Irma', when: W(['MF'], 2017, 2017, 6),
+    text: 'Hurricane Irma has wrecked nine buildings in ten on the French side. The Dutch side across the road is no better.',
+    options: [
+      { id: 'rebuild', label: '🔨 Rebuild', effect: L('You stayed and rebuilt, with gendarmes flown in from Guadeloupe.', '🔨', { stats: { stress: 12 } }) },
+      { id: 'france', label: '✈️ Go to France', effect: L('You flew to Paris on an evacuation flight.', '✈️', { emigrate: 'FR' }) },
+    ] },
+  { id: 'bq.2010', icon: '🇳🇱', title: '10-10-10', when: W(['BQ'], 2010, 2010, 16),
+    text: 'The Netherlands Antilles are dissolved. Bonaire, Sint Eustatius and Saba become special municipalities of the Netherlands: the dollar, Dutch law, and same-sex marriage from The Hague.',
+    options: [
+      { id: 'welcome', label: '🇳🇱 Welcome it', effect: L('You welcomed the Dutch money for schools and the hospital.', '🇳🇱') },
+      { id: 'resent', label: '😠 Resent it', effect: L('You resented the "recolonisation": the prices went up faster than the pensions.', '😠', { stats: { stress: 3 } }) },
+    ] },
+  { id: 'ax.bomarsund', icon: '💥', title: 'Bomarsund', when: W(['AX'], 1854, 1854, 8),
+    text: 'An Anglo-French fleet is bombarding the new Russian fortress at Bomarsund. The war is in the Crimea, but it has come to Åland too.',
+    options: [
+      { id: 'watch', label: '⛵ Watch from a fishing boat', effect: L('You watched the fortress surrender. The peace of 1856 forbade anyone to fortify Åland again.', '⛵') },
+      { id: 'hide', label: '🏠 Stay at the farm', effect: L('You stayed at the farm and listened to the guns.', '🏠', { stats: { stress: 4 } }) },
+    ] },
+  { id: 'io.expulsion', icon: '🚢', title: 'The expulsion', when: W(['IO'], 1968, 1973, 1),
+    text: 'The plantation is closing. The administrators have gassed the dogs, and the islanders are being loaded onto the Nordvaer for Mauritius, with what they can carry. The island is for the Americans now.',
+    options: [
+      { id: 'mu', label: '🇲🇺 Go to Mauritius', effect: L('You were put ashore at Port Louis with nothing. The Chagossians never stopped fighting to go home.', '🇲🇺', { stats: { stress: 20, happiness: -15 }, emigrate: 'MU' }) },
+      { id: 'sc', label: '🇸🇨 Go to the Seychelles', effect: L('You were taken to the Seychelles, to a prison cell first.', '🇸🇨', { stats: { stress: 20, happiness: -15 }, emigrate: 'SC' }) },
+    ] },
 ];
 
 /** When colonies became countries, for the independence-day moment. */

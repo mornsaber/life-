@@ -10,6 +10,7 @@
  * state.migration.assignment = { home, to, endsAt, uplift }
  * state.migration.gapYear = { age, kind }
  */
+import { settleIn } from './Habitation.js';
 import { COUNTRIES } from './Countries.js';
 import { IMMIGRATION, localLanguage, speaks, LANGUAGE_FLUENT, nativeLanguages, birthCountryOf } from './Immigration.js';
 import { arrive, departureBlock, ensureMigration } from './Migration.js';
@@ -56,7 +57,7 @@ function offerAssignment(ctx) {
   if (state.character.age < 25 || state.character.age > 58 || !rng.chance(0.07)) return;
   // Somewhere the company has an office and that isn't at war.
   const within = bodyOfJob(job)?.countries;
-  const options = Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2) && (!within || within.includes(c)));
+  const options = Object.keys(COUNTRIES).filter((c) => c !== cc && settleIn(c) && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2) && (!within || within.includes(c)));
   const to = rng.pick(options);
   if (!to) return;
   // A priest serves abroad in the diocese there, lent by the home bishop — not in a branch office.
@@ -121,7 +122,7 @@ function forcedRelocation(ctx) {
   if (state.prompts.some((p) => p.type === 'expat.relocation') || !rng.chance(job.employer.size === 'mega' ? 0.05 : 0.03)) return;
   // A third of the moves cross a border.
   const abroad = rng.chance(0.33) && !departureBlock(state);
-  const to = abroad ? rng.pick(Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2))) : cc;
+  const to = abroad ? rng.pick(Object.keys(COUNTRIES).filter((c) => c !== cc && settleIn(c) && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2))) : cc;
   const city = rng.pick(regionsIn(to).filter((r) => r.id !== state.character.regionId));
   if (!city) return;
   const severance = severancePay(state.character.countryId, job.salary, job.yearsAtEmployer ?? 1);

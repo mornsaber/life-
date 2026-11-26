@@ -292,12 +292,12 @@ export const republicGap = (cc, year) => (REPUBLIC_GAPS[cc] ?? []).some(([from, 
 /* Colonies                                                            */
 /* ------------------------------------------------------------------ */
 
-const RULER = { AR: 'Argentine', MA: 'Moroccan', DK: 'Danish', RO: 'Romanian', HT: 'Haitian', BR: 'Brazilian', ID: 'Indonesian', AT: 'Austrian', ZA: 'South African', NZ: 'New Zealand', ET: 'Ethiopian', HU: 'Hungarian', CO: 'Colombian', ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
+const RULER = { AR: 'Argentine', MA: 'Moroccan', FI: 'Finnish', NO: 'Norwegian', DK: 'Danish', RO: 'Romanian', HT: 'Haitian', BR: 'Brazilian', ID: 'Indonesian', AT: 'Austrian', ZA: 'South African', NZ: 'New Zealand', ET: 'Ethiopian', HU: 'Hungarian', CO: 'Colombian', ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
 /** Where an empire was ruled from, by year: St Petersburg until 1918, Constantinople until 1923, Kyoto before 1869… */
 const CAPITAL_THEN = { RU: [[1712, 'Moscow'], [1918, 'St Petersburg']], TR: [[1923, 'Constantinople']], JP: [[1869, 'Kyoto']], CN: [[1928, 'Peking'], [1949, 'Nanking']], BR: [[1960, 'Rio de Janeiro']], AU: [[1927, 'Melbourne']], PK: [[1959, 'Karachi'], [1967, 'Rawalpindi']], IT: [[1865, 'Turin'], [1871, 'Florence']], NZ: [[1865, 'Auckland']], US: [[1800, 'Philadelphia']], DE: [[1871, 'Berlin']], TZ: [[1996, 'Dar es Salaam']], NG: [[1991, 'Lagos']] };
 export const rulerCapital = (cc, y) => CAPITAL_THEN[cc]?.find(([until]) => y < until)?.[1] ?? RULER_CAPITAL[cc] ?? 'abroad';
-export const RULER_CAPITAL = { AR: 'Buenos Aires', MA: 'Rabat', EG: 'Cairo', DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Brasília', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Beijing', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Ankara', AU: 'Canberra', PK: 'Islamabad', MY: 'Kuala Lumpur', DE: 'Berlin' };
-export const RULER_NAME = { AR: 'Argentina', MA: 'Morocco', EG: 'Egypt', DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
+export const RULER_CAPITAL = { AR: 'Buenos Aires', MA: 'Rabat', FI: 'Helsinki', NO: 'Oslo', SE: 'Stockholm', EG: 'Cairo', DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Brasília', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Beijing', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Ankara', AU: 'Canberra', PK: 'Islamabad', MY: 'Kuala Lumpur', DE: 'Berlin' };
+export const RULER_NAME = { AR: 'Argentina', MA: 'Morocco', FI: 'Finland', NO: 'Norway', EG: 'Egypt', DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
 const S = (ruler, name, until, o = {}) => ({ ruler, name, until, ...o });
 const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', noMovement: true });
 
@@ -437,6 +437,19 @@ export const AUTONOMOUS = {
   CW: SELF_GOVERNING('NL', 1954, 'Curaçao, in the Kingdom of the Netherlands', 'the Prime Minister (of the Netherlands Antilles until 2010)', 'The Charter for the Kingdom, 1954: the Netherlands Antilles govern themselves from Willemstad, a partner in the Kingdom.', { short: 'Curaçao', news: 'The Netherlands Antilles govern themselves' }),
   SX: SELF_GOVERNING('NL', 1954, 'Sint Maarten, in the Kingdom of the Netherlands', 'the Prime Minister (of the Netherlands Antilles until 2010)', 'The Charter for the Kingdom, 1954: the Netherlands Antilles govern themselves, a partner in the Kingdom.', { short: 'Sint Maarten', news: 'The Netherlands Antilles govern themselves' }),
   CK: SELF_GOVERNING('NZ', 1965, 'the Cook Islands, self-governing in free association with New Zealand', 'the Premier (the Prime Minister from 1981)', 'Self-government, 4 August 1965: the Cook Islands run their own affairs in free association with New Zealand. Cook Islanders keep their New Zealand passports.', { short: 'the Cook Islands', news: 'The Cook Islands govern themselves' }),
+  PN: SELF_GOVERNING('GB', 1970, 'the Pitcairn Islands, a British Overseas Territory', 'the Mayor', 'Pitcairn has its own Governor now (the British High Commissioner in New Zealand) and runs its own affairs through the Island Council.', { short: 'Pitcairn', forces: 'none', garrison: 'Britain', news: 'Pitcairn gets its own Governor' }),
+  NU: SELF_GOVERNING('NZ', 1974, 'Niue, self-governing in free association with New Zealand', 'the Premier', 'Self-government, 19 October 1974: Niue runs its own affairs in free association with New Zealand. Niueans keep their New Zealand citizenship; most of them already live in Auckland.', { short: 'Niue', news: 'Niue governs itself' }),
+  TK: SELF_GOVERNING('NZ', 1994, 'Tokelau, a self-administering New Zealand territory', 'the Ulu-o-Tokelau', 'The General Fono takes over the powers of the Administrator: Tokelau runs itself, a territory of New Zealand.', { short: 'Tokelau', news: 'Tokelau runs its own affairs' }),
+  NF: SELF_GOVERNING('AU', 1979, 'Norfolk Island, self-governing under Australia (until 2015)', 'the Chief Minister', 'The Norfolk Island Act, 1979: a Legislative Assembly and Chief Minister of the island\'s own.', { short: 'Norfolk Island', news: 'Norfolk Island governs itself' }),
+  CX: SELF_GOVERNING('AU', 1958, 'Christmas Island, an Australian territory', 'the Administrator', 'Christmas Island is an Australian territory now.', { short: 'Christmas Island', news: 'Christmas Island passes to Australia' }),
+  CC: SELF_GOVERNING('AU', 1984, 'the Cocos (Keeling) Islands, part of Australia', 'the Shire President', 'The Act of Self-Determination, 1984: the Cocos Malays voted, under UN observers, to integrate with Australia. Australian citizens, and the Clunies-Ross estate bought out.', { short: 'the Cocos Islands', news: 'The Cocos Islanders vote to join Australia' }),
+  WF: SELF_GOVERNING('FR', 1961, 'Wallis and Futuna, a French overseas territory', 'the Administrator Superior (beside the three kings)', 'The islanders voted in 1959 to become a French overseas territory: French law, and the kings of Uvea, Alo and Sigave keep their thrones.', { short: 'Wallis and Futuna', news: 'Wallis and Futuna become a French territory' }),
+  PM: SELF_GOVERNING('FR', 1946, 'St Pierre and Miquelon, a French overseas territory (a collectivity from 1985)', 'the Prefect', 'The colony becomes a French overseas territory, with a council of its own.', { short: 'St Pierre and Miquelon', news: 'St Pierre and Miquelon become a French territory' }),
+  BL: SELF_GOVERNING('FR', 2007, 'St Barthélemy, a French overseas collectivity', 'the President of the Territorial Council', 'St Barthélemy leaves Guadeloupe: a collectivity of its own, with its own tax law (no income tax).', { short: 'St Barts', news: 'St Barthélemy becomes a collectivity' }),
+  MF: SELF_GOVERNING('FR', 2007, 'St Martin, a French overseas collectivity', 'the President of the Territorial Council', 'St Martin leaves Guadeloupe: a collectivity of its own.', { short: 'St Martin', news: 'St Martin becomes a collectivity' }),
+  BQ: SELF_GOVERNING('NL', 1954, 'Bonaire, Sint Eustatius and Saba, in the Kingdom of the Netherlands', 'the Lieutenant Governor', 'The Charter for the Kingdom, 1954: the Netherlands Antilles govern themselves from Willemstad.', { short: 'the BES islands', news: 'The Netherlands Antilles govern themselves' }),
+  AX: SELF_GOVERNING('FI', 1921, 'Åland, autonomous and demilitarised within Finland', 'the Premier (Lantråd)', 'The League of Nations has decided: Åland stays Finnish, but autonomous, Swedish-speaking and demilitarised. Its young men will never be called up.', { short: 'Åland', honours: 'sovereign', forces: 'none', garrison: 'nobody (the islands are demilitarised)', news: 'The League gives Åland to Finland, with autonomy' }),
+  SJ: SELF_GOVERNING('NO', 1925, 'Svalbard, Norwegian under the Svalbard Treaty', 'the Governor (Sysselmesteren)', 'The Svalbard Treaty is in force: the islands are Norway\'s, but every signatory may mine and live here, and no warships or fortresses are allowed.', { short: 'Svalbard', forces: 'none', garrison: 'nobody (the Treaty forbids it)', news: 'Svalbard becomes Norwegian' }),
   HK: { of: 'CN', from: 1997, name: 'the Hong Kong Special Administrative Region of China', short: 'the Hong Kong SAR', head: 'the Chief Executive', garrison: 'the PLA Hong Kong Garrison',
     handover: 'At midnight on 30 June 1997, in the rain, the Union Flag came down over Hong Kong and the flags of China and the new Special Administrative Region went up. The last Governor sailed away on the royal yacht. "One country, two systems", for fifty years.' },
   MO: { of: 'CN', from: 1999, name: 'the Macao Special Administrative Region of China', short: 'the Macao SAR', head: 'the Chief Executive', garrison: 'the PLA Macao Garrison',
@@ -515,19 +528,44 @@ const OTTOMAN_RULE = (name) => G({ kind: 'colony', name: `${name}, ruled from Co
 const TIMELINES = {
   // Self-governing territories, from the day they governed themselves.
   PR: [[9999, DEMO('the Commonwealth of Puerto Rico, a US territory', 'the Governor')]],
+  PN: [[1838, PRECOLONIAL('Pitcairn Island, the Bounty mutineers\' settlement', 'John Adams, the last mutineer')], [9999, DEMO('the Pitcairn Islands, a British Overseas Territory', 'the Mayor')]],
+  NU: [[1900, PRECOLONIAL('Niue, under its own patu-iki (king)', 'the patu-iki')], [9999, DEMO('Niue, in free association with New Zealand', 'the Premier')]],
+  TK: [[1889, PRECOLONIAL('the Tokelau atolls, under their elders', 'the councils of elders (taupulega)')], [9999, DEMO('Tokelau, a New Zealand territory', 'the Ulu-o-Tokelau')]],
+  NF: [[2015, DEMO('Norfolk Island, self-governing under Australia', 'the Chief Minister')], [9999, OLIGARCHY('Norfolk Island, run directly from Canberra (its self-government abolished)', 'the Administrator')]],
+  CX: [[9999, DEMO('Christmas Island, an Australian territory', 'the Administrator')]],
+  CC: [[1827, PRECOLONIAL('the Cocos (Keeling) Islands, uninhabited', 'nobody')], [9999, DEMO('the Cocos (Keeling) Islands, part of Australia', 'the Shire President')]],
+  WF: [[1887, PRECOLONIAL('the kingdoms of Uvea, Alo and Sigave', 'the Lavelua (King of Uvea)')], [9999, DEMO('Wallis and Futuna, a French overseas collectivity (and three kingdoms)', 'the Administrator Superior')]],
+  PM: [[9999, DEMO('St Pierre and Miquelon, a French overseas collectivity', 'the Prefect')]], BL: [[9999, DEMO('St Barthélemy, a French overseas collectivity', 'the President of the Territorial Council')]],
+  MF: [[9999, DEMO('St Martin, a French overseas collectivity', 'the President of the Territorial Council')]],
+  BQ: [[2010, DEMO('the Netherlands Antilles (Bonaire, Sint Eustatius, Saba)', 'the Prime Minister of the Antilles')], [9999, DEMO('the Caribbean Netherlands: special municipalities of the Netherlands', 'the Lieutenant Governor')]],
+  AX: [[9999, DEMO('Åland, autonomous and demilitarised within Finland', 'the Premier (Lantråd)')]],
+  SJ: [[9999, DEMO('Svalbard, Norwegian under the Svalbard Treaty', 'the Governor')]],
+  VA: [[1870, KING('the Papal States', 'the Pope')], [1929, KING('the Vatican, the Pope a "prisoner" in it', 'the Pope')], [9999, KING('the State of the Vatican City, an elective theocracy', 'the Pope', { elections: 'none', press: 'state' })]],
+  IO: [[9999, OLIGARCHY('the British Indian Ocean Territory (Diego Garcia, the US base)', 'the Commissioner')]],
+  BV: [[1927, PRECOLONIAL('Bouvet Island, unclaimed', 'nobody')], [9999, OLIGARCHY('Bouvet Island, a Norwegian dependency', 'the Norwegian Polar Institute')]],
+  HM: [[1947, OLIGARCHY('Heard Island, a British claim', 'nobody')], [9999, OLIGARCHY('Heard Island and McDonald Islands, an Australian territory', 'the Australian Antarctic Division')]],
+  TF: [[1955, OLIGARCHY('Kerguelen and the southern islands, attached to Madagascar', 'the Governor of Madagascar')], [9999, OLIGARCHY('the French Southern and Antarctic Lands', 'the Prefect of the TAAF')]],
+  GS: [[1908, PRECOLONIAL('South Georgia, a sealers\' island', 'nobody')], [1985, OLIGARCHY('South Georgia, a Falkland Islands dependency', 'the Governor of the Falklands')], [9999, OLIGARCHY('South Georgia and the South Sandwich Islands', 'the Commissioner')]],
+  UM: [[9999, OLIGARCHY('the United States Minor Outlying Islands (Wake, Midway, Johnston, Palmyra)', 'the US Fish and Wildlife Service and the Air Force')]],
+  AQ: [[1908, PRECOLONIAL('Antarctica, unclaimed', 'nobody')], [1959, OLIGARCHY('Antarctica: rival claims (Britain, New Zealand, France, Norway, Australia, Chile, Argentina)', 'the claimant states')], [9999, DEMO('Antarctica, under the Antarctic Treaty', 'the Antarctic Treaty parties')]],
+  FK: [[1833, PRECOLONIAL('the Falkland Islands: sealers, gauchos and a settlement claimed by Buenos Aires', 'Luis Vernet, the Buenos Aires governor')], [9999, DEMO('the Falkland Islands, a British Overseas Territory', 'the Chief Executive')]],
+  YT: [[1841, PRECOLONIAL('the Sultanate of Mayotte', 'the Sultan')], [2011, DEMO('Mayotte, a French overseas collectivity', 'the Prefect')], [9999, DEMO('Mayotte, an overseas department of France', 'the Prefect')]],
+  NC: [[1853, PRECOLONIAL('Kanak chiefdoms of New Caledonia', 'the high chiefs')], [9999, DEMO('New Caledonia, a French sui generis collectivity (the Nouméa Accord)', 'the President of the Government')]],
+  PF: [[1842, PRECOLONIAL('the Kingdom of Tahiti', 'Queen Pōmare IV')], [9999, DEMO('French Polynesia, an overseas country of France', 'the President of French Polynesia')]],
+  CK: [[1888, PRECOLONIAL('the Cook Islands, under their ariki (high chiefs)', 'the ariki')], [9999, DEMO('the Cook Islands, in free association with New Zealand', 'the Prime Minister')]],
+  AS: [[1900, PRECOLONIAL('Tutuila and Manuʻa, under the matai chiefs', 'the Tui Manuʻa and the matai')], [9999, DEMO('American Samoa, an unincorporated US territory', 'the Governor')]],
+  EH: [[1884, PRECOLONIAL('the western Sahara of the Sahrawi tribes', 'the tribal assembly (Ait Arbain)')]],
+
   AI: [[9999, DEMO('Anguilla, a British Overseas Territory', 'the Premier')]], VG: [[9999, DEMO('the British Virgin Islands, a British Overseas Territory', 'the Premier')]],
   TC: [[2009, DEMO('the Turks and Caicos Islands, a British territory', 'the Chief Minister')], [2012, OLIGARCHY('the Turks and Caicos Islands under direct rule from London (the constitution suspended)', 'the Governor')], [9999, DEMO('the Turks and Caicos Islands, a British Overseas Territory', 'the Premier')]],
-  MS: [[9999, DEMO('Montserrat, a British Overseas Territory', 'the Premier')]], FK: [[9999, DEMO('the Falkland Islands, a British Overseas Territory', 'the Chief Executive')]], SH: [[9999, DEMO('St Helena, a British Overseas Territory', 'the Chief Minister')]],
+  MS: [[9999, DEMO('Montserrat, a British Overseas Territory', 'the Premier')]], SH: [[9999, DEMO('St Helena, a British Overseas Territory', 'the Chief Minister')]],
   GU: [[9999, DEMO('Guam, an unincorporated US territory', 'the Governor')]], VI: [[9999, DEMO('the US Virgin Islands, an unincorporated US territory', 'the Governor')]],
-  AS: [[9999, DEMO('American Samoa, an unincorporated US territory', 'the Governor')]], MP: [[9999, DEMO('the Commonwealth of the Northern Mariana Islands', 'the Governor')]],
+  MP: [[9999, DEMO('the Commonwealth of the Northern Mariana Islands', 'the Governor')]],
   GF: [[9999, DEMO('French Guiana, an overseas department of France', 'the Prefect')]], GP: [[9999, DEMO('Guadeloupe, an overseas department of France', 'the Prefect')]],
   MQ: [[9999, DEMO('Martinique, an overseas department of France', 'the Prefect')]], RE: [[9999, DEMO('Réunion, an overseas department of France', 'the Prefect')]],
-  YT: [[2011, DEMO('Mayotte, a French overseas collectivity', 'the Prefect')], [9999, DEMO('Mayotte, an overseas department of France', 'the Prefect')]],
-  NC: [[9999, DEMO('New Caledonia, a French sui generis collectivity (the Nouméa Accord)', 'the President of the Government')]], PF: [[9999, DEMO('French Polynesia, an overseas country of France', 'the President of French Polynesia')]],
   AW: [[1986, DEMO('the Netherlands Antilles (Aruba)', 'the Prime Minister of the Antilles')], [9999, DEMO('Aruba, a country within the Kingdom of the Netherlands', 'the Prime Minister')]],
   CW: [[2010, DEMO('the Netherlands Antilles (Curaçao)', 'the Prime Minister of the Antilles')], [9999, DEMO('Curaçao, a country within the Kingdom of the Netherlands', 'the Prime Minister')]],
   SX: [[2010, DEMO('the Netherlands Antilles (Sint Maarten)', 'the Prime Minister of the Antilles')], [9999, DEMO('Sint Maarten, a country within the Kingdom of the Netherlands', 'the Prime Minister')]],
-  CK: [[9999, DEMO('the Cook Islands, in free association with New Zealand', 'the Prime Minister')]],
 
   GL: [[2009, DEMO('Greenland under home rule, within the Danish Realm', 'the Premier')], [9999, DEMO('Greenland under self-rule, within the Danish Realm', 'the Premier')]],
   FO: [[9999, DEMO('the Faroe Islands under home rule, within the Danish Realm', 'the Løgmaður')]],
@@ -1262,7 +1300,17 @@ export function periodFlag(state, cc) {
     case 'SS': return y < 2011 ? periodFlag(state, 'SD') : { img: cc };
     case 'IM': return { img: cc };
     // Before the first foreign flag: islands and deserts of chiefs and tribes, no national flag.
-    case 'FK': case 'YT': case 'NC': case 'PF': case 'CK': case 'AS': case 'EH': return y < ({ FK: 1833, YT: 1841, NC: 1853, PF: 1842, CK: 1888, AS: 1900, EH: 1884 })[cc] ? { id: 'noFlag' } : { img: cc };
+    case 'FK': case 'YT': case 'NC': case 'PF': case 'CK': case 'AS': case 'EH': case 'PN': case 'NU': case 'TK': case 'CC': case 'WF': case 'AQ':
+      return y < ({ FK: 1833, YT: 1841, NC: 1853, PF: 1842, CK: 1888, AS: 1900, EH: 1884, PN: 1838, NU: 1900, TK: 1889, CC: 1827, WF: 1887, AQ: 9999 })[cc] ? { id: 'noFlag' } : { img: cc };
+    case 'VA': return y < 1870 ? { id: 'papalStates' } : y < 1929 ? { img: 'IT' } : { img: cc };
+    case 'NF': return y < 1979 ? { img: 'AU' } : { img: cc };
+    case 'CX': return y < 1958 ? { img: 'GB' } : { img: 'AU' };
+    case 'AX': return y < 1917 ? { img: 'RU' } : y < 1954 ? { img: 'FI' } : { img: cc };
+    case 'SJ': case 'BV': return y < 1925 ? { id: 'noFlag' } : { img: 'NO' };
+    case 'HM': return { img: 'AU' };
+    case 'GS': case 'IO': return { img: 'GB' };
+    case 'UM': return { img: 'US' };
+    case 'TF': return { img: 'FR' };
     case 'RW': return y >= 1962 && y < 2001 ? { id: 'rwandaOld' } : { img: cc };
     case 'MN': return y >= 1924 && y < 1992 ? { id: 'mongoliaPR' } : { img: cc };
     // A land not yet a state (before the colonial era or between empires) had no national flag.

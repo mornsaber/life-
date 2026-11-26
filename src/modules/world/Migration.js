@@ -14,6 +14,7 @@
  * keeps the job; a remote private-sector job stays remote). Public-pension
  * records stay with each country and pay out together when you claim.
  */
+import { settleIn } from './Habitation.js';
 import { exitBlock } from './Regimes.js';
 import { subjectRight, yearNow } from './Eras.js';
 import { bodyOfJob, joinLocalUnit } from '../org/Bodies.js';
@@ -467,6 +468,7 @@ export const MigrationModule = {
       const { state, rng } = ctx;
       const [to, kind, city] = String(arg).split(':');
       if (!COUNTRIES[to] || to === countryIdOf(state)) return;
+      if (!settleIn(to, yearNow(state))) return ctx.toast(`Nobody settles in ${COUNTRIES[to].name}: you can only be posted there`, 'warn');
       // Which side of a divided country (East or West Germany, North or South Vietnam).
       ensureMigration(state).toCity = city && REGIONS[city]?.country === to ? city : null;
       const block = departureBlock(state);

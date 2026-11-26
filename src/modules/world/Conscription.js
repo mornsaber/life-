@@ -207,7 +207,7 @@ export const ConscriptionModule = {
     const age = state.character.age;
     const c = record(state);
     // Åland is demilitarised (1921): its people aren't called up.
-    if (state.character.regionId === 'mariehamn' && yearNow(state) >= 1921) {
+    if ((state.character.countryId === 'AX' || state.character.regionId === 'ax_mariehamn') && yearNow(state) >= 1921) {
       if (c.status !== 'exempt') { c.status = 'exempt'; ctx.log('You grew up on Åland: demilitarised since 1921, its young men are exempt from Finnish conscription.', '⛵', 'info'); }
       return;
     }

@@ -7,6 +7,7 @@
  * *read* other slices through the selectors exported here, but only mutates
  * its own. Cross-domain effects travel over the engine's event bus.
  */
+import { bornIn } from '../modules/world/Habitation.js';
 import { migrate } from './Migrations.js';
 import { clamp, Random } from './Random.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
@@ -80,8 +81,8 @@ export function randomName(rng, gender) {
 }
 
 /** A random country of birth for a random life (everyone the game models, the US weighted a little higher). */
-export function randomCountryId(rng) {
-  const ids = Object.keys(COUNTRIES);
+export function randomCountryId(rng, year = 9999) {
+  const ids = Object.keys(COUNTRIES).filter((id) => bornIn(id, year));
   return rng.weighted(ids.map((id) => [id, id === 'US' ? 3 : 1]), ([, w]) => w)[0];
 }
 
@@ -187,7 +188,7 @@ export function createInitialState(rng, options = {}) {
   if (house) options = { ...options, countryId: house.countryId };
   const noble = royal || house ? null : nobleStart(rng, options);
   if (noble) options = { ...options, countryId: noble.countryId };
-  if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
+  if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng, options.startYear ?? 9999) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
   setNameCountry(country?.id ?? 'US');
   const gender = options.gender === 'female' || options.gender === 'male' ? options.gender : rng.pick(['male', 'female']);

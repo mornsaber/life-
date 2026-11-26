@@ -10,6 +10,7 @@ import { EVENTS } from './History.js';
 import { COLONIES, PRESENT, stageEnd, periodCountryName, periodFlagEmoji, flagEmoji, periodFlag } from './Eras.js';
 import { regionStateAt } from './HistoricalData.js';
 import { encodePicks, decodePicks } from './StartPicks.js';
+import { bornIn } from './Habitation.js';
 
 export { encodePicks, decodePicks };
 
@@ -54,6 +55,7 @@ export function startCountries(year) {
     out.set(key, e);
   };
   for (const cc of Object.keys(COUNTRIES)) {
+    if (!bornIn(cc, year)) continue;
     const towns = cc === 'US' ? US_TOWNS : [...new Set([...(COUNTRIES[cc].hometowns ?? []), ...(BY_COUNTRY[cc] ?? [])])];
     const own = towns.filter((r) => regionStateAt(r, year));
     const rest = (COUNTRIES[cc].hometowns ?? (cc === 'US' ? US_TOWNS : towns)).filter((r) => !regionStateAt(r, year));

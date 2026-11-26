@@ -129,13 +129,12 @@ export const REGION_STATES = {
     R(1939, 1945, ['Nazi Germany (Memel)', 'the Führer', 'colony', 'germanEmpire'])],
   rijeka: [R(1800, 1918, ['Fiume, a corpus separatum of the Kingdom of Hungary', 'the Governor of Fiume', 'colony', 'habsburg']), R(1919, 1920, ['the Italian Regency of Carnaro, D\'Annunzio\'s', 'the Comandante (Gabriele D\'Annunzio)', 'authoritarian', null]),
     R(1920, 1924, ['the Free State of Fiume', 'the President of the Free State', 'city', null]), R(1924, 1945, ['the Kingdom of Italy (Fiume)', 'the Duce', 'colony', null])],
-  // Zones under other masters: the Canal Zone, Trieste, the Saar, Åland.
+  // Zones under other masters: the Canal Zone, Trieste, the Saar (Åland is its own: packs/sketches/Remote.js).
   balboa: [R(1904, 1979, ['the Panama Canal Zone, an American territory', 'the Governor of the Canal Zone', 'colony', null]), R(1979, 2000, ['the former Canal Zone, under joint US–Panamanian administration of the Canal', 'the Panama Canal Commission', 'city', null])],
   trieste: [R(1800, 1918, ['the Austrian Littoral (Trieste, the Habsburgs\' port)', 'the Emperor of Austria', 'colony', 'habsburg', FLORIN]), R(1945, 1947, ['Trieste under Allied military government', 'the Allied Military Government', 'colony', null]),
     R(1947, 1954, ['the Free Territory of Trieste (Zone A, under Allied military government)', 'the Allied Military Government', 'city', null])],
   saarbruecken: [R(1815, 1871, PRUSSIA), R(1920, 1935, ['the Saar Territory, governed by the League of Nations', 'the League\'s Governing Commission', 'city', null]),
     R(1947, 1957, ['the Saar Protectorate, under France', 'the French High Commissioner', 'colony', null])],
-  mariehamn: [R(1921, null, ['the Åland Islands: autonomous and demilitarised, part of Finland', 'the Lagting', 'city', null])],
   // South Africa before the Union of 1910.
   johannesburg: [R(spanOf(563)[0], 1902, SAFRICAN), R(1902, 1910, ['the Transvaal Colony', 'the Governor', 'colony', 'blueEnsign'])],
   pretoria: [R(spanOf(563)[0], 1902, SAFRICAN), R(1902, 1910, ['the Transvaal Colony', 'the Governor', 'colony', 'blueEnsign'])],

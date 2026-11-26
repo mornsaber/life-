@@ -28,12 +28,14 @@ import { regimeOf, exitBlock, sanctionsOn } from './Regimes.js';
 import { warIn } from './War.js';
 import { yearNow, PRESENT } from './Eras.js';
 
+/** Every country by continent (the empty places of the far south: Antarctica). */
 export const CONTINENT = {
-  Europe: ['GB', 'IE', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'AT', 'BA', 'BE', 'CH', 'CY', 'DK', 'EE', 'LT', 'LV', 'MT', 'NO', 'PL', 'RO', 'RU', 'TR', 'UA', 'XK', 'GR', 'PT', 'FI', 'LU'],
-  Americas: ['US', 'CA', 'MX', 'BR', 'AR', 'CO', 'CR', 'GT', 'HT', 'PE', 'VE', 'PA', 'JM', 'BS', 'CL'],
-  'Asia & Pacific': ['JP', 'KR', 'KP', 'CN', 'TW', 'IN', 'PK', 'PH', 'SG', 'ID', 'MY', 'TH', 'VN', 'KH', 'MM', 'BN', 'AU', 'NZ', 'PG', 'SB', 'VU', 'BD', 'LK', 'BT', 'TO', 'MH'],
+  Europe: ['GB', 'IE', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'AT', 'BA', 'BE', 'CH', 'CY', 'DK', 'EE', 'LT', 'LV', 'MT', 'NO', 'PL', 'RO', 'RU', 'TR', 'UA', 'XK', 'GR', 'PT', 'FI', 'LU', 'AD', 'AL', 'BG', 'BY', 'CZ', 'HR', 'HU', 'IS', 'LI', 'MC', 'MD', 'ME', 'MK', 'RS', 'SI', 'SK', 'SM', 'FO', 'GG', 'GI', 'IM', 'JE', 'AX', 'VA', 'SJ', 'GL'],
+  Americas: ['US', 'CA', 'MX', 'BR', 'AR', 'CO', 'CR', 'GT', 'HT', 'PE', 'VE', 'PA', 'JM', 'BS', 'CL', 'AG', 'BB', 'BO', 'BZ', 'CU', 'DM', 'DO', 'EC', 'GD', 'GY', 'HN', 'KN', 'LC', 'NI', 'PY', 'SR', 'SV', 'TT', 'UY', 'VC', 'BM', 'KY', 'PR', 'AI', 'AW', 'CW', 'FK', 'GF', 'GP', 'MQ', 'MS', 'SX', 'TC', 'VG', 'VI', 'BL', 'BQ', 'MF', 'PM'],
+  'Asia & Pacific': ['JP', 'KR', 'KP', 'CN', 'TW', 'IN', 'PK', 'PH', 'SG', 'ID', 'MY', 'TH', 'VN', 'KH', 'MM', 'BN', 'AU', 'NZ', 'PG', 'SB', 'VU', 'BD', 'LK', 'BT', 'TO', 'MH', 'NP', 'AM', 'AZ', 'GE', 'KG', 'KZ', 'TJ', 'TM', 'UZ', 'FJ', 'FM', 'KI', 'LA', 'MN', 'MV', 'NR', 'PW', 'TL', 'TV', 'WS', 'HK', 'MO', 'AS', 'CK', 'GU', 'MP', 'NC', 'PF', 'CC', 'CX', 'NF', 'NU', 'PN', 'TK', 'WF', 'IO'],
   'Middle East': ['IL', 'PS', 'AE', 'SA', 'QA', 'KW', 'BH', 'JO', 'LB', 'SY', 'IQ', 'IR', 'YE', 'EG', 'AF', 'OM'],
-  Africa: ['NG', 'KE', 'ZA', 'MA', 'GH', 'SN', 'CI', 'ET', 'DJ', 'GM', 'GW', 'LY', 'ML', 'MW', 'MZ', 'NE', 'SD', 'SO', 'SS', 'TD', 'CD', 'CF', 'LR'],
+  Antarctica: ['AQ', 'BV', 'HM', 'TF', 'GS', 'UM'],
+  Africa: ['NG', 'KE', 'ZA', 'MA', 'GH', 'SN', 'CI', 'ET', 'DJ', 'GM', 'GW', 'LY', 'ML', 'MW', 'MZ', 'NE', 'SD', 'SO', 'SS', 'TD', 'CD', 'CF', 'LR', 'AO', 'BF', 'BI', 'BJ', 'BW', 'CG', 'CM', 'CV', 'DZ', 'ER', 'GA', 'GN', 'GQ', 'KM', 'LS', 'MG', 'MR', 'MU', 'NA', 'RW', 'SC', 'SL', 'ST', 'SZ', 'TG', 'TN', 'TZ', 'UG', 'ZM', 'ZW', 'EH', 'RE', 'YT', 'SH'],
 };
 const continentOf = (cc) => Object.keys(CONTINENT).find((k) => CONTINENT[k].includes(cc)) ?? 'Elsewhere';
 

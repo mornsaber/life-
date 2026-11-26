@@ -138,7 +138,7 @@ t('zones: the Canal Zone, Trieste, the Saar, Åland', () => {
   assert.match(regionRegimeAt('trieste', 1950).name, /Free Territory of Trieste/);
   assert.match(regionRegimeAt('saarbruecken', 1925).name, /League of Nations/);
   assert.match(regionRegimeAt('saarbruecken', 1950).name, /Saar Protectorate/);
-  assert.match(regionRegimeAt('mariehamn', 1980).name, /Åland/);
+  assert.match(life('AX', 1980).state && autonomyHere(life('AX', 1980).state).name, /Åland/);
 });
 t('mandates: answerable to Geneva, then to New York', () => {
   assert.equal(mandateKind(life('TZ', 1935).state), 'league');

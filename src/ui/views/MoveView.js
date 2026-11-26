@@ -3,6 +3,7 @@
  * pay, state income tax, laws, disaster risk, which of your licenses would
  * need transferring, and what happens to your job and pension.
  */
+import { settleIn } from '../../modules/world/Habitation.js';
 import { lifeMap } from './MapView.js';
 import { servicePassports, PASSPORT_LABEL, ISSUERS, PASSPORT_ICON } from '../../modules/world/Passports.js';
 import { esc, money, button, card, chip, disclosure } from '../Components.js';
@@ -21,7 +22,7 @@ import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, natural
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
 import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
-import { cityStateOfDay, innerBorder, getEraState, hasTech } from '../../modules/world/Eras.js';
+import { cityStateOfDay, innerBorder, getEraState, hasTech, yearNow } from '../../modules/world/Eras.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
 import { flagImg, flagFrom } from '../Flags.js';
 
@@ -249,7 +250,7 @@ function worldCard(state, ui) {
     .sort((a, b) => (RANK[a.r.kind] ?? 3) - (RANK[b.r.kind] ?? 3) || (b.r.odds ?? 0) - (a.r.odds ?? 0) || a.c.name.localeCompare(b.c.name)).slice(0, 8);
   const visited = state.travel?.countries ?? [];
   const cc = COUNTRIES[ui.place] && ui.place !== here ? ui.place : null;
-  const picker = `<label class="country-pick">Country<select data-ui-set="place" aria-label="Choose a country"><option value="">Choose a country…</option>${Object.entries(CONTINENT).map(([name, ids]) => `<optgroup label="${esc(name)}">${ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}"${c.id === cc ? ' selected' : ''}>${c.flag} ${esc(c.name)}${bestRoute(routesFor[c.id]) ? ' ✓' : ''}${visited.includes(c.id) ? ' · visited' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+  const picker = `<label class="country-pick">Country<select data-ui-set="place" aria-label="Choose a country"><option value="">Choose a country…</option>${Object.entries(CONTINENT).map(([name, ids]) => `<optgroup label="${esc(name)}">${ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here && settleIn(c.id, yearNow(state))).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}"${c.id === cc ? ' selected' : ''}>${c.flag} ${esc(c.name)}${bestRoute(routesFor[c.id]) ? ' ✓' : ''}${visited.includes(c.id) ? ' · visited' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
   const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${c.flag} ${c.name}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now — study, a job offer, family or savings open most of them.</p>';
   const block = departureBlock(state);
   return card('The World', `<p class="muted">Holidays, moving abroad and retiring abroad, one country at a time. ✓ marks countries with a legal route open to you.</p>

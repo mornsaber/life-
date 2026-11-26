@@ -16,6 +16,7 @@ import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
 import { START_ERAS, eraById } from '../modules/world/Eras.js';
 import { startCountries, sortName } from '../modules/world/StartCountries.js';
+import { bornIn, settleIn } from '../modules/world/Habitation.js';
 import { flagImg } from './Flags.js';
 import { flagSpec } from './Flags.js';
 
@@ -372,7 +373,7 @@ export function countryOptions({ selected = '', only = null, random = '🎲 Rand
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
   const opt = (id) => `<option value="${id}" data-flag="img:${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].baseName ?? COUNTRIES[id].name)}${mark(id)}</option>`;
   const body = Object.entries(groups).map(([name, ids]) => {
-    const list = ids.filter((id) => COUNTRIES[id] && (!only || only.includes(id))).sort((a, b) => (COUNTRIES[a].baseName ?? COUNTRIES[a].name).localeCompare(COUNTRIES[b].baseName ?? COUNTRIES[b].name));
+    const list = ids.filter((id) => COUNTRIES[id] && (only ? only.includes(id) : bornIn(id, year ?? 9999) || settleIn(id, year ?? 9999))).sort((a, b) => (COUNTRIES[a].baseName ?? COUNTRIES[a].name).localeCompare(COUNTRIES[b].baseName ?? COUNTRIES[b].name));
     return list.length ? `<optgroup label="${esc(name)}">${list.map(opt).join('')}</optgroup>` : '';
   }).join('');
   return `${random ? `<option value="random">${random}</option>` : ''}${body}`;

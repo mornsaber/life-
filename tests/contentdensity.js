@@ -5,6 +5,7 @@
  *
  *   node tests/contentdensity.js
  */
+import { bornIn } from '../src/modules/world/Habitation.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
@@ -58,6 +59,7 @@ const tests = {
   'every country has moments of its own history'() {
     const missing = [];
     for (const cc of Object.keys(COUNTRIES)) {
+      if (![1850, 1900, 1950, 2000].some((y) => bornIn(cc, y))) continue; // nobody is born there
       let found = false;
       for (let y = 1800; y <= 2060 && !found; y += 1) {
         for (const a of [10, 20, 30, 45]) {
