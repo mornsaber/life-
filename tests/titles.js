@@ -16,6 +16,9 @@ const who = (cc, gender, job, degs = [], extra = () => {}) => {
   const e = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
   const s = e.newLife({ countryId: cc, startYear: 1960, gender, firstName: 'Ann', lastName: 'Lee' });
   s.character.age = 50;
+  // The years in between, as our history had them.
+  Object.assign(s.era.events, { sovietCollapse: { year: 1991 }, yugoslaviaBreakup: { year: 1991 }, velvetDivorce: { year: 1993 } });
+  e.hydrate(s);
   s.education.degrees = degs.map((type) => ({ type }));
   if (job) s.career.job = { professionId: job[0], title: job[1], grade: job[2] ?? 3 };
   extra(s);
@@ -59,13 +62,30 @@ const tests = {
     const sir = (s) => { s.character.style = { prefix: 'Sir' }; };
     assert.equal(who('GB', 'male', null, [], sir).name, 'Sir Ann Lee');
     assert.equal(who('US', 'male', null, [], sir).name, 'Ann Lee', 'no knights in America');
-    assert.equal(who('US', 'male', null, [], sir).says, null);
+    assert.equal(who('US', 'male', null, [], sir).says, 'Mr. Lee');
     // An honorary knighthood for an American: no Sir, no letters.
     const e = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
     const st = e.newLife({ countryId: 'US', gender: 'male', firstName: 'Ann', lastName: 'Lee' });
     award(e.context(), 'GB', ORDERS.GB.tiers.find((t) => t.id === 'knight'));
     assert.ok(!st.character.style?.prefix, 'no Sir');
     assert.equal(postNominals(st), '');
+  },
+  'names of their era: a surgeon is Mr in London, Mrs John Lee in 1950, Ms from the 1970s in America, Comrade in Moscow, Hofrat in Vienna'() {
+    const surgeon = (s) => { s.medicine = { specialty: 'generalSurgery' }; };
+    assert.equal(who('GB', 'male', ['medical', 'Attending Physician'], ['md'], surgeon).name, 'Ann Lee');
+    assert.equal(who('GB', 'male', ['medical', 'Attending Physician'], ['md'], surgeon).says, 'Mr Lee');
+    assert.equal(who('US', 'male', ['medical', 'Attending Physician'], ['md'], surgeon).name, 'Dr. Ann Lee', 'an American surgeon is Dr');
+    const wife = (year) => (s) => { s.character.birthYear = year - 50; s.people.list.push({ id: 'h', relation: 'spouse', alive: true, gender: 'male', firstName: 'John', lastName: 'Lee' }); };
+    const at = (cc, gender, year, extra) => { const e = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES }); const s = e.newLife({ countryId: cc, startYear: year - 40, gender, firstName: 'Ann', lastName: 'Lee' }); s.character.age = 40; Object.assign(s.era.events, { sovietCollapse: { year: 1991 } }); extra?.(s); e.hydrate(s); return addressOf(s); };
+    assert.equal(at('US', 'female', 1950, (s) => s.people.list.push({ id: 'h', relation: 'spouse', alive: true, gender: 'male', firstName: 'John', lastName: 'Lee' })), 'Mrs. John Lee');
+    assert.equal(at('US', 'female', 1990, (s) => s.people.list.push({ id: 'h', relation: 'spouse', alive: true, gender: 'male', firstName: 'John', lastName: 'Lee' })), 'Mrs. Lee');
+    assert.equal(at('US', 'female', 1960), 'Miss Lee');
+    assert.equal(at('US', 'female', 1990), 'Ms. Lee');
+    assert.equal(at('GB', 'female', 1978), 'Miss Lee', 'Ms came later in Britain');
+    const moscow = at('RU', 'male', 1970, (s) => { delete s.era.events.sovietCollapse; });
+    assert.equal(moscow, 'Comrade Lee');
+    const vienna = who('AT', 'male', ['meteorology', 'Director', 8], ['master']);
+    assert.match(vienna.name, /^Hofrat /);
   },
 };
 

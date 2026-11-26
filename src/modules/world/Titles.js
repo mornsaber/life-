@@ -19,6 +19,18 @@
  */
 import { yearNow, periodTitle } from './Eras.js';
 import { rankOf } from '../military/MilitaryEngine.js';
+import { regimeHere } from './Regimes.js';
+import { PROFESSIONS } from '../career/JobTrees.js';
+
+/** Surgeons in the British tradition: Mr, Miss or Ms, not Dr (the old barber-surgeons' pride). */
+const SURGICAL = ['generalSurgery', 'orthopedics', 'neurosurgery', 'plastics', 'ent', 'urology', 'obgyn', 'ophthalmology'];
+const SURGEON_MR = ['GB', 'IE', 'AU', 'NZ', 'ZA', 'HK'];
+/** Where English courtesy titles are the default: Mr, Mrs, Miss, Ms (with the full stop in America). */
+const ENGLISH = ['US', 'GB', 'IE', 'AU', 'NZ', 'CA', 'ZA', 'JM', 'TT', 'BB', 'BS'];
+/** When "Ms" came into everyday use: America in the 1970s, the rest of the English-speaking world in the 1980s. */
+const MS_FROM = { US: 1972 };
+const married = (state) => (state.people?.list ?? []).find((p) => p.relation === 'spouse' && p.alive !== false) ?? null;
+const senior = (state) => { const j = state.career?.job; const sector = j ? j.sector ?? PROFESSIONS[j.professionId]?.sector : null; return Boolean(j && ['state', 'federal', 'government', 'municipal'].includes(sector) && (j.grade ?? 0) >= 7); };
 
 const GERMANIC = ['DE', 'AT', 'CH', 'LI'];
 /**
@@ -118,8 +130,12 @@ export function professionalTitle(state, { knight = false } = {}) {
     const prof = k.professor ? 'Prof.' : null;
     const austria = c === 'AT';
     const lesser = !dr && !prof ? (k.engineer && (k.master || k.graduate) ? 'Dipl.-Ing.' : austria && k.engineer ? 'Ing.' : austria && k.master ? (f ? 'Mag.a' : 'Mag.') : null) : null;
-    const prefix = [prof, dr, lesser].filter(Boolean).join(' ') || null;
+    // The honorary councillor's title of the senior official and the eminent professor: Geheimrat in
+    // Germany until the Republic abolished it (1919), Hofrat in Austria to this day.
+    const rat = senior(state) || (prof && k.fullProfessor && state.character.age >= 55) ? (c === 'AT' ? (f ? 'Hofrätin' : 'Hofrat') : c === 'DE' && y < 1919 ? 'Geheimrat' : null) : null;
+    const prefix = [rat, prof, dr, lesser].filter(Boolean).join(' ') || null;
     if (!prefix) return null;
+    if (rat) return { prefix, suffix: null, address: `${f ? 'Frau' : 'Herr'} ${rat}`, why: c === 'AT' ? 'the title of Hofrat, for long and distinguished service' : 'the title of Geheimrat, for long and distinguished service' };
     // Austrians say the lesser titles aloud too: Herr Diplomingenieur, Frau Magistra.
     const spoken = prof ? 'Professor' : dr ? 'Doktor' : !austria ? null : lesser === 'Dipl.-Ing.' ? (f ? 'Diplomingenieurin' : 'Diplomingenieur') : lesser === 'Ing.' ? (f ? 'Ingenieurin' : 'Ingenieur') : lesser ? (f ? 'Magistra' : 'Magister') : null;
     return { prefix, suffix: null, address: spoken ? `${f ? 'Frau' : 'Herr'} ${spoken}${austria ? '' : ` ${last}`}` : null, why: prof ? 'your chair' : dr ? 'your doctorate' : 'your degree' };
@@ -160,6 +176,11 @@ export function professionalTitle(state, { knight = false } = {}) {
   const britishProf = ['GB', 'IE', 'AU', 'NZ'].includes(c) ? k.fullProfessor : k.professor;
   if (britishProf) return { prefix: 'Professor', suffix: null, address: `Professor ${last}`, why: 'your chair' };
   if (k.captain) return { prefix: 'Captain', suffix: null, address: 'Captain', why: /aviation/.test(now(state)?.professionId ?? '') ? 'command of an airliner' : 'command of a ship' };
+  // A consultant surgeon in the British tradition goes back to Mr (or Miss, Ms).
+  const surgeon = k.physician && SURGICAL.includes(state.medicine?.specialty) && SURGEON_MR.includes(c) && (now(state)?.grade ?? 0) >= 2;
+  if (surgeon && !knight) { const t = f ? (y >= 1985 ? 'Ms' : married(state) ? 'Mrs' : 'Miss') : 'Mr'; return { prefix: null, suffix: null, address: `${t} ${last}`, why: 'surgery: a surgeon is Mr, not Dr' }; }
+  // Before the Medical Act of 1858 only a physician with a university MD was Dr; surgeons and apothecaries were Mr.
+  if (k.physician && !doc && y < 1858 && SURGEON_MR.includes(c)) return null;
   if ((k.physician || doc) && !knight) return { prefix: us ? 'Dr.' : 'Dr', suffix: null, address: `Doctor ${last}`, why: k.physician ? 'medicine' : 'your doctorate' };
   if (SOUTH_ASIA.includes(c)) {
     if (k.lawyer) return { prefix: 'Adv.', suffix: null, address: null, why: 'the bar' };
@@ -185,7 +206,31 @@ export function addressOf(state) {
   if (bought && !outrankedBy(state)) return `${bought} ${c.lastName}`;
   // A knight or dame is Sir John, Dame Olivia, whatever else they are (a serving officer keeps the rank).
   if (/^(Sir|Dame)$/.test(p ?? '') && knightlyHere(state) && !state.military?.service) return `${p} ${state.character.firstName}`;
-  return professionalTitle(state)?.address ?? null;
+  return eraAddress(state, professionalTitle(state));
+}
+
+/**
+ * How you are addressed in your era when nothing grander applies: Comrade under the party, Citoyen
+ * in the Republic of Year XII, and in English Mr, Mrs, Miss or Ms as the decade had them (a
+ * married woman as Mrs John Lee before the 1960s; Ms from the 1970s in America, the 1980s elsewhere;
+ * Master for a boy).
+ */
+export function eraAddress(state, title = professionalTitle(state)) {
+  const c = cc(state);
+  const y = yearNow(state);
+  const ch = state.character;
+  const last = ch.lastName;
+  const r = regimeHere(state);
+  if (ch.age >= 16 && (r.business === 'state' || /Soviet|communist|People's Republic|Socialist Republic/.test(r.name ?? '')) && r.kind !== 'democracy') return `Comrade ${title?.prefix && /rank/.test(title.why ?? '') ? title.prefix : last}`;
+  if (c === 'FR' && y <= 1804 && ch.age >= 16) return `${fem(state) ? 'Citoyenne' : 'Citoyen'} ${last}`;
+  if (title?.address) return title.address;
+  if (!ENGLISH.includes(c)) return null;
+  const dot = c === 'US' ? '.' : '';
+  if (!fem(state)) return ch.age < 13 && y < 1960 ? `Master ${ch.firstName}` : ch.age >= 18 ? `Mr${dot} ${last}` : null;
+  const spouse = married(state);
+  if (spouse) return y < 1960 && spouse.gender !== 'female' ? `Mrs${dot} ${spouse.firstName} ${last}` : `Mrs${dot} ${last}`;
+  if (ch.age < 18) return null;
+  return y >= (MS_FROM[c] ?? 1985) ? `Ms${dot} ${last}` : `Miss ${last}`;
 }
 
 /** Put the title on a name: "Prof. Dr. Anna Weber", "Colonel John Smith (Ret.)", "General Sir John Smith". */
