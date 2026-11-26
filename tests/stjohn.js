@@ -98,8 +98,9 @@ const tests = {
     assert.ok(['officer', 'commander'].includes(state.stJohn.grade));
   },
   'the Johanniterorden: Protestant men, Ehrenritter then Rechtsritter; Sweden asks for noble birth'() {
-    const { engine, state, ctx } = life({ countryId: 'DE', gender: 'male' }, 9);
-    year(engine, state, 35);
+    // A life that reaches 35 (an accident can end one early: try the next seed).
+    let engine, state, ctx;
+    for (let seed = 9; seed < 30; seed++) { ({ engine, state, ctx } = life({ countryId: 'DE', gender: 'male' }, seed)); year(engine, state, 35); if (state.character.alive) break; }
     state.community.faith = { traditionId: 'lutheran', congregation: 'St. Marien', attendance: 'regular', joinedAge: 0, raised: true };
     state.stJohn = null;
     const check = allianceCheck(state);

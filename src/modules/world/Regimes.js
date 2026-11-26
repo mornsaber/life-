@@ -36,7 +36,7 @@ import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
 import { setRegimeLookup } from './Ownership.js';
-import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, RULER_NAME, yearNow, eraYear, autonomyHere } from './Eras.js';
+import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, RULER_NAME, yearNow, eraYear, autonomyHere, regionRegimeAt, PRESENT } from './Eras.js';
 const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
@@ -146,7 +146,16 @@ export function setRegimeOverrides(juntas = {}) {
 export const coupProne = (cc) => Boolean(REGIMES[cc]?.coups || REGIMES[cc]?.kind === 'fragile' || REGIMES[cc]?.kind === 'junta');
 export const baseRegimeOf = (cc) => REGIMES[cc] ?? R({});
 export const regimeOf = (cc) => (ERA[cc] || REFORMS[cc] ? R({ ...(ERA[cc] ?? REGIMES[cc] ?? {}), ...(REFORMS[cc] ?? {}), ...(OVERRIDES[cc] ?? {}) }) : OVERRIDES[cc] ? R({ ...(REGIMES[cc] ?? {}), ...OVERRIDES[cc] }) : REGIMES[cc] ?? R({}));
-export const regimeHere = (state) => regimeOf(state.character.countryId ?? 'US');
+export const regimeHere = (state) => {
+  const base = regimeOf(state.character.countryId ?? 'US');
+  // A city under a state of its own today (Transnistria, Northern Cyprus, Somaliland, Crimea): its
+  // rulers, not the capital's. (Lives in history get theirs through the era layer.)
+  if (yearNow(state) >= PRESENT && state.character.regionId) {
+    const local = regionRegimeAt(state.character.regionId, yearNow(state));
+    if (local) return R({ ...base, ...local });
+  }
+  return base;
+};
 setRegimeLookup((cc) => regimeOf(cc));
 export const isOpenSociety = (cc) => ['democracy'].includes(regimeOf(cc).kind);
 

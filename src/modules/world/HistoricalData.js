@@ -80,6 +80,17 @@ const SAFRICAN = ['the South African Republic (the Transvaal)', 'the State Presi
 const OFS = ['the Orange Free State', 'the State President', 'republic', 'orangeFreeState'];
 const CAPE = ['the Cape Colony', 'the Governor', 'colony', 'blueEnsign'];
 const NATAL = ['the Colony of Natal', 'the Governor', 'colony', 'blueEnsign'];
+const MEX_TEXAS = ['Coahuila y Tejas, a state of Mexico', 'the Governor of Coahuila y Tejas', 'colony', 'mx'];
+const TEXAS = ['the Republic of Texas', 'the President of Texas', 'republic', 'texas', ['TXD', '$', 'Texas dollar ("redback")', null, 1.5]];
+const ZANZIBAR = ['the Sultanate of Zanzibar', 'the Sultan of Zanzibar', 'absolute', 'zanzibar', ['ZAR', 'Rs ', 'Zanzibari rupee', null, 3.0]];
+const BIAFRA = ['the Republic of Biafra (seceded from Nigeria; at war)', 'Colonel Ojukwu, Head of State', 'authoritarian', 'biafra', ['BIP', '£', 'Biafran pound', null, 0.36]];
+const SOMALILAND = ['the Republic of Somaliland (independent in fact since 1991, unrecognised)', 'the President of Somaliland', 'city', 'somaliland', ['SLS', 'Sl. Sh. ', 'Somaliland shilling', null, 8000]];
+const RYUKYU = ['the Ryukyu Kingdom (tributary to China and to Satsuma)', 'the King of Ryukyu', 'absolute', null];
+const USCAR = ['the Ryukyu Islands under United States administration (USCAR)', 'the High Commissioner of the Ryukyu Islands', 'colony', 'us', ['USD', '$', 'US dollar (the B-yen until 1958)', null, 1.0]];
+const SIKKIM = ['the Kingdom of Sikkim', 'the Chogyal', 'absolute', 'sikkim'];
+const SARDINIA = ['the Kingdom of Sardinia (Piedmont)', 'the King of Sardinia', 'monarchy', 'sardinia', ['ITL', 'L. ', 'Piedmontese lira', null, 5.0]];
+const NORTH_CYPRUS = ['the Turkish Republic of Northern Cyprus (recognised only by Turkey)', 'the President of the TRNC', 'city', 'northCyprus', ['TRY', '₺', 'Turkish lira', null, 3]];
+const CRIMEA = ['Russian-annexed Crimea (unrecognised)', 'the Russian-installed head of Crimea', 'authoritarian', 'ru', ['RUB', '₽', 'Russian ruble', null, 30]];
 const R = (from, to, [name, leader, kind, flag = null, currency = null]) => ({ from, to, name, leader, kind, flag, currency });
 
 /**
@@ -149,6 +160,50 @@ export const REGION_STATES = {
   mukalla: [R(1882, 1967, ['the Qu\'aiti Sultanate, a British protectorate', 'the Sultan', 'colony', 'quaiti']), R(spanOf(680)[0], until(680) + 1, ['the People\'s Democratic Republic of Yemen (South Yemen)', 'the General Secretary', 'eastbloc', 'southYemen', ['YDD', 'YD ', 'South Yemeni dinar', null, 0.345]])],
   hanoi: [R(spanOf(816)[0], 1976, ['the Democratic Republic of Vietnam (North Vietnam)', 'the Chairman', 'eastbloc', 'vn', ['VND', '₫', 'North Vietnamese đồng', null, 4]])], ninhbinh: [R(spanOf(816)[0], 1976, ['the Democratic Republic of Vietnam (North Vietnam)', 'the Chairman', 'eastbloc', 'vn', ['VND', '₫', 'North Vietnamese đồng', null, 4]])],
   hcmc: [R(spanOf(817)[0], until(817) + 1, ['the Republic of Vietnam (South Vietnam)', 'the President', 'authoritarian', 'southVietnam', ['VNS', '₫', 'South Vietnamese đồng', null, 90]])], danang: [R(spanOf(817)[0], until(817) + 1, ['the Republic of Vietnam (South Vietnam)', 'the President', 'authoritarian', 'southVietnam', ['VNS', '₫', 'South Vietnamese đồng', null, 90]])],
+  // ---- More states that no longer exist, and some that exist only in fact ----
+  // North America: the Dominion of Newfoundland, the Republic of Texas, the Kingdom of Hawaii, Mexican California.
+  ca_stjohns: [R(1800, 1855, ['the Colony of Newfoundland (governed from London)', 'the Governor', 'colony', 'blueEnsign', ['NFD', '$', 'Newfoundland dollar', null, 1.0]]),
+    R(1855, 1907, ['the Colony of Newfoundland (responsible government)', 'the Premier', 'colony', 'blueEnsign', ['NFD', '$', 'Newfoundland dollar', null, 1.0]]),
+    R(1907, 1934, ['the Dominion of Newfoundland', 'the Prime Minister of Newfoundland', 'city', 'newfoundland', ['NFD', '$', 'Newfoundland dollar', null, 1.0]]),
+    R(1934, 1949, ['the Dominion of Newfoundland, under the Commission of Government (its parliament suspended)', 'the Governor and Commission', 'colony', 'newfoundland', ['NFD', '$', 'Newfoundland dollar', null, 1.0]])],
+  houston: [R(1821, 1836, MEX_TEXAS), R(1836, 1846, TEXAS)], dallas: [R(1821, 1836, MEX_TEXAS), R(1836, 1846, TEXAS)], sanantonio: [R(1800, 1821, ['Spanish Texas (New Spain)', 'the Viceroy of New Spain', 'colony', 'spainOld']), R(1821, 1836, MEX_TEXAS), R(1836, 1846, TEXAS)],
+  sunbelt: [R(1836, 1846, TEXAS)],
+  honolulu: [R(1810, 1893, ['the Kingdom of Hawaii', 'the King of Hawaii', 'monarchy', 'hawaii', ['HAD', '$', 'Hawaiian dollar', null, 1.0]]), R(1893, 1898, ['the Republic of Hawaii (the planters\' republic, after the Queen was deposed)', 'the President (Sanford Dole)', 'city', 'hawaii']),
+    R(1898, 1959, ['the Territory of Hawaii, an American territory', 'the Governor', 'colony', null])],
+  losangeles: [R(1800, 1821, ['Spanish Alta California (New Spain)', 'the Viceroy of New Spain', 'colony', 'spainOld']), R(1821, 1848, ['Alta California, a territory of Mexico', 'the Governor of Alta California', 'colony', 'mx'])],
+  sf: [R(1800, 1821, ['Spanish Alta California (the Presidio of San Francisco)', 'the Viceroy of New Spain', 'colony', 'spainOld']), R(1821, 1846, ['Alta California, a territory of Mexico', 'the Governor of Alta California', 'colony', 'mx'])],
+  merida: [R(1841, 1848, ['the Republic of Yucatán', 'the Governor of Yucatán', 'city', 'yucatan'])],
+  // Africa: Zanzibar, Biafra, Katanga, Somaliland.
+  zanzibar: [R(1856, 1890, ZANZIBAR), R(1890, 1963, ['the Sultanate of Zanzibar, a British protectorate', 'the Sultan (and the British Resident)', 'colony', 'zanzibar', ['ZAR', 'Rs ', 'Zanzibari rupee', null, 3.0]]),
+    R(1963, 1964, ZANZIBAR), R(1964, 1965, ['the People\'s Republic of Zanzibar (after the revolution)', 'the Revolutionary Council', 'authoritarian', null])],
+  enugu: [R(1967, 1970, BIAFRA)], nsukka: [R(1967, 1970, BIAFRA)],
+  lubumbashi: [R(1960, 1963, ['the State of Katanga (seceded from the Congo, backed by Belgian mining money)', 'President Moïse Tshombe', 'authoritarian', 'katanga'])],
+  hargeisa: [R(1884, 1960, ['British Somaliland', 'the Governor', 'colony', 'blueEnsign']), R(1991, null, SOMALILAND)], berbera: [R(1884, 1960, ['British Somaliland', 'the Governor', 'colony', 'blueEnsign']), R(1991, null, SOMALILAND)],
+  // Asia: Tibet, Manchukuo, the princely states, the Ryukyu Kingdom, US-ruled Okinawa.
+  lhasa: [R(1800, 1913, ['Tibet under the Qing (the Ganden Phodrang, with the Amban)', 'the Dalai Lama (and the Qing Amban)', 'absolute', 'tibet']), R(1913, 1951, ['Tibet (independent in fact: the Ganden Phodrang)', 'the Dalai Lama', 'absolute', 'tibet', ['TBS', 'srang ', 'Tibetan srang', null, 2.0]])],
+  changchun: [R(1932, 1945, ['Manchukuo (Japan\'s puppet empire; Changchun is Hsinking, its capital)', 'the Emperor Puyi (and the Kwantung Army)', 'authoritarian', 'manchukuo', ['MKY', '¥', 'Manchukuo yuan', null, 3.5]])],
+  hyderabad: [R(1800, 1947, ['the State of Hyderabad, a princely state under British paramountcy', 'the Nizam', 'absolute', 'hyderabad', ['HYR', 'Rs ', 'Hyderabadi rupee', null, 1.0]]), R(1947, 1948, ['the State of Hyderabad (refusing to join India)', 'the Nizam', 'absolute', 'hyderabad'])],
+  mysuru: [R(1800, 1947, ['the Kingdom of Mysore, a princely state under British paramountcy', 'the Maharaja of Mysore', 'absolute', null])],
+  srinagar: [R(1846, 1947, ['the princely state of Jammu and Kashmir', 'the Maharaja (the Dogra dynasty)', 'absolute', null])],
+  gangtok: [R(1800, 1890, SIKKIM), R(1890, 1950, ['the Kingdom of Sikkim, a British protectorate', 'the Chogyal (and the Political Officer)', 'absolute', 'sikkim']), R(1950, 1975, ['the Kingdom of Sikkim, an Indian protectorate', 'the Chogyal', 'absolute', 'sikkim'])],
+  okinawa: [R(1800, 1879, RYUKYU), R(1945, 1972, USCAR)],
+  ishigaki: [R(1800, 1879, RYUKYU), R(1945, 1972, USCAR)],
+  // Europe: the Italian states before 1861, Hanover, Schleswig-Holstein, Crete.
+  turin: [R(1800, 1814, ['Piedmont, annexed to Napoleonic France', 'the French Prefect', 'colony', 'fr']), R(1814, 1861, SARDINIA)],
+  florence: [R(1800, 1859, ['the Grand Duchy of Tuscany', 'the Grand Duke of Tuscany', 'monarchy', 'tuscany', ['ITF', 'L. ', 'Tuscan lira', null, 1.0]]), R(1859, 1860, ['Tuscany under a provisional government (voting to join Piedmont)', 'Baron Ricasoli', 'city', null])],
+  parma: [R(1814, 1859, ['the Duchy of Parma (Marie Louise, Napoleon\'s widow, then the Bourbons)', 'the Duke of Parma', 'monarchy', null])],
+  modena: [R(1814, 1859, ['the Duchy of Modena and Reggio (the Habsburg-Este dukes)', 'the Duke of Modena', 'absolute', null])],
+  hanover: [R(1814, 1866, ['the Kingdom of Hanover (in personal union with Britain until 1837)', 'the King of Hanover', 'monarchy', 'hanover', THALER]), R(1866, 1871, PRUSSIA)],
+  kiel: [R(1800, 1864, ['the Duchy of Holstein, under the Danish king', 'the King of Denmark, as Duke', 'colony', 'dk']), R(1864, 1866, ['Holstein under Austrian administration', 'the Austrian governor', 'colony', 'habsburg']), R(1866, 1871, PRUSSIA)],
+  heraklion: [R(1800, 1898, ['Ottoman Crete', 'the Ottoman Pasha', 'colony', 'tr']), R(1898, 1913, ['the Cretan State (autonomous under the Sultan, guarded by the Powers)', 'the High Commissioner (Prince George of Greece)', 'city', 'crete'])],
+  // States that exist only in fact: Transnistria, Abkhazia, Northern Cyprus, Artsakh; Russian rule in Crimea and Donetsk.
+  tiraspol: [R(1990, null, ['the Pridnestrovian Moldavian Republic (Transnistria): unrecognised, guarded by Russian troops', 'the President of Pridnestrovie', 'authoritarian', 'transnistria', ['PRB', 'руб ', 'Transnistrian ruble', null, 8.0]])],
+  sukhumi: [R(1993, null, ['the Republic of Abkhazia (recognised by Russia and a handful of others)', 'the President of Abkhazia', 'authoritarian', 'abkhazia', ['RUB', '₽', 'Russian ruble', null, 30]])],
+  kyrenia: [R(1974, 1983, ['the Turkish Federated State of Cyprus (north of the Green Line)', 'Rauf Denktaş', 'city', 'northCyprus', ['TRY', '₺', 'Turkish lira', null, 3]]), R(1983, null, NORTH_CYPRUS)],
+  famagusta: [R(1974, 1983, ['the Turkish Federated State of Cyprus (north of the Green Line)', 'Rauf Denktaş', 'city', 'northCyprus', ['TRY', '₺', 'Turkish lira', null, 3]]), R(1983, null, NORTH_CYPRUS)],
+  stepanakert: [R(1991, 2023, ['the Republic of Artsakh (Nagorno-Karabakh): Armenian, unrecognised', 'the President of Artsakh', 'authoritarian', 'artsakh', ['AMD', '֏', 'Armenian dram', null, 200]])],
+  donetsk: [R(2014, 2022, ['the "Donetsk People\'s Republic" (Russian-backed, unrecognised)', 'the head of the DPR', 'authoritarian', 'dpr', ['RUB', '₽', 'Russian ruble', null, 30]]), R(2022, null, ['Russian-occupied Donetsk (annexed by Russia, unrecognised)', 'the Russian-installed head', 'authoritarian', 'ru', ['RUB', '₽', 'Russian ruble', null, 30]])],
+  simferopol: [R(2014, null, CRIMEA)], sevastopol: [R(2014, null, CRIMEA)],
 };
 /** The state a city belonged to in a year, or null. */
 export function regionStateAt(regionId, year) {

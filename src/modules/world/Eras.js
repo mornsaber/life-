@@ -1240,13 +1240,14 @@ export function periodFlag(state, cc) {
   if (changed && yearNow(state) >= changed.year) return { id: changed.id };
   // The Taliban's white flag flies over Afghanistan from August 2021.
   if (cc === 'AF' && yearNow(state) >= 2021) return { id: 'taliban' };
-  if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
-  const y = yearNow(state);
-  // Your own city's state flies its own flag (Bavaria's lozenges, the Transvaal's Vierkleur).
-  if (cc === (state.character?.countryId ?? 'US') && state.character?.regionId) {
-    const local = regionStateAt(state.character.regionId, y);
+  // Your own city's state flies its own flag (Bavaria's lozenges, the Transvaal's Vierkleur; today,
+  // Transnistria's or Northern Cyprus's).
+  if (state?.character && cc === (state.character.countryId ?? 'US') && state.character.regionId) {
+    const local = regionStateAt(state.character.regionId, yearNow(state));
     if (local?.flag) return local.flag.length === 2 ? { img: local.flag.toUpperCase() } : { id: local.flag };
   }
+  if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
+  const y = yearNow(state);
   const st = colonyStage(state, cc);
   // A stage can fly its own flag (the Faroese flag, recognised by the British occupiers in 1940).
   if (st?.flag) return { img: st.flag };

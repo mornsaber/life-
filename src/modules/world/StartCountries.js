@@ -8,7 +8,7 @@ import { COUNTRIES } from './Countries.js';
 import { REGIONS } from '../life/Regions.js';
 import { EVENTS } from './History.js';
 import { COLONIES, PRESENT, stageEnd, periodCountryName, periodFlagEmoji, flagEmoji, periodFlag } from './Eras.js';
-import { regionStateAt } from './HistoricalData.js';
+import { regionStateAt, REGION_STATES } from './HistoricalData.js';
 import { encodePicks, decodePicks } from './StartPicks.js';
 import { bornIn } from './Habitation.js';
 
@@ -29,8 +29,9 @@ export function eraSnapshot(year) {
   return state;
 }
 
+// Every city that was ever part of a state of its own (REGION_STATES), by today's country.
 const BY_COUNTRY = {};
-for (const [id, r] of Object.entries(REGIONS)) if (r.country) (BY_COUNTRY[r.country] ??= []).push(id);
+for (const id of Object.keys(REGION_STATES)) { const r = REGIONS[id]; if (r) (BY_COUNTRY[r.country ?? 'US'] ??= []).push(id); }
 const US_TOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami', 'atlanta', 'philadelphia', 'phoenix', 'detroit', 'nashville', 'charlotte', 'pittsburgh', 'amarillo'];
 
 /** Sort key: "the Kingdom of Bavaria" files under K. */
@@ -56,7 +57,7 @@ export function startCountries(year) {
   };
   for (const cc of Object.keys(COUNTRIES)) {
     if (!bornIn(cc, year)) continue;
-    const towns = cc === 'US' ? US_TOWNS : [...new Set([...(COUNTRIES[cc].hometowns ?? []), ...(BY_COUNTRY[cc] ?? [])])];
+    const towns = [...new Set([...(cc === 'US' ? US_TOWNS : COUNTRIES[cc].hometowns ?? []), ...(BY_COUNTRY[cc] ?? [])])];
     const own = towns.filter((r) => regionStateAt(r, year));
     const rest = (COUNTRIES[cc].hometowns ?? (cc === 'US' ? US_TOWNS : towns)).filter((r) => !regionStateAt(r, year));
     if (rest.length) add(periodCountryName(s, cc, COUNTRIES[cc].baseName), periodFlagEmoji(s, cc), cc, own.length ? rest : null, periodFlag(s, cc));

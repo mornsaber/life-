@@ -28,6 +28,7 @@ import { AU, FR } from './CountriesAUFR.js';
 import { eraCountryName, eraCountryFlag, periodCurrency, moneyRulerOf } from './Eras.js';
 import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
+import { HISTORIC_TOWNS, HISTORIC_PROVINCES } from './HistoricCities.js';
 import { EDUCATION, educationTerms } from './Education.js';
 import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
@@ -405,6 +406,19 @@ for (const [cc, towns] of Object.entries(RURAL_TOWNS)) {
   if (!c?.cities) continue;
   const fresh = Object.fromEntries(Object.entries(towns).filter(([id]) => !c.cities[id]));
   Object.assign(c.cities, ruralCities(cc, fresh, c.cities));
+}
+
+// Provinces and cities of historical and breakaway states (HistoricCities.js).
+for (const [cc, provs] of Object.entries(HISTORIC_PROVINCES)) {
+  const c = COUNTRIES[cc];
+  if (!c?.provinces) continue;
+  for (const [id, { like, name }] of Object.entries(provs)) if (!c.provinces[id]) c.provinces[id] = { ...(c.provinces[like] ?? {}), name };
+}
+for (const [cc, towns] of Object.entries(HISTORIC_TOWNS)) {
+  const c = COUNTRIES[cc];
+  if (!c?.cities) continue;
+  const fresh = Object.fromEntries(Object.entries(towns).filter(([id]) => !c.cities[id]));
+  Object.assign(c.cities, Object.fromEntries(Object.entries(ruralCities(cc, fresh, c.cities)).map(([id, t]) => [id, { ...t, type: fresh[id].type ?? t.type, size: fresh[id].type ? 'medium' : t.size }])));
 }
 
 /** Every foreign province and city, keyed by id, tagged with its country. */
