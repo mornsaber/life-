@@ -8,6 +8,9 @@
  * state.civic.activism = { cause, influence (0–100), protests, arrests, years, organizer }
  */
 import { breakawayHere } from '../world/StateChanges.js';
+import { colonyStage } from '../world/Eras.js';
+/** Won the year this world freed the land from its ruler (world/History.js colony stages), else on our date. */
+const freedBy = (cc, ours) => (s) => (s.era && colonyStage(s, cc) ? null : s.era?.colonies?.[cc]?.since ?? ours);
 
 export const CAUSES = {
   climate: { name: 'Climate action', icon: '🌍', allies: ['editorial'], from: 1988 },
@@ -35,9 +38,18 @@ export const CAUSES = {
   gayRights: { name: 'Gay liberation', icon: '🏳️‍🌈', allies: ['editorial'], from: 1969 },
   // Your homeland's independence, where there is a cause for it (world/StateChanges.js breakawayHere).
   independence: { name: 'Independence', icon: '🏳️', allies: ['party'], breakaway: true },
+  // History's own independence movements, won on history's date (or this world's).
+  norwayFree: { name: 'Norway free of Sweden', icon: '🇳🇴', allies: ['party'], from: 1880, where: ['NO'], wonBy: freedBy('NO', 1905) },
+  icelandFree: { name: 'Icelandic independence', icon: '🇮🇸', allies: ['party'], from: 1874, where: ['IS'], wonBy: freedBy('IS', 1944) },
+  finlandFree: { name: 'Finnish independence', icon: '🇫🇮', allies: ['party'], from: 1899, where: ['FI'], wonBy: freedBy('FI', 1917) },
+  polandFree: { name: 'A free Poland', icon: '🇵🇱', allies: ['party'], from: 1830, where: ['PL'], wonBy: freedBy('PL', 1918) },
+  indiaFree: { name: 'Swaraj: Indian independence', icon: '🇮🇳', allies: ['party'], from: 1885, where: ['IN'], wonBy: freedBy('IN', 1947) },
+  singingRevolution: { name: 'The Singing Revolution', icon: '🎶', allies: ['party'], from: 1987, where: ['EE', 'LV', 'LT'], wonBy: (s) => s.era?.events?.sovietCollapse?.year ?? null },
+  biafra: { name: 'Biafra', icon: '🌅', allies: ['party'], from: 1966, until: 1971, where: ['NG'] },
 };
 /** When history won the cause, country by country (cause → { cc: year, '*': year }). */
 export const VICTORIES = {
+  norwayFree: { NO: 1905 }, icelandFree: { IS: 1944 }, finlandFree: { FI: 1917 }, polandFree: { PL: 1918 }, indiaFree: { IN: 1947 },
   abolition: { GB: 1833, FR: 1848, US: 1865, BR: 1888 },
   suffrage: { NZ: 1893, AU: 1902, FI: 1906, NO: 1913, DK: 1915, RU: 1917, CA: 1918, DE: 1918, AT: 1918, PL: 1918, NL: 1919, SE: 1919, US: 1920, GB: 1928, IE: 1922, ES: 1931, BR: 1932, TR: 1934, FR: 1944, IT: 1946, JP: 1945, IN: 1950, CH: 1971 },
   temperance: { US: 1919, FI: 1919, NO: 1916, IS: 1915, CA: 1918 },
@@ -46,9 +58,9 @@ export const VICTORIES = {
   civilRights: { US: 1964 },
   disarmament: { '*': 1987 },
 };
-export const victoryYear = (cause, cc) => VICTORIES[cause]?.[cc] ?? VICTORIES[cause]?.['*'] ?? null;
+export const victoryYear = (cause, cc, state = null) => (state && CAUSES[cause]?.wonBy ? CAUSES[cause].wonBy(state) : VICTORIES[cause]?.[cc] ?? VICTORIES[cause]?.['*'] ?? null);
 /** The causes of the year and the country (not one already won here). */
-export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && (!c.breakaway || breakawayHere(state)) && !((c.fromHere?.[state.character.countryId ?? 'US'] ?? c.from) > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
+export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && (!c.breakaway || breakawayHere(state)) && !((c.fromHere?.[state.character.countryId ?? 'US'] ?? c.from) > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US', state) ?? 9999) <= y));
 
 /**
  * Protest tactics. arrest: chance of arrest; influence: what it builds;

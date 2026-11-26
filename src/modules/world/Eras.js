@@ -1293,7 +1293,7 @@ export function periodFlag(state, cc) {
     case 'CN': return !hap(state, 'xinhai') ? { id: 'qing' } : y < 1928 ? { id: 'fiveRaces' } : !hap(state, 'prc') ? { img: 'TW' } : { img: cc };
     case 'IR': return y < 1979 ? { id: 'iranLionSun' } : { img: cc };
     case 'CA': return y < 1965 ? { id: 'redEnsign' } : { img: cc };
-    case 'ZA': return y < 1928 ? { id: 'redEnsign' } : y < 1994 ? { id: 'southAfrica1928' } : { img: cc };
+    case 'ZA': return y < 1928 ? { id: 'redEnsign' } : !brokeUp(state, 'apartheidEnds', 1994, y) ? { id: 'southAfrica1928' } : { img: cc };
     case 'BR': return y < 1889 ? { id: 'brazilEmpire' } : { img: cc };
     case 'EG': return y >= 1922 && y < 1953 ? { id: 'egyptKingdom' } : { img: cc };
     case 'PT': return y < 1910 ? { id: 'portugalMonarchy' } : { img: cc };

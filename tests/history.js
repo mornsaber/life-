@@ -36,6 +36,7 @@ import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
 import { periodCountryName as pcn, periodFlag as pflag } from '../src/modules/world/Eras.js';
 import { sovereignIn as sovIn, regionStateAt as regionAt } from '../src/modules/world/HistoricalData.js';
 import { euMemberIn as euMember } from '../src/modules/world/EuMembership.js';
+import { causesNow as causesNowH } from '../src/modules/civic/Activism.js';
 import { memberIn as natoIn, NATO_MEMBERS as NATO_LIST } from '../src/modules/content/packs/careers-intl-orgs.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { holySeeOf } from '../src/modules/world/HolySee.js';
@@ -61,6 +62,16 @@ function live(engine, state, years) {
 const allText = (state) => state.log.flatMap((b) => b.entries.map((e) => e.text));
 
 const tests = {
+  'history\'s own independence causes: Swaraj in 1910 India, won the year this world frees it; the Singing Revolution with the Soviet collapse'() {
+    const { state } = life({ countryId: 'IN', startYear: 1890 });
+    state.character.age = 20;
+    assert.ok(causesNowH(state, 1910).some(([id]) => id === 'indiaFree'));
+    assert.ok(!causesNowH(life({ countryId: 'IN' }).state, PRESENT).some(([id]) => id === 'indiaFree'), 'won long ago');
+    const ee = life({ countryId: 'EE', startYear: 1960 }).state;
+    ee.era.events.sovietCollapse = { year: 1997 };
+    assert.ok(causesNowH(ee, 1995).some(([id]) => id === 'singingRevolution'));
+    assert.ok(!causesNowH(ee, 1998).some(([id]) => id === 'singingRevolution'), 'won in 1997 in this world');
+  },
   'where the Wall never fell: a Soviet Estonia keeps the ruble and stays out of the EU and NATO; Leipzig stays in the GDR'() {
     const { engine, state } = life({ countryId: 'EE', startYear: 1975 });
     (state.era.skipped ??= []).push('sovietCollapse');

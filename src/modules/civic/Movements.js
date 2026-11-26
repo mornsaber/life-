@@ -88,7 +88,7 @@ export function movementTick(main) {
   const y = yearNow(state);
   const cc = state.character.countryId ?? 'US';
   // The cause's day: history won it this year, or its time passed.
-  const won = victoryYear(m.cause, cc);
+  const won = victoryYear(m.cause, cc, state);
   if (won != null && y >= won && !m.triumph && !(m.since > (state.character.age - (y - won)))) {
     m.triumph = y;
     main.emit('fame:buzz', { amount: 15 });

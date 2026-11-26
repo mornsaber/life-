@@ -61,7 +61,7 @@ export function writeEpilogue(state) {
   // The cause.
   const mv = state.civic?.movement;
   if (mv) {
-    const won = victoryYear(mv.cause, state.character.countryId ?? 'US');
+    const won = victoryYear(mv.cause, state.character.countryId ?? 'US', state);
     lines.push(won && won > from && won <= to
       ? { year: won, icon: '🏆', text: `${mv.name} won what you founded it for: ${(CAUSES[mv.cause]?.name ?? 'the cause').toLowerCase()}. Someone said your name from the platform.` }
       : { year: from + rng.int(5, 15), icon: '🍂', text: `${mv.name} dwindled to a newsletter and an annual dinner, then not even that.` });
