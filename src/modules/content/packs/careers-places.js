@@ -98,6 +98,63 @@ const careers = {
       ['director', 'Programme Director', 8, MGMT(1000)],
     ],
   },
+  klondike: {
+    id: 'klondike', name: 'The Klondike Gold Rush', icon: '⛏️', sector: 'private', payMultiplier: 0.9, fromYear: 1896, untilYear: 1905, minAge: 16,
+    countries: ['CA', 'US'], sizes: { small: 3, medium: 1, large: 0, enterprise: 0 }, union: null, entry: {},
+    employers: ['a claim on Bonanza Creek', 'a claim on Eldorado Creek', 'the outfitters at Dawson City'],
+    ladder: [
+      ['packer', 'Packer (the Chilkoot Pass)', 1, { years: 1 }],
+      ['sourdough', 'Placer Miner', 2, { years: 2 }],
+      ['claimHolder', 'Claim Holder', 3, { years: 2 }],
+      ['layman', 'Layman (Working a Lay on Shares)', 3, { years: 2 }],
+      ['foreman', 'Claim Foreman', 4, SUP(20, { years: 2 })],
+      ['owner', 'Claim Owner', 5, SUP(60, { years: 3 })],
+      ['king', 'Klondike King', 7, MGMT(400)],
+    ],
+  },
+  sheepStation: {
+    id: 'sheepStation', name: 'Sheep Station (the Outback)', icon: '🐑', sector: 'private', payMultiplier: 0.8, fromYear: 1820, minAge: 14,
+    countries: ['AU', 'NZ'], sizes: { small: 2, medium: 2, large: 1, enterprise: 0 }, union: { chance: 0.5, name: 'the Shearers\' Union', strike: true }, entry: {},
+    employers: ['a station on the Darling', 'a station in the Riverina', 'a high-country run'],
+    ladder: [
+      ['rouseabout', 'Rouseabout', 1, { years: 1 }],
+      ['jackaroo', 'Jackaroo', 1, { years: 2 }],
+      ['stockman', 'Stockman', 2, { years: 2 }],
+      ['shearer', 'Shearer', 2, { years: 3 }],
+      ['gunShearer', 'Gun Shearer', 3, { years: 3 }],
+      ['overseer', 'Overseer', 4, SUP(20, { years: 3 })],
+      ['manager', 'Station Manager', 5, SUP(60, { years: 4 })],
+      ['grazier', 'Grazier (Squatter)', 7, MGMT(200)],
+    ],
+  },
+  canalZone: {
+    id: 'canalZone', name: 'The Panama Canal Zone', icon: '🚢', sector: 'federal', payMultiplier: 1.1, fromYear: 1904, untilYear: 1999, minAge: 18,
+    countries: ['PA', 'US'], sizes: { small: 0, medium: 1, large: 2, enterprise: 2 }, union: { chance: 0.4, name: 'the Canal Zone workers\' union', strike: false }, entry: {},
+    employers: ['the Isthmian Canal Commission', 'the Panama Canal Company'],
+    ladder: [
+      ['laborer', 'Canal Laborer', 1, { years: 2 }],
+      ['linehandler', 'Line Handler', 2, { years: 2 }],
+      ['lockOperator', 'Lock Operator', 3, { years: 3 }],
+      ['towingLoco', 'Towing Locomotive Operator', 3, { years: 2 }],
+      ['pilotTrainee', 'Pilot in Training', 4, { years: 3 }],
+      ['pilot', 'Canal Pilot', 5, { years: 4 }],
+      ['marineDirector', 'Marine Director', 7, MGMT(500, { years: 4 })],
+      ['governor', 'Governor of the Canal Zone', 9, MGMT(10000)],
+    ],
+  },
+  svalbardCoal: {
+    id: 'svalbardCoal', name: 'Svalbard Coal', icon: '⛏️', sector: 'private', payMultiplier: 1.2, fromYear: 1906, untilYear: 2025, minAge: 18,
+    countries: ['NO', 'SJ', 'RU'], sizes: { small: 0, medium: 1, large: 1, enterprise: 0 }, union: { chance: 0.7, name: 'the miners\' union', strike: true }, entry: {},
+    employers: { NO: ['Store Norske Spitsbergen Kulkompani (Longyearbyen)'], SJ: ['Store Norske Spitsbergen Kulkompani (Longyearbyen)'], RU: ['Arktikugol (Barentsburg)'], '*': ['Store Norske Spitsbergen Kulkompani (Longyearbyen)'] },
+    ladder: [
+      ['hewer', 'Mine Worker', 2, { years: 2 }],
+      ['shotfirer', 'Shotfirer', 3, { years: 2 }],
+      ['machineOp', 'Longwall Machine Operator', 3, { years: 3 }],
+      ['shiftLeader', 'Shift Leader', 4, SUP(30, { years: 3 })],
+      ['mineManager', 'Mine Manager', 6, MGMT(250, { years: 4 })],
+      ['director', 'Managing Director', 8, MGMT(600)],
+    ],
+  },
 };
 
 export default { id: 'careers-places', version: 1, careers };
