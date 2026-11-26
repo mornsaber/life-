@@ -25,6 +25,7 @@ import { setNewStates } from '../world/NewStates.js';
 import { euMemberIn } from '../world/EuMembership.js';
 import { stateIdOf } from '../life/Regions.js';
 import { abolish } from '../world/Houses.js';
+import { secedeProvince, changeQuestions, enact, changeTitle } from '../world/StateChanges.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const rec = (state) => { const r = ((state.world ??= {}).referendums ??= { held: {}, pending: [] }); r.later ??= []; return r; };
@@ -44,12 +45,8 @@ export function becomeIndependent(ctx, cc) {
   setReformLayer(w);
   ctx.emit?.('world:regimeChanged', { cc });
 }
-/** A region votes to leave (Scotland, Quebec): the game has no separate country for it, so the vote is recorded and lived. */
-function secede(ctx, region, name, day) {
-  (ctx.state.world.seceded ??= {})[region] = { year: yearNow(ctx.state) + 2, name };
-  laterDo(ctx.state, yearNow(ctx.state) + 2, 'secession', { region, name });
-  return day;
-}
+/** A nation inside a state votes to leave: it becomes a state of its own (world/StateChanges.js). */
+const secede = (ctx, province, name, day) => { secedeProvince(ctx, province); return day; };
 /** Something a result sets in motion for a later year. */
 const laterDo = (state, year, what, data = {}) => rec(state).later.push({ year, what, ...data });
 const setLaw = (state, cc, id, value) => {
@@ -224,7 +221,6 @@ function statehood(ctx, cc) {
 /* ---- Questions a government can put ---- */
 /** Support for independence where a territory might hold the vote. */
 const INDEPENDENCE_SUPPORT = { PR: 0.05, GL: 0.4, FO: 0.45, GI: 0.02, BM: 0.25, KY: 0.1, JE: 0.12, GG: 0.1, IM: 0.1, NC: 0.45, PF: 0.3, GF: 0.05, GP: 0.06, MQ: 0.08, RE: 0.03, CW: 0.08, AW: 0.06, SX: 0.05, VG: 0.12, TC: 0.08, AI: 0.05, GU: 0.1, VI: 0.06, CK: 0.15, FK: 0.01, MS: 0.03, SH: 0.01, AS: 0.05, MP: 0.03, YT: 0.02 };
-const SECESSION = { 'GB-SCT': { name: 'Scotland', support: 0.45, from: 1970, of: 'the United Kingdom' }, 'CA-QC': { name: 'Quebec', support: 0.42, from: 1976, of: 'Canada' } };
 /** The questions open to you, as head of government (or a legislator tabling a bill). */
 export function questionsHere(state) {
   const cc = state.character.countryId ?? 'US';
@@ -233,10 +229,8 @@ export function questionsHere(state) {
   const auto = autonomyOf(state, cc);
   if (auto && INDEPENDENCE_SUPPORT[cc] != null) out.push({ q: 'independence', label: `🏳️ Independence for ${cname(cc)}`, support: INDEPENDENCE_SUPPORT[cc] });
   if (auto && cc === 'PR' && !state.world?.statehood?.PR) out.push({ q: 'statehood', label: '⭐ Statehood (the 51st state)', support: 0.5 });
-  // A nation inside a state: Scotland, Quebec (from the years their movements could force the question).
-  const region = stateIdOf(state);
-  const sec = SECESSION[region];
-  if (sec && y >= sec.from && !state.world?.seceded?.[region]) out.push({ q: `secession:${region}`, label: `🏳️ Independence for ${sec.name}`, support: sec.support });
+  // Nations inside the state that might leave; provinces that might join another; unions.
+  out.push(...changeQuestions(state));
   const laws = [];
   for (const [id, s] of Object.entries(STATUTES)) {
     if (s.where && !s.where(cc)) continue;
@@ -301,10 +295,6 @@ function aftermath(ctx, l) {
     setReformLayer(w);
     ctx.emit?.('world:regimeChanged', { cc: l.cc });
     if (cc === l.cc) ctx.log(l.text, '🗳️', 'milestone');
-  } else if (l.what === 'secession') {
-    const mine = stateIdOf(state) === l.region;
-    if (mine) ctx.log(`🏳️ Independence Day: ${l.name} is its own country from today. Its own seat at the UN; for now, the same money in your pocket.`, '🏳️', 'milestone');
-    ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: `${l.name} becomes independent`, weight: 9, icon: '🏳️' });
   } else if (l.what === 'news') ctx.log(l.text, '🗳️', 'info');
 }
 
@@ -315,11 +305,10 @@ function customRef(state, { q, cc, called }) {
   const base = (o?.support ?? 0.4) + (called ? clamp(((state.politics?.approval ?? 50) - 50) / 400, -0.05, 0.05) : 0);
   if (q === 'independence') return { custom: { q, cc }, title: `A referendum on independence`, text: `${cname(cc)} votes on whether to become an independent country.`, yes: base, yesLabel: '🏳️ For independence', noLabel: '✖️ Against', yesText: 'Independence wins.', noText: 'Independence loses.', onYes: (ctx) => { becomeIndependent(ctx, cc); return `${cname(cc)} will be an independent country.`; } };
   if (q === 'statehood') return { custom: { q, cc }, title: 'A referendum on statehood', text: `${cname(cc)} votes on asking to become a state of the Union.`, yes: base, yesLabel: '⭐ For statehood', noLabel: '✖️ Against', yesText: 'Statehood wins. It is up to Congress now.', noText: 'Statehood loses.', onYes: (ctx) => statehood(ctx, cc) };
-  if (q.startsWith('secession:')) {
-    const region = q.slice(10);
-    const sec = SECESSION[region];
-    return { custom: { q, cc }, title: `A referendum on ${sec.name}'s independence`, text: `Should ${sec.name} be an independent country?`, yes: base, region, yesLabel: '🏳️ Yes', noLabel: `✖️ No: stay in ${sec.of}`, yesText: 'Yes wins.', noText: `No: ${sec.name} stays in ${sec.of}.`,
-      onYes: (ctx) => secede(ctx, region, sec.name, `${sec.name} will leave ${sec.of}: the terms are to be negotiated.`) };
+  if (/^(secession|transfer|union|reintegration):/.test(q)) {
+    const province = q.startsWith('secession:') ? q.slice(10) : null;
+    return { custom: { q, cc }, title: `A referendum on ${changeTitle(q)}`, text: `The question on the ballot: ${changeTitle(q)}.`, yes: base, region: province, yesLabel: '✅ Yes', noLabel: '✖️ No', yesText: 'Yes wins.', noText: 'No: things stay as they are.',
+      onYes: (ctx) => enact(ctx, q) || null };
   }
   const id = q.slice(4);
   const s = STATUTES[id];

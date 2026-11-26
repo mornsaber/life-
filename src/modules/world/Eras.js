@@ -708,7 +708,7 @@ export function regionRegimeAt(regionId, y) {
   const r = regionStateAt(regionId, y);
   if (!r) return null;
   const by = { monarchy: () => KING(r.name, r.leader), absolute: () => MONARCH(r.name, r.leader), city: () => OLIGARCHY(r.name, r.leader), republic: () => OLIGARCHY(`${r.name}, a republic where only white men vote`, r.leader),
-    colony: () => G({ kind: 'monarchy', name: r.name, elections: 'controlled', press: 'state', leader: r.leader }), eastbloc: () => ({ ...EAST_BLOC, name: r.name, leader: r.leader }), authoritarian: () => AUTH(r.name, r.leader) };
+    colony: () => G({ kind: 'monarchy', name: r.name, elections: 'controlled', press: 'state', leader: r.leader }), eastbloc: () => ({ ...EAST_BLOC, name: r.name, leader: r.leader }), authoritarian: () => AUTH(r.name, r.leader), democracy: () => DEMO(r.name, r.leader) };
   return by[r.kind]?.() ?? null;
 }
 
@@ -797,13 +797,14 @@ export function longevityFactor(state, age) {
 
 /** The money of the day where you live (francs before the euro, the old peso, the Reichsmark). */
 export function periodCurrency(cc, currency) {
-  if (ERA_YEAR >= PRESENT) return currency;
-  // Your city's own state had its own money (the gulden in Munich, the ducat in Naples).
+  // Your city's own state had its own money (the gulden in Munich, the ducat in Naples; a new
+  // state's, today).
   const s = ERA_STATE;
   if (s && cc === (s.character?.countryId ?? 'US') && s.character?.regionId) {
-    const local = regionStateAt(s.character.regionId, ERA_YEAR);
-    if (local?.currency && currency) { const [code, symbol, name, perModern, fx] = local.currency; return ofTheDay({ code, symbol, name, perUsd: perModern == null ? null : currency.perUsd * perModern, perModern, fx }, currency); }
+    const local = regionStateAt(s.character.regionId, ERA_YEAR ?? yearNow(s));
+    if (local?.currency && currency) { const [code, symbol, name, perModern, fx] = local.currency; const c = { code, symbol, name, perUsd: perModern == null ? null : currency.perUsd * perModern, perModern, fx }; return ERA_YEAR >= PRESENT || ERA_YEAR == null ? { ...currency, code, symbol, name, perUsd: perModern == null ? currency.perUsd : currency.perUsd * perModern } : ofTheDay(c, currency); }
   }
+  if (ERA_YEAR >= PRESENT) return currency;
   return ofTheDay(dataCurrency(cc, ERA_YEAR, currency), currency);
 }
 /**
@@ -1321,12 +1322,12 @@ export function periodFlag(state, cc) {
 
 /** A country's name in the year being played: the Russian Empire, the Soviet Union, Prussia, Siam, Ceylon. */
 export function periodCountryName(state, cc, name) {
-  if (!state?.era || yearNow(state) >= PRESENT) return name;
-  const y = yearNow(state);
-  if (cc === (state.character?.countryId ?? 'US') && state.character?.regionId) {
-    const local = regionStateAt(state.character.regionId, y);
+  if (state?.character && cc === (state.character.countryId ?? 'US') && state.character.regionId) {
+    const local = regionStateAt(state.character.regionId, yearNow(state));
     if (local) return local.name;
   }
+  if (!state?.era || yearNow(state) >= PRESENT) return name;
+  const y = yearNow(state);
   // A colony goes by its colonial name (British India, French Algeria, the Gold Coast).
   const st = colonyStage(state, cc);
   if (st && st.ruler !== cc && st.name) return st.name;

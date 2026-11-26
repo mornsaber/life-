@@ -17,3 +17,21 @@ export function newStateMember(org, cc, y) {
   if (org === 'commonwealth' && n.of !== 'GB') return false;
   return y >= n.year + JOINS[org];
 }
+
+/**
+ * States this world redrew (world/StateChanges.js): rows that apply to a city on top of history's
+ * own (HistoricalData.js REGION_STATES). A row with `clear` hands the city back to its country.
+ *   { [regionId]: [{ from, to, name, leader, kind, flag, currency } | { from, to, clear: true }] }
+ */
+let DYN = {};
+export const setDynamicRegions = (o = {}) => { DYN = o ?? {}; };
+/** undefined: nothing redrawn here; null: handed back (no state of its own); else the row. */
+export function dynamicRegionState(regionId, year) {
+  const row = (DYN[regionId] ?? []).filter((r) => year >= r.from && (r.to == null || year < r.to)).at(-1);
+  if (!row) return undefined;
+  return row.clear ? null : row;
+}
+/** Countries this world dissolved (merged into another): { [cc]: { year, into } }. */
+let GONE = {};
+export const setDissolved = (o = {}) => { GONE = o ?? {}; };
+export const dissolvedInto = (cc, year = 9999) => (GONE[cc] && year >= GONE[cc].year ? GONE[cc].into : null);

@@ -143,6 +143,14 @@ const DRAW = {
   artsakh: () => wrap(`${bands(['#D90012', '#0033A0', '#F2A800'])}<path d="M60,0 L42,0 L48,7 L42,15 L48,22.5 L42,30 L48,37 L42,45 L60,45 Z" fill="#fff"/>`, 'The flag of the Republic of Artsakh'),
   dpr: () => wrap(`${bands(['#000', '#0033A0', '#C8102E'])}`, 'The flag of the "Donetsk People\'s Republic"'),
   spainOld: () => wrap(`<rect width="${W}" height="${H}" fill="#fff"/><path d="M8,6 L52,39 M52,6 L8,39" stroke="#C8102E" stroke-width="5"/>`, 'The Cross of Burgundy, Spain\'s flag in its American empire'),
+  // States this world can make (world/StateChanges.js).
+  scotland: () => wrap(`<rect width="${W}" height="${H}" fill="#005EB8"/><path d="M0,0 L60,45 M60,0 L0,45" stroke="#fff" stroke-width="7"/>`, 'The Saltire of Scotland'),
+  wales: () => wrap(`${bands(['#fff', '#00B140'])}<text x="30" y="31" font-size="22" text-anchor="middle">🐉</text>`, 'Y Ddraig Goch, the flag of Wales'),
+  quebec: () => wrap(`<rect width="${W}" height="${H}" fill="#003DA5"/><rect x="26" width="8" height="${H}" fill="#fff"/><rect y="18.5" width="${W}" height="8" fill="#fff"/>${[[13, 12], [47, 12], [13, 36], [47, 36]].map(([x, y]) => `<text x="${x}" y="${y}" font-size="9" text-anchor="middle" fill="#fff">⚜</text>`).join('')}`, 'The Fleurdelisé of Quebec'),
+  catalonia: () => wrap(`${bands(['#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09', '#DA121A', '#FCDD09'])}<path d="M0,0 L24,22.5 L0,45 Z" fill="#0F47AF"/>${star(8, 22.5, 4, '#fff')}`, 'The Estelada of an independent Catalonia'),
+  flanders: () => wrap(`<rect width="${W}" height="${H}" fill="#FFDE00"/><text x="30" y="32" font-size="22" text-anchor="middle">🦁</text>`, 'The Flemish Lion'),
+  kurdistan: () => wrap(`${bands(['#ED2024', '#fff', '#278E43'])}<circle cx="30" cy="22.5" r="6" fill="#FEBD11"/>`, 'The flag of Kurdistan, with the sun'),
+  srpska: () => wrap(`${bands(['#C6363C', '#0C4076', '#fff'])}`, 'The flag of Republika Srpska'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };
 

@@ -5,6 +5,17 @@
  */
 import { esc, card, kv, button } from '../Components.js';
 import { mandateKind } from '../../modules/world/Mandates.js';
+import { SECESSIONS, TRANSFERS, UNIONS, REINTEGRATIONS } from '../../modules/world/StateChanges.js';
+
+/** How this world's map has moved from history's (world/StateChanges.js). */
+function mapChanges(state) {
+  const list = (state.world?.stateChanges ?? []).map((c) => {
+    const key = c.id.split(':')[1];
+    const what = c.kind === 'secession' ? `🏳️ ${SECESSIONS[key].name} independent` : c.kind === 'transfer' ? `🤝 ${TRANSFERS[key].name} joined ${COUNTRIES[TRANSFERS[key].to].name}` : c.kind === 'union' ? `🗺️ ${COUNTRIES[key].baseName} merged into ${COUNTRIES[UNIONS[key].into].baseName}` : `🕊️ ${REINTEGRATIONS[key].name}`;
+    return `<li>${esc(what)} <small class="fine">${c.year > yearNow(state) ? `from ${c.year}` : c.year}</small></li>`;
+  });
+  return list.length ? `<h4 class="sub">This world's map</h4><ul class="plain">${list.join('')}</ul>` : '';
+}
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { warHere } from '../../modules/world/War.js';
 import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech, periodCountryName } from '../../modules/world/Eras.js';
@@ -57,7 +68,7 @@ export function eraCard(state) {
   const era = state.era;
   if (!era) return '';
   const future = Object.entries(era.events ?? {}).filter(([id, e]) => EVENTS[id]?.future && !e.past);
-  if (yearNow(state) > PRESENT + 1 || era.start >= PRESENT) return future.length ? futureCard(state, future) : '';
+  if (yearNow(state) > PRESENT + 1 || era.start >= PRESENT) return (future.length ? futureCard(state, future) : '') + (mapChanges(state) ? card('🗺️ This World\'s Map', mapChanges(state).replace(/<h4[^>]*>.*?<\/h4>/, ''), { icon: '🗺️' }) : '');
   const y = yearNow(state);
   const cc = state.character.countryId ?? 'US';
   const r = regimeHere(state);
@@ -79,6 +90,7 @@ export function eraCard(state) {
   const mandate = mandateKind(state);
   return card(`The World in ${y}`, `${kv(rows)}
     ${mandate && state.character.age >= 16 ? `<p class="fine">${mandate === 'trust' ? '🇺🇳 A UN trust territory: answerable to the Trusteeship Council.' : mandate === 'league' ? '🕊️ A League of Nations mandate: answerable to Geneva.' : '⚖️ The UN has revoked the mandate.'}</p>${button('📜 Petition for self-government', 'mandate.petition', { hint: mandate === 'trust' ? 'The Trusteeship Council hears petitions' : 'Adds to the pressure for independence', disabled: Boolean(state.yearly?.['mandate.petition']) })}` : ''}
+    ${mapChanges(state)}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
     ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}.</p>` : ''}
