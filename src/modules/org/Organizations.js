@@ -29,7 +29,7 @@
 import { eraYear } from '../world/Eras.js';
 import { localFirmName } from '../world/LocalEmployers.js';
 import { Random } from '../../core/Random.js';
-import { applyStaffing, STAFFING_VERSION, NATIONAL_POLICE } from './Staffing.js';
+import { applyStaffing, STAFFING_VERSION, NATIONAL_POLICE, capToPlace } from './Staffing.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
@@ -395,8 +395,11 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     dept.head = dh.id;
     org.departments[d.id] = dept;
   }
-  // Government bodies are staffed for the population they serve (Staffing).
+  // Government bodies are staffed for the population they serve (Staffing), and nothing outgrows its country.
   applyStaffing(org);
+  // International bodies and the worldwide religious orders are sized as a whole, wherever you join.
+  if (profession?.intl || profession?.religiousOrder) org.international = true;
+  capToPlace(org, org.countryId ?? REGIONS[org.regionId]?.country ?? state.character?.countryId ?? 'US');
   state.orgs.byId[org.id] = org;
   return org;
 }

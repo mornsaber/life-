@@ -13,7 +13,7 @@ import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
 import { attachOrg, orgOf } from '../org/Organizations.js';
-import { cityPopulation, NATIONAL_POLICE } from '../org/Staffing.js';
+import { cityPopulation, NATIONAL_POLICE, sizeForPlace } from '../org/Staffing.js';
 import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
@@ -175,7 +175,8 @@ export function splitAgencySite(profession, name) {
 }
 
 export function createEmployer(rng, state, profession, regionId) {
-  const size = pickSize(rng, profession, regionId);
+  // A firm or a ministry no bigger than its country can hold (no 'Major agency' on Pitcairn).
+  const size = profession.intl || profession.religiousOrder ? pickSize(rng, profession, regionId) : sizeForPlace(REGIONS[regionId]?.country ?? state.character?.countryId ?? 'US', pickSize(rng, profession, regionId));
   // Abroad, the country's own union for that kind of work (or none where it's barred).
   const cc = REGIONS[regionId]?.country;
   const localName = profession.union ? localUnionName(cc, profession.union.name) : null;

@@ -13,6 +13,40 @@
  */
 import { REGIONS } from '../life/Regions.js';
 import { PROVINCE_POPULATION, FOREIGN_CITIES } from '../world/Countries.js';
+import { demographyAt } from '../world/HistoricalData.js';
+import { eraYear } from '../world/Eras.js';
+
+/** A country's people in the year being played (the demography series, in thousands; at least a few dozen). */
+export const peopleIn = (cc) => Math.max(40, Math.round((demographyAt(cc, Math.min(eraYear(), 2025))?.pop ?? 1000) * 1000));
+/**
+ * No employer outgrows its country: one national body employs at most ~2% of the people, a firm
+ * at most ~1% (Pitcairn's post office is one person, not fifty thousand). International bodies
+ * (the UN, NATO, the Jesuits) keep their size: their staff are everywhere.
+ */
+export function capToPlace(org, cc) {
+  if (!org || !cc || org.international || !org.departments) return org;
+  const people = peopleIn(cc);
+  // A national body abroad is America's, scaled to the people it serves (smaller states run
+  // relatively bigger governments: three times the per-head staffing at most).
+  if (org.typeId?.startsWith('body:') && cc !== 'US' && !RATIOS[org.typeId] && serviceStaffing(org) == null) {
+    const f = Math.min(1, (3 * people) / 335e6);
+    for (const d of Object.values(org.departments)) d.headcount = Math.max(1, Math.round((d.headcount ?? 0) * f));
+  }
+  const cap = Math.max(1, Math.round(people * (org.business || org.sector === 'private' ? 0.01 : 0.02)));
+  const depts = Object.values(org.departments);
+  const total = depts.reduce((n, d) => n + (d.headcount ?? 0), 0);
+  if (total <= cap) return org;
+  for (const d of depts) d.headcount = Math.max(1, Math.round(((d.headcount ?? 0) / total) * cap));
+  org.placeCapped = true;
+  return org;
+}
+/** The largest employer size a country of this many people can hold. */
+export function sizeForPlace(cc, size) {
+  const ORDER = ['micro', 'small', 'medium', 'large', 'enterprise', 'mega'];
+  const people = peopleIn(cc);
+  const max = people < 5000 ? 'micro' : people < 100000 ? 'small' : people < 1e6 ? 'medium' : people < 1e7 ? 'large' : 'mega';
+  return ORDER.indexOf(size) > ORDER.indexOf(max) ? max : size;
+}
 
 /** City-proper and county populations for each region. */
 export const POPULATION = {
@@ -97,6 +131,8 @@ export function countryPopulation(cc) {
     const provinces = Object.entries(PROVINCE_POPULATION).filter(([id]) => id.startsWith(`${cc}-`)).reduce((s, [, n]) => s + n, 0);
     const cities = Object.values(FOREIGN_CITIES).filter((r) => r.country === cc).reduce((s, r) => s + (r.population?.[1] ?? r.population?.[0] ?? 0), 0);
     COUNTRY_POPULATION[cc] = Math.max(provinces, cities, 1e6);
+    // Never more than the country's real people (Pitcairn's one province is not 50,000 strong).
+    COUNTRY_POPULATION[cc] = Math.min(COUNTRY_POPULATION[cc], peopleIn(cc));
   }
   return COUNTRY_POPULATION[cc];
 }
@@ -112,7 +148,7 @@ function serviceStaffing(org) {
   const per = org.serviceId === 'statePolice' && org.primaryPolice ? SERVICE_RATIOS.police * 0.8 : SERVICE_RATIOS[org.serviceId];
   if (per == null) return null;
   const transit = org.serviceId === 'transit' || org.serviceId === 'transitMaintenance' ? Math.max(0.1, (REGIONS[org.regionId]?.transit ?? 30) / 50) : 1;
-  return Math.max(12, Math.round((servicePopulation(org) / 1000) * per * transit * scaleOf(org, null)));
+  return Math.max(1, Math.round((servicePopulation(org) / 1000) * per * transit * scaleOf(org, null)));
 }
 /**
  * How much bigger (or smaller) than its base an organization is now: the population it serves

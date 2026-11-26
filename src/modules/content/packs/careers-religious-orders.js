@@ -8,7 +8,7 @@
 import { L } from '../../career/Ladder.js';
 
 const enterThroughOrder = (name) => () => ({ ok: false, reason: `Enter ${name} through Religious Life on the Community tab` });
-const ORDER = { sector: 'private', body: 'catholic', payMultiplier: 0.05, unpaid: true, minAge: 18, sizes: { enterprise: 1 }, background: 'strict', promotionOdds: 0, church: true, layoffRate: 0, union: null, noMarket: true };
+const ORDER = { religiousOrder: true, sector: 'private', body: 'catholic', payMultiplier: 0.05, unpaid: true, minAge: 18, sizes: { enterprise: 1 }, background: 'strict', promotionOdds: 0, church: true, layoffRate: 0, union: null, noMarket: true };
 
 const careers = {
   jesuits: {
