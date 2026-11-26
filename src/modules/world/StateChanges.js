@@ -20,6 +20,7 @@ import { setDynamicRegions, setDissolved, setNewStates } from './NewStates.js';
 import { setFormed } from './Habitation.js';
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { yearNow, PRESENT } from './Eras.js';
+import { getProfession } from '../career/JobTrees.js';
 
 /** Nations that might leave: the province, what the state would be called, who would lead it, its flag. */
 export const SECESSIONS = {
@@ -41,6 +42,10 @@ export const UNIONS = {
   KP: { into: 'KR', name: 'Korea, reunified', leader: 'the President of Korea', flag: 'KR', currency: ['KRW', '₩', 'won', null, null], support: 0.5, from: 1991 },
   BH: { into: 'SA', name: 'the Gulf Union (Bahrain, in union with Saudi Arabia)', leader: 'the King of Saudi Arabia', flag: 'SA', currency: ['SAR', '﷼', 'Saudi riyal', 10, null], support: 0.3, from: 2011 },
   MD: { into: 'RO', name: 'Romania (the former Republic of Moldova)', leader: 'the President of Romania', flag: 'RO', currency: ['RON', 'lei ', 'leu', null, null], support: 0.35, from: 1991 },
+  // The East African Federation, planned since the Community was revived in 2000.
+  UG: { into: 'KE', name: 'the East African Federation (Uganda)', leader: 'the President of the Federation', flag: 'KE', currency: null, support: 0.3, from: 2000 },
+  TZ: { into: 'KE', name: 'the East African Federation (Tanzania)', leader: 'the President of the Federation', flag: 'KE', currency: null, support: 0.25, from: 2000 },
+  RW: { into: 'KE', name: 'the East African Federation (Rwanda)', leader: 'the President of the Federation', flag: 'KE', currency: null, support: 0.25, from: 2007 },
 };
 /** Breakaway states that might end, their cities handed back. */
 export const REINTEGRATIONS = {
@@ -79,6 +84,7 @@ export function applyChanges(state) {
     if (c.kind === 'secession') { const s = SECESSIONS[c.province]; row(citiesOf(s.cc, c.province), { from: c.year, to: null, name: s.state, leader: s.leader, kind: 'democracy', flag: s.flag, currency: s.currency ?? null }); }
     if (c.kind === 'transfer') { const s = TRANSFERS[c.province]; row(citiesOf(s.cc, c.province), { from: c.year, to: null, name: s.state, leader: s.leader, kind: 'democracy', flag: s.flag, currency: s.currency ?? null }); }
     if (c.kind === 'union') { const u = UNIONS[c.cc]; gone[c.cc] = { year: c.year, into: u.into }; row(citiesOf(c.cc), { from: c.year, to: null, name: u.name, leader: u.leader, kind: 'democracy', flag: u.flag, currency: u.currency ?? null }); }
+    if (c.kind === 'separation') { if (gone[c.cc]) gone[c.cc].until = c.year; row(citiesOf(c.cc), { from: c.year, to: null, clear: true }); }
     if (c.kind === 'conquest') {
       const w = Object.values(WAR_MAP).flatMap((m) => Object.values(m)).find((x) => x.id === c.key);
       if (w) {
@@ -136,6 +142,8 @@ export function recognise(ctx, id, delay = 1) {
   }
   return true;
 }
+/** A union this world made comes apart again: the country is its own once more. */
+export const separate = (ctx, cc, delay = 1) => redraw(ctx, { id: `separation:${cc}`, kind: 'separation', cc, year: yearNow(ctx.state) + delay });
 export const reintegrate = (ctx, id, delay = 1) => redraw(ctx, { id: `reintegration:${id}`, kind: 'reintegration', year: yearNow(ctx.state) + delay });
 
 export const changeDone = (state, q) => done(state, q);
@@ -160,6 +168,7 @@ export function changeQuestions(state) {
   const out = [];
   for (const [p, s] of Object.entries(SECESSIONS)) if (s.cc === cc && y >= s.from && !done(state, `secession:${p}`)) out.push({ q: `secession:${p}`, label: `🏳️ Independence for ${s.name}`, support: s.support });
   for (const [p, s] of Object.entries(TRANSFERS)) if (s.cc === cc && y >= s.from && !done(state, `transfer:${p}`)) out.push({ q: `transfer:${p}`, label: `🤝 ${s.name} to join ${COUNTRIES[s.to].name}`, support: s.support });
+  for (const [from, u] of Object.entries(UNIONS)) if (cc === from && done(state, `union:${from}`) && !done(state, `separation:${from}`)) out.push({ q: `separation:${from}`, label: `🏳️ ${COUNTRIES[from].name} to leave ${COUNTRIES[u.into].name} again`, support: 0.35 });
   for (const [from, u] of Object.entries(UNIONS)) if ((cc === from || cc === u.into) && y >= u.from && !done(state, `union:${from}`)) out.push({ q: `union:${from}`, label: `🤝 Union: ${COUNTRIES[from].name} into ${COUNTRIES[u.into].name}`, support: u.support });
   for (const [id, r] of Object.entries(RECOGNITIONS)) if (r.cc === cc && y >= r.from && !done(state, `recognition:${id}`) && !done(state, `reintegration:${id}`)) out.push({ q: `recognition:${id}`, label: `🏳️ ${r.label}`, support: r.support });
   for (const [id, r] of Object.entries(REINTEGRATIONS)) if (r.cc === cc && y >= r.from && !done(state, `reintegration:${id}`)) out.push({ q: `reintegration:${id}`, label: `🕊️ ${r.name}`, support: r.support });
@@ -171,13 +180,14 @@ export function enact(ctx, q) {
   if (kind === 'secession') return secedeProvince(ctx, key) && `${SECESSIONS[key].name} will leave ${SECESSIONS[key].of}: independence in two years.`;
   if (kind === 'transfer') return transferProvince(ctx, key) && `${TRANSFERS[key].name} will join ${COUNTRIES[TRANSFERS[key].to].name}.`;
   if (kind === 'union') return mergeCountry(ctx, key) && `${COUNTRIES[key].name} will join ${COUNTRIES[UNIONS[key].into].name}.`;
+  if (kind === 'separation') return separate(ctx, key) && `${COUNTRIES[key].name} will leave ${COUNTRIES[UNIONS[key].into].name}.`;
   if (kind === 'reintegration') return reintegrate(ctx, key) && `${REINTEGRATIONS[key].name}.`;
   if (kind === 'recognition') return recognise(ctx, key) && `${RECOGNITIONS[key].label}.`;
   return null;
 }
 export const changeTitle = (q) => {
   const [kind, key] = q.split(':');
-  return kind === 'secession' ? `${SECESSIONS[key].name}'s independence` : kind === 'transfer' ? `${TRANSFERS[key].name} joining ${COUNTRIES[TRANSFERS[key].to].name}` : kind === 'union' ? `union with ${COUNTRIES[UNIONS[key].into].name}` : kind === 'recognition' ? RECOGNITIONS[key].label : `${REINTEGRATIONS[key].name}`;
+  return kind === 'secession' ? `${SECESSIONS[key].name}'s independence` : kind === 'transfer' ? `${TRANSFERS[key].name} joining ${COUNTRIES[TRANSFERS[key].to].name}` : kind === 'union' ? `union with ${COUNTRIES[UNIONS[key].into].name}` : kind === 'separation' ? `${COUNTRIES[key].name} leaving ${COUNTRIES[UNIONS[key].into].name}` : kind === 'recognition' ? RECOGNITIONS[key].label : `${REINTEGRATIONS[key].name}`;
 };
 
 /** A number in [0, 1) fixed by the life, the year and the question (the life's dice stay untouched). */
@@ -204,13 +214,57 @@ function warEnded(ctx, war, outcome) {
   ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: `The map changes: ${m.name}`, weight: 9, icon: '🗺️' });
 }
 
+/**
+ * Life in a new state, the first years: the money changes (or doesn't), a public servant's post
+ * passes to the new government, and the first election comes the year after.
+ */
+function newStateLife(ctx, s) {
+  const { state } = ctx;
+  const cur = s.currency;
+  ctx.log(cur ? `💶 ${s.name} keeps the ${cur[2]}: no new money to learn.` : `💷 For now ${s.name} keeps the old currency, under a currency union nobody quite trusts; the central bank is printing its own notes for next year.`, '💷', 'info');
+  const job = state.career?.job;
+  const prof = job ? getProfession(job.professionId) : null;
+  if (prof && ['state', 'federal', 'municipal', 'government'].includes(prof.sector)) {
+    ctx.log(`🏛️ Your post passes to the new government of ${s.name}: the same desk, a new crest on the letterhead, and a new oath to swear.`, '🏛️', 'milestone');
+  }
+  (state.world.firstElections ??= []).push({ year: yearNow(state) + 1, name: s.name, state: s.state });
+}
+function firstElection(ctx) {
+  const { state } = ctx;
+  const due = (state.world?.firstElections ?? []).find((e) => e.year === yearNow(state) && !e.held);
+  if (!due || state.character.age < 18) return;
+  due.held = true;
+  ctx.prompt({ type: 'stateChanges.firstElection', icon: '🗳️', title: `${due.name}'s First Election`, text: `${due.state} elects its first parliament. Every seat is new; every party is new or renamed. Someone has to stand.`, data: { name: due.name }, options: [
+    { id: 'stand', label: '🏛️ Stand for the new parliament', hint: 'A seat, if your name means anything here' },
+    { id: 'vote', label: '🗳️ Just vote' },
+    { id: 'abstain', label: '🙅 Stay home' },
+  ] });
+}
+export const StateChangesResolvers = {
+  firstElection(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    if (optionId === 'abstain') return ctx.log(`You stayed home for ${data.name}'s first election.`, '🙅', 'info');
+    if (optionId === 'vote') { ctx.stat('happiness', 3); return ctx.log(`You queued for an hour to vote in ${data.name}'s first election, and kept the ballot stub.`, '🗳️', 'milestone'); }
+    const standing = (state.politics?.recognition ?? 0) + (state.civic?.movement?.breakaway ? 40 : 0) + (state.fame?.score ?? 0) / 2;
+    if (rng.chance(Math.min(0.85, 0.1 + standing / 100))) {
+      state.politics ??= {};
+      state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + 25);
+      ctx.emit?.('fame:buzz', { amount: 10 });
+      return ctx.log(`🏛️ Elected to the first parliament of ${data.name}. You were there when they wrote the rules everyone after you would follow.`, '🏛️', 'milestone');
+    }
+    ctx.log(`You stood for ${data.name}'s first parliament and lost to someone with a better-known name.`, '🗳️', 'warn');
+  },
+};
+
 export const StateChangesModule = {
   id: 'stateChanges',
   order: 34.5,
   init(state) { applyChanges(state); },
   setup(engine) { engine.bus.on('world:peace', ({ ctx, war, outcome }) => { if (ctx) warEnded(ctx, war, outcome); }); },
+  resolvers: StateChangesResolvers,
   onAgeUp(ctx) {
     const { state } = ctx;
+    firstElection(ctx);
     const y = yearNow(state);
     const cc = state.character.countryId ?? 'US';
     const here = state.character.regionId;
@@ -219,8 +273,8 @@ export const StateChangesModule = {
       if (c.year !== y || c.announced || c.kind === 'conquest') continue;
       c.announced = true;
       const rk = c.id.split(':')[1];
-      const mine = c.kind === 'union' ? c.cc === cc : c.kind === 'recognition' ? (RECOGNITIONS[rk].cities ? RECOGNITIONS[rk].cities.includes(here) : RECOGNITIONS[rk].cc === cc) : c.kind === 'reintegration' ? REINTEGRATIONS[c.id.split(':')[1]].cities.includes(here) : FOREIGN_CITIES[here]?.state === c.province && cc === (SECESSIONS[c.province] ?? TRANSFERS[c.province]).cc;
-      const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : c.kind === 'recognition' ? RECOGNITIONS[rk].label : REINTEGRATIONS[c.id.split(':')[1]].name;
+      const mine = c.kind === 'union' || c.kind === 'separation' ? c.cc === cc : c.kind === 'recognition' ? (RECOGNITIONS[rk].cities ? RECOGNITIONS[rk].cities.includes(here) : RECOGNITIONS[rk].cc === cc) : c.kind === 'reintegration' ? REINTEGRATIONS[c.id.split(':')[1]].cities.includes(here) : FOREIGN_CITIES[here]?.state === c.province && cc === (SECESSIONS[c.province] ?? TRANSFERS[c.province]).cc;
+      const title = c.kind === 'secession' ? `${SECESSIONS[c.province].name} is independent` : c.kind === 'transfer' ? `${TRANSFERS[c.province].name} joins ${COUNTRIES[TRANSFERS[c.province].to].name}` : c.kind === 'union' ? `${COUNTRIES[c.cc].name} joins ${COUNTRIES[UNIONS[c.cc].into].name}` : c.kind === 'separation' ? `${COUNTRIES[c.cc].name} leaves ${COUNTRIES[UNIONS[c.cc].into].name}` : c.kind === 'recognition' ? RECOGNITIONS[rk].label : REINTEGRATIONS[c.id.split(':')[1]].name;
       ctx.emit?.('news:story', { tier: mine ? 'national' : 'world', headline: title, weight: 9, icon: '🗺️' });
       if (!mine) continue;
       if (c.kind === 'secession') {
@@ -233,9 +287,11 @@ export const StateChangesModule = {
           if (!cit.includes(s.code)) cit.unshift(s.code);
         }
         ctx.log(`🏳️ Independence Day: you live in ${s.state} now, and you're one of its citizens: a new passport, a new flag on the public buildings, a new seat at the UN. You can keep your ${COUNTRIES[s.cc].demonym ?? 'old'} passport too.`, '🏳️', 'milestone');
+        newStateLife(ctx, s);
       }
       else if (c.kind === 'transfer') { ctx.log(`🤝 ${TRANSFERS[c.province].name} has joined ${COUNTRIES[TRANSFERS[c.province].to].name}. You're entitled to its citizenship, and most people take it.`, '🤝', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(TRANSFERS[c.province].to)) cit.push(TRANSFERS[c.province].to); }
       else if (c.kind === 'union') { const into = UNIONS[c.cc].into; ctx.log(`🗺️ ${COUNTRIES[c.cc].name} has ceased to exist as a state: it is part of ${COUNTRIES[into].name} now. You are a citizen of ${COUNTRIES[into].name}.`, '🗺️', 'milestone'); const cit = (state.character.citizenships ??= [cc]); if (!cit.includes(into)) cit.push(into); }
+      else if (c.kind === 'separation') ctx.log(`🏳️ ${COUNTRIES[c.cc].name} is its own country again: the old flag back up, and the old passport office reopened.`, '🏳️', 'milestone');
       else if (c.kind === 'recognition') ctx.log(`🏳️ ${RECOGNITIONS[rk].label}: embassies open, and your passport is good for the world now.`, '🏳️', 'milestone');
       else ctx.log(`🕊️ ${REINTEGRATIONS[c.id.split(':')[1]].name}: the checkpoints come down.`, '🕊️', 'milestone');
     }
@@ -245,6 +301,7 @@ export const StateChangesModule = {
     for (const [p, s] of Object.entries(SECESSIONS)) if (pick(`secession:${p}`, s.support >= 0.4)) secedeProvince(ctx, p);
     for (const p of Object.keys(TRANSFERS)) if (pick(`transfer:${p}`, true)) transferProvince(ctx, p);
     for (const from of Object.keys(UNIONS)) if (pick(`union:${from}`, true)) mergeCountry(ctx, from);
+    for (const from of Object.keys(UNIONS)) if (done(state, `union:${from}`) && pick(`separation:${from}`, true)) separate(ctx, from);
     for (const id of Object.keys(REINTEGRATIONS)) if (pick(`reintegration:${id}`, true) && !done(state, `recognition:${id}`)) reintegrate(ctx, id);
     for (const id of Object.keys(RECOGNITIONS)) if (pick(`recognition:${id}`, true) && !done(state, `reintegration:${id}`)) recognise(ctx, id);
   },

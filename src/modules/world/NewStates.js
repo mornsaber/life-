@@ -34,7 +34,7 @@ export function dynamicRegionState(regionId, year) {
 /** Countries this world dissolved (merged into another): { [cc]: { year, into } }. */
 let GONE = {};
 export const setDissolved = (o = {}) => { GONE = o ?? {}; };
-export const dissolvedInto = (cc, year = 9999) => (GONE[cc] && year >= GONE[cc].year ? GONE[cc].into : null);
+export const dissolvedInto = (cc, year = 9999) => (GONE[cc] && year >= GONE[cc].year && !(year >= GONE[cc].until) ? GONE[cc].into : null);
 
 /**
  * History's breakups in this world (world/History.js sovietCollapse, yugoslaviaBreakup, velvetDivorce):

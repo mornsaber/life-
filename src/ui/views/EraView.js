@@ -11,7 +11,7 @@ import { SECESSIONS, TRANSFERS, UNIONS, REINTEGRATIONS, WAR_MAP, RECOGNITIONS } 
 function mapChanges(state) {
   const list = (state.world?.stateChanges ?? []).map((c) => {
     const key = c.id.split(':')[1];
-    const what = c.kind === 'secession' ? `🏳️ ${SECESSIONS[key].name} independent` : c.kind === 'transfer' ? `🤝 ${TRANSFERS[key].name} joined ${COUNTRIES[TRANSFERS[key].to].name}` : c.kind === 'union' ? `🗺️ ${COUNTRIES[key].baseName} merged into ${COUNTRIES[UNIONS[key].into].baseName}` : c.kind === 'recognition' ? `🏳️ ${RECOGNITIONS[key].label}` : c.kind === 'conquest' ? `🏴 ${Object.values(WAR_MAP).flatMap((m) => Object.values(m)).find((x) => x.id === c.key)?.name ?? 'Conquest'}` : `🕊️ ${REINTEGRATIONS[key].name}`;
+    const what = c.kind === 'secession' ? `🏳️ ${SECESSIONS[key].name} independent` : c.kind === 'transfer' ? `🤝 ${TRANSFERS[key].name} joined ${COUNTRIES[TRANSFERS[key].to].name}` : c.kind === 'union' ? `🗺️ ${COUNTRIES[key].baseName} merged into ${COUNTRIES[UNIONS[key].into].baseName}` : c.kind === 'recognition' ? `🏳️ ${RECOGNITIONS[key].label}` : c.kind === 'separation' ? `🏳️ ${COUNTRIES[key]?.name ?? key} leaves its union` : c.kind === 'conquest' ? `🏴 ${Object.values(WAR_MAP).flatMap((m) => Object.values(m)).find((x) => x.id === c.key)?.name ?? 'Conquest'}` : `🕊️ ${REINTEGRATIONS[key].name}`;
     return `<li>${esc(what)} <small class="fine">${c.year > yearNow(state) ? `from ${c.year}` : c.year}</small></li>`;
   });
   return list.length ? `<h4 class="sub">This world's map</h4><ul class="plain">${list.join('')}</ul>` : '';
