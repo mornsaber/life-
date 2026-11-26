@@ -34,6 +34,17 @@ const BY_COUNTRY = {};
 for (const id of Object.keys(REGION_STATES)) { const r = REGIONS[id]; if (r) (BY_COUNTRY[r.country ?? 'US'] ??= []).push(id); }
 const US_TOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami', 'atlanta', 'philadelphia', 'phoenix', 'detroit', 'nashville', 'charlotte', 'pittsburgh', 'amarillo'];
 
+/**
+ * A state's short name for the menu: "the Kingdom of Hanover (in personal union with Britain until
+ * 1837)" is "the Kingdom of Hanover"; "the State of Hyderabad, a princely state under British
+ * paramountcy" is "the State of Hyderabad". The full name is the option's hint.
+ */
+export const shortStateName = (n) => {
+  // A trailing aside goes ("(in personal union…)", "(Japan's puppet empire; …)"); a name in brackets stays ("(Lithuania)").
+  const s = String(n).split(': ')[0].replace(/\s*\([^)]*$/, '').replace(/\s*\(([^)]*)\)\s*$/, (m, inner) => (/^[A-Z]/.test(inner) && inner.length <= 24 && !/[;,]/.test(inner) ? m : '')).trim();
+  const i = s.search(/, (?:a|an|the|run|ruled|governed|under|autonomous|independent|recognised|part|guarded|claimed|seceded|annexed)\b/);
+  return i > 3 ? s.slice(0, i) : s;
+};
 /** Sort key: "the Kingdom of Bavaria" files under K. */
 export const sortName = (n) => n.replace(/^the /i, '');
 const cap = (n) => n[0].toUpperCase() + n.slice(1);
@@ -47,9 +58,10 @@ export function startCountries(year) {
   if (!Number.isInteger(year) || year >= PRESENT) return null;
   const s = eraSnapshot(year);
   const out = new Map();
-  const add = (name, flag, cc, regions, spec) => {
+  const add = (full, flag, cc, regions, spec) => {
+    const name = shortStateName(full);
     const key = sortName(name).toLowerCase();
-    const e = out.get(key) ?? { name: cap(name), flag, spec, home: cc, picks: [] };
+    const e = out.get(key) ?? { name: cap(name), full: cap(full), flag, spec, home: cc, picks: [] };
     const same = e.picks.find(([c]) => c === cc);
     if (same && same[1] && regions) same[1].push(...regions);
     else if (!same) e.picks.push([cc, regions]);

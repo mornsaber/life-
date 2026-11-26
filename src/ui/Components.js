@@ -388,7 +388,7 @@ export function startCountryOptions(year, { selected = 'random' } = {}) {
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
   const body = Object.entries(groups).map(([name, ids]) => {
     const here = list.filter((e) => ids.includes(e.home)).sort((a, b) => sortName(a.name).localeCompare(sortName(b.name)));
-    return here.length ? `<optgroup label="${esc(name)}">${here.map((e) => `<option value="${esc(e.value)}" data-flag="${esc(flagSpec(e.spec))}"${e.value === selected ? ' selected' : ''}>${e.flag} ${esc(e.name)}${!e.picks[0][1] && kingdoms.includes(e.home) ? ' 👑' : ''}</option>`).join('')}</optgroup>` : '';
+    return here.length ? `<optgroup label="${esc(name)}">${here.map((e) => `<option value="${esc(e.value)}" data-flag="${esc(flagSpec(e.spec))}"${e.full && e.full !== e.name ? ` title="${esc(e.full)}"` : ''}${e.value === selected ? ' selected' : ''}>${e.flag} ${esc(e.name)}${!e.picks[0][1] && kingdoms.includes(e.home) ? ' 👑' : ''}</option>`).join('')}</optgroup>` : '';
   }).join('');
   return `<option value="random"${selected === 'random' ? ' selected' : ''}>🎲 Random country</option>${body}`;
 }
