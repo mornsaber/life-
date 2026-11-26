@@ -23,8 +23,36 @@ export const peopleIn = (cc) => Math.max(40, Math.round((demographyAt(cc, Math.m
  * at most ~1% (Pitcairn's post office is one person, not fifty thousand). International bodies
  * (the UN, NATO, the Jesuits) keep their size: their staff are everywhere.
  */
+/**
+ * International bodies are the size they really are (roughly, staff of recent decades): the
+ * Swiss Guard is about 135 men, not tens of thousands.
+ */
+const KNOWN_STAFF = [
+  [/Grand Magistry/i, 100], [/Economic and Social Commission|ESCAP|ESCWA/i, 600], [/International Energy Agency/i, 300], [/GATT Secretariat/i, 300],
+  [/OAU General Secretariat/i, 600], [/Inter-American Commission on Human Rights/i, 80], [/Inter-American Court/i, 60], [/European Court of Human Rights/i, 650], [/Nuclear Energy Agency/i, 100],
+  [/Swiss Guard/i, 135], [/Gendarmerie Corps of Vatican/i, 130], [/International Court of Justice/i, 120], [/International Criminal Court/i, 900],
+  [/Diplomatic Service of the Holy See|Secretariat of State/i, 400], [/Roman Curia|Congregation|Dicaster|Pontifical Council/i, 300],
+  [/International Monetary Fund/i, 3100], [/World Bank/i, 16000], [/Bank for International Settlements/i, 600], [/OECD/i, 3300], [/World Trade Organization|\bWTO\b/i, 620], [/Interpol/i, 1000],
+  [/World Health Organization/i, 8000], [/UNESCO/i, 2300], [/Food and Agriculture/i, 11000], [/UNICEF/i, 17000], [/UNHCR|High Commissioner for Refugees/i, 18000], [/World Food Programme/i, 20000],
+  [/International Labour/i, 3300], [/\bUNDP\b|Development Programme/i, 17000], [/Economic Commission/i, 600], [/United Nations Office at/i, 1500], [/UN Headquarters|Secretariat \(New York\)/i, 6000],
+  [/Supreme Headquarters Allied Powers|SHAPE/i, 3000], [/NATO Support and Procurement/i, 1300], [/NATO Headquarters|International Staff/i, 1500], [/NATO Communications/i, 3500],
+  [/Commission of the European|European Commission/i, 32000], [/European Parliament/i, 8000], [/Court of Justice of the European/i, 2200], [/Council of the European|Council of the EU/i, 3000], [/European Central Bank/i, 3500],
+  [/Council of Europe/i, 2200], [/Commonwealth Secretariat/i, 300], [/African Union Commission|African Union/i, 1700], [/ASEAN Secretariat/i, 400], [/Organization of American States/i, 600],
+  [/Red Cross|ICRC/i, 22000], [/Missionaries of Charity/i, 5000], [/Society of Jesus/i, 15000], [/Order of Malta/i, 4000],
+];
+export const knownStaff = (name) => KNOWN_STAFF.find(([re]) => re.test(name ?? ''))?.[1] ?? null;
+
 export function capToPlace(org, cc) {
-  if (!org || !cc || org.international || !org.departments) return org;
+  if (org?.international && org.departments) {
+    const real = knownStaff(org.name);
+    const depts = Object.values(org.departments);
+    const total = depts.reduce((n, d) => n + (d.headcount ?? 0), 0);
+    // A body not on the list: an international secretariat of its kind, not a ministry of tens of thousands.
+    const target = real ?? Math.min(total, 2000);
+    if (total > 0 && target !== total) for (const d of depts) d.headcount = Math.max(1, Math.round(((d.headcount ?? 0) / total) * target));
+    return org;
+  }
+  if (!org || !cc || !org.departments) return org;
   const people = peopleIn(cc);
   // A national body abroad is America's, scaled to the people it serves (smaller states run
   // relatively bigger governments: three times the per-head staffing at most).

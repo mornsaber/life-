@@ -51,6 +51,7 @@ import { workBlock } from './Regimes.js';
 import { presidencyInEra, AUTONOMOUS } from './Eras.js';
 import { colonialEmployerName } from '../content/packs/careers-colonial.js';
 import { regionsIn } from '../life/Regions.js';
+import '../career/PlaceSize.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
