@@ -535,9 +535,14 @@ export function deptCeiling(org, deptId, profession, size) {
   let ceiling = Infinity;
   if (t?.head?.occupation === profession?.id && at(t.head.levelId) >= 0) orgTop = at(t.head.levelId);
   if (def?.head?.occupation === profession?.id && at(def.head.levelId) >= 0) ceiling = at(def.head.levelId);
+  const topGrade = Math.max(...ladder.map((l) => l.grade ?? 0));
   ladder.forEach((l, i) => {
     if (i >= orgTop) return;
-    if (sameTitle(l.title, orgHead?.title) || (ORG_TOP.test(l.title) && !UNDER.test(l.title))) orgTop = i;
+    // The rung's own name as well as the one it goes by here (a Chief Executive is "Managing Director" in some places and years).
+    const base = profession?.levels?.find((x) => x.id === l.id)?.title ?? l.title;
+    // The era's name for a chief executive (Managing Director, Senior Partner) heads the firm when it's the ladder's top rung.
+    const eraHead = l.grade === topGrade && /^(?:managing director|senior partner)$/i.test(l.title.trim());
+    if (sameTitle(l.title, orgHead?.title) || eraHead || [l.title, base].some((n) => ORG_TOP.test(n) && !UNDER.test(n))) orgTop = i;
     else if (sameTitle(l.title, deptHead?.title) && i < ceiling) ceiling = i;
   });
   return { ceiling: Math.min(ceiling, orgTop), orgTop, ladder };

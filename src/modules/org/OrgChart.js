@@ -93,12 +93,20 @@ export function workplaceChart(state, job) {
   const mine = present.find((l) => l.id === job.levelId);
   for (let l = mine; l; l = bossOf(l)) nodes.get(l).open = true;
   if (mine && nodes.get(mine).children) nodes.get(mine).open = true;
+  // Nobody in the department outranks you: you are its head, not someone the department head's deputy reports past.
+  // (Not past an officer of the company: a Vice President of Operations still reports to the Chief Operating Officer.)
+  const deptHeadTitle = myDept ? named(org, myDept.head)?.title ?? '' : '';
+  const youHeadDept = !youRunIt && mine && !present.some((l) => l !== mine && l.grade > mine.grade) && !/\bchief\b|\bofficer\b|general counsel|secretary|commissioner|director-general/i.test(deptHeadTitle);
   const depts = Object.values(org.departments).map((d) => {
     const dh = named(org, d.head);
     const node = { title: d.name, name: dh?.name ?? standIn(state, `${org.id}:${d.id}:head`), meta: `${dh?.title ? `${dh.title} · ` : ''}${(d.headcount ?? 0).toLocaleString()} staff`, kind: 'unit' };
     if (d !== myDept) return node;
-    const unitName = job.employer.division || (job.employer.name !== d.name && job.employer.name !== org.name ? job.employer.name : c?.division);
-    const ranks = unitName && unitName !== d.name ? [{ title: unitName, kind: 'unit', open: true, children: tops }] : tops;
+    // A branch or district of a public body is a unit of its own; a firm's own name is not (it's the organisation).
+    const firm = org.business || org.sector === 'private';
+    const unitName = job.employer.division || (!firm && job.employer.name !== d.name && job.employer.name !== org.name ? job.employer.name : c?.division);
+    const below = youHeadDept ? nodes.get(mine).children ?? [] : tops;
+    const ranks = unitName && unitName !== d.name ? [{ title: unitName, kind: 'unit', open: true, children: below }] : below;
+    if (youHeadDept) return { ...node, name: 'You', you: true, meta: `${job.title} · ${(d.headcount ?? 0).toLocaleString()} staff`, open: true, children: ranks };
     return { ...node, open: true, children: ranks };
   });
   // Your department first, the rest after it.

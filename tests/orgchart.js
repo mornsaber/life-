@@ -14,6 +14,7 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { workplaceChart, unitChart } from '../src/modules/org/OrgChart.js';
+import { ladderFor } from '../src/modules/career/Ladder.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const flat = (n) => [n, ...(n.children ?? []).flatMap(flat)];
@@ -45,6 +46,25 @@ const tests = {
       if (!state.career.job) continue;
       const chart = workplaceChart(state, state.career.job);
       assert.ok(chart && flat(chart).some((n) => n.you), `${cc} ${pid}`);
+    }
+  },
+  'a chief executive by its era name (Managing Director) heads the firm; a firm\'s trading name is not a unit'() {
+    const path = (n, acc = []) => (n.you ? [...acc, n] : (n.children ?? []).map((c) => path(c, [...acc, n])).find(Boolean));
+    for (const [cc, pid] of [['TW', 'corporate'], ['GB', 'corporate'], ['TW', 'engineering'], ['US', 'finance']]) for (let seed = 1; seed < 8; seed++) {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+      const state = engine.newLife({ countryId: cc }); state.prompts = []; state.character.age = 55;
+      const ctx = engine.context();
+      const p = getProfession(pid);
+      const emp = createEmployer(ctx.rng, state, p, state.character.regionId);
+      const ladder = ladderFor(p, emp.size);
+      const top = ladder.reduce((x, l) => (l.grade >= x.grade ? l : x));
+      hire(ctx, { professionId: pid, levelId: top.id, employer: emp });
+      if (!state.career.job) continue;
+      const chart = workplaceChart(state, state.career.job);
+      const up = path(chart) ?? [];
+      const where = `${cc} ${pid} ${seed} ${state.career.job.title}`;
+      if (/Managing Director|Chief Executive|Senior Partner/.test(state.career.job.title)) assert.ok(up.length <= 2, `${where}: heads the firm, not ${up.map((n) => n.title).join(' > ')}`);
+      assert.ok(!flat(chart).some((n) => n.kind === 'unit' && n.title === state.career.job.employer.name), `${where}: trading name as a unit`);
     }
   },
   'a soldier sees battalion, companies, platoon and squad'() {
