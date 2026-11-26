@@ -68,7 +68,7 @@ export function eraCard(state) {
   const era = state.era;
   if (!era) return '';
   const future = Object.entries(era.events ?? {}).filter(([id, e]) => EVENTS[id]?.future && !e.past);
-  if (yearNow(state) > PRESENT + 1 || era.start >= PRESENT) return (future.length ? futureCard(state, future) : '') + (mapChanges(state) ? card('🗺️ This World\'s Map', mapChanges(state).replace(/<h4[^>]*>.*?<\/h4>/, ''), { icon: '🗺️' }) : '');
+  if (yearNow(state) > PRESENT + 1 || era.start >= PRESENT) return (future.length ? futureCard(state, future) : '') + (mapChanges(state) ? card('This World\'s Map', mapChanges(state).replace(/<h4[^>]*>.*?<\/h4>/, ''), { icon: '🗺️' }) : '');
   const y = yearNow(state);
   const cc = state.character.countryId ?? 'US';
   const r = regimeHere(state);

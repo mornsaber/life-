@@ -737,7 +737,9 @@ export function eraLayer(state) {
     const st = colonyStage(state, cc);
     if (!st) continue;
     if (st.ruler === 'RU' && out.RU?.kind === 'totalitarian') { out[cc] = { ...out.RU, name: `${st.name}, a Soviet republic ruled from Moscow` }; continue; }
-    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${(st.rulers ?? [st.ruler]).map((r) => rulerCapital(r, y)).join(' and ')}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
+    // A democracy's colonies had their own newspapers (censored in wartime and emergencies); an autocracy's printed what they were told.
+    const freePress = !st.occupation && y >= 1900 && ['GB', 'FR', 'NL', 'US', 'DK', 'BE', 'AU', 'NZ', 'NO', 'SE'].includes(st.ruler) && !(y >= 1939 && y <= 1945);
+    out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${(st.rulers ?? [st.ruler]).map((r) => rulerCapital(r, y)).join(' and ')}`, elections: 'none', press: freePress ? 'free' : 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
   }
   // Your own city's state, where it wasn't yet (or no longer) the country's: Bavaria, the Two Sicilies, East Germany.
   const here = state.character?.countryId ?? 'US';

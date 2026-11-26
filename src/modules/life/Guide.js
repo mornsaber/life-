@@ -3,6 +3,7 @@
  * at the tab where you'd do it. And a handful of plain tips for new players, by stage of life.
  * Pure reads: views call these.
  */
+import { credentialExists } from '../world/Eras.js';
 import { netWorth } from '../../core/State.js';
 import { ASPIRATIONS, WORK_ON } from './Aspirations.js';
 
@@ -36,7 +37,7 @@ export function nextSteps(state, max = 4) {
 
   // By stage of life.
   if (age >= 5 && age < 18) add('📖', 'Keep your grades up', 'school', 'Good grades open university and better jobs');
-  if (age >= 15 && age < 30 && !hasCred(state, 'learnerPermit') && !hasCred(state, 'driverLicense')) add('🚦', 'Get a learner\'s permit, then a driving licence', 'licenses', 'Many jobs need one');
+  if (age >= 15 && age < 30 && credentialExists(state, 'driverLicense') && !hasCred(state, 'learnerPermit') && !hasCred(state, 'driverLicense')) add('🚦', 'Get a learner\'s permit, then a driving licence', 'licenses', 'Many jobs need one');
   if (age >= 17 && age < 30 && !enrolled && !(state.education?.degrees ?? []).some((d) => ['associate', 'bachelor', 'master', 'doctorate', 'professional'].includes(d.type)) && !job) add('🎓', 'Apply to university or a trade school', 'school', 'Degrees and trades lift lifetime pay');
   if (age >= 16 && !job && !enrolled && age < 67) add('💼', 'Look for a job', 'career', 'Income, experience and a career ladder');
   if (job && (job.performance ?? 50) < 40) add('📈', 'Work harder: your performance is slipping', 'career', `Performance ${Math.round(job.performance ?? 0)}`);
