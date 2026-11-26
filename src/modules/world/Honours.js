@@ -17,7 +17,7 @@
  * state.character.style = { prefix: 'Sir' | 'Dame' | 'Lord' | 'Baroness' | ..., peerage: 'Baron Smith, of Leeds' }
  */
 import { usedPrefix, baronetLetters } from './BoughtTitles.js';
-import { withTitle, professionalTitle } from './Titles.js';
+import { withTitle, professionalTitle, knightlyHere } from './Titles.js';
 import { addHonor, netWorth, hasFelony } from '../../core/State.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -427,12 +427,12 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
     const city = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? COUNTRIES[cc]?.capital ?? 'London';
     if (!state.character.peerage) grantPeerage(ctx, { rank: 'baron', place: city, kind: t.hereditary ? 'hereditary' : 'life', seat: true });
     else if (!state.character.peerage.retiredLords) state.character.peerage.seat = true;
-  } else if (prefix && !state.character.peerage && !state.royal) state.character.style = { ...(state.character.style ?? {}), prefix };
+  } else if (prefix && !state.character.peerage && !state.royal && ownHonour(state, { country: cc })) state.character.style = { ...(state.character.style ?? {}), prefix };
   // Standing that comes with it: a higher grade opens more doors.
   if (state.politics) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + Math.round(3 + g.level * 9));
   ctx.log(t.peer
     ? `You were ${t.hereditary ? 'raised to the peerage' : 'created a life peer'}: ${state.character.style.peerage}. You took your seat in the House of Lords.${t.hereditary ? ' The title will pass to your eldest son.' : ''}`
-    : `${promotedFrom ? `You were promoted within the order, from ${promotedFrom} to ${name}` : `You were appointed ${name}`}, invested ${g.investiture}.${prefix && ['Sir', 'Dame'].includes(prefix) && !state.royal && !state.character.peerage ? ` You are now ${styledName(state)}.` : post ? ` You may now write ${post} after your name.` : ''}`, g.icon, 'honor');
+    : `${promotedFrom ? `You were promoted within the order, from ${promotedFrom} to ${name}` : `You were appointed ${name}`}, invested ${g.investiture}.${prefix && !ownHonour(state, { country: cc }) ? ' It is honorary: as a foreign national you use no title and no letters from it.' : prefix && ['Sir', 'Dame'].includes(prefix) && !state.royal && !state.character.peerage ? ` You are now ${styledName(state)}.` : post ? ` You may now write ${post} after your name.` : ''}`, g.icon, 'honor');
   ctx.stat('happiness', Math.round(4 + g.level * 8));
   return t;
 }
@@ -508,10 +508,11 @@ export function styledName(state) {
   // The ordained are addressed by their orders ("Fr.", "The Revd", "Rabbi"); a knight who is a priest keeps "Sir" off.
   const clerical = clericalPrefix(state);
   if (clerical && (!s?.prefix || /^(Sir|Dame)$/.test(s.prefix))) return withOfficialStyle(state, `${clerical} ${c.firstName} ${c.lastName}`);
-  const knight = /^(Sir|Dame)$/.test(s?.prefix ?? '');
+  // Sir and Dame are written where knighthoods are (the realms, the Commonwealth); elsewhere the letters say it.
+  const knight = /^(Sir|Dame)$/.test(s?.prefix ?? '') && knightlyHere(state);
   // A title bought and used (a papal count, or a "Laird" from a souvenir plot): world/BoughtTitles.js.
   const bought = !s?.prefix ? usedPrefix(state) : null;
-  const base = bought ? `${militaryPrefix(state) ? `${militaryPrefix(state)} ` : ''}${bought} ${c.firstName} ${c.lastName}` : !s?.prefix ? withTitle(state, `${c.firstName} ${c.lastName}`)
+  const base = bought ? `${militaryPrefix(state) ? `${militaryPrefix(state)} ` : ''}${bought} ${c.firstName} ${c.lastName}` : !s?.prefix || (/^(Sir|Dame)$/.test(s.prefix) && !knight) ? withTitle(state, `${c.firstName} ${c.lastName}`)
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
       : knight ? withTitle(state, `${s.prefix} ${c.firstName} ${c.lastName}`, { knight: true })
         : `${s.prefix} ${c.firstName} ${c.lastName}`;

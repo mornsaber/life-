@@ -8,7 +8,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { styledName } from '../src/modules/world/Honours.js';
+import { styledName, award, ORDERS, postNominals } from '../src/modules/world/Honours.js';
 import { addressOf } from '../src/modules/world/Titles.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -41,12 +41,31 @@ const tests = {
     assert.equal(who('JP', 'male', ['education', 'Teacher', 1], ['bachelor']).says, 'Lee-sensei');
   },
   'rank: serving and retired, by country; a dame drops Dr'() {
-    const retired = (s, rank) => { s.military.history = [{ track: 'officer', grade: 5, rankTitle: rank, discharge: 'retired' }]; };
+    const retired = (s, rank, nation) => { s.military.history = [{ track: 'officer', grade: 5, rankTitle: rank, discharge: 'retired', ...(nation ? { nation } : {}) }]; };
     assert.equal(who('US', 'male', null, [], (s) => retired(s, 'Colonel')).name, 'Colonel Ann Lee (Ret.)');
-    assert.equal(who('DE', 'male', null, [], (s) => retired(s, 'Oberst')).name, 'Oberst a. D. Ann Lee');
+    assert.equal(who('DE', 'male', null, [], (s) => retired(s, 'Oberst', 'DE')).name, 'Oberst a. D. Ann Lee');
     const dame = who('GB', 'female', ['medical', 'Attending Physician'], ['md'], (s) => { s.character.style = { prefix: 'Dame' }; });
     assert.equal(dame.name, 'Dame Ann Lee');
     assert.equal(dame.says, 'Dame Ann');
+  },
+  'titles are the country\'s: a British major is Major in London and Toronto, not in Ohio; Sir only where there are knights; no title from an honorary knighthood'() {
+    const major = (s) => { s.military.history = [{ track: 'officer', grade: 3, rankTitle: 'Major', discharge: 'retired', nation: 'GB' }]; };
+    assert.equal(who('GB', 'male', null, [], major).name, 'Major Ann Lee');
+    assert.equal(who('CA', 'male', null, [], major).name, 'Major Ann Lee');
+    assert.equal(who('US', 'male', null, [], major).name, 'Ann Lee', 'British custom, not used in America');
+    const usSergeant = (s) => { s.military.history = [{ track: 'enlisted', grade: 6, rankTitle: 'Master Sergeant', discharge: 'retired' }]; };
+    assert.equal(who('US', 'male', null, [], usSergeant).name, 'Master Sergeant Ann Lee (Ret.)');
+    assert.equal(who('GB', 'male', null, [], usSergeant).name, 'Ann Lee', 'an American retiree is plain Mr in London');
+    const sir = (s) => { s.character.style = { prefix: 'Sir' }; };
+    assert.equal(who('GB', 'male', null, [], sir).name, 'Sir Ann Lee');
+    assert.equal(who('US', 'male', null, [], sir).name, 'Ann Lee', 'no knights in America');
+    assert.equal(who('US', 'male', null, [], sir).says, null);
+    // An honorary knighthood for an American: no Sir, no letters.
+    const e = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
+    const st = e.newLife({ countryId: 'US', gender: 'male', firstName: 'Ann', lastName: 'Lee' });
+    award(e.context(), 'GB', ORDERS.GB.tiers.find((t) => t.id === 'knight'));
+    assert.ok(!st.character.style?.prefix, 'no Sir');
+    assert.equal(postNominals(st), '');
   },
 };
 

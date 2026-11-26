@@ -24,7 +24,7 @@ const grown = (gender = 'male', year = 1990, age = 55) => {
   return { engine, state };
 };
 const peer = (s) => { s.character.peerage = { cc: 'GB', rank: 'baron', place: null, kind: 'life', created: 50, number: 1 }; s.character.style = { prefix: 'Lord', peerage: 'Baron Hale' }; };
-const general = (s) => s.military.history.push({ branch: 'army', track: 'officer', grade: 8, rankTitle: 'Lieutenant General', startAge: 22, endAge: 49, discharge: 'retired', rankCode: 'OF-8' });
+const general = (s) => s.military.history.push({ branch: 'army', nation: 'GB', track: 'officer', grade: 8, rankTitle: 'Lieutenant General', startAge: 22, endAge: 49, discharge: 'retired', rankCode: 'OF-8' });
 
 const tests = {
   'a peer stays Lord, whatever else is conferred or inherited'() {

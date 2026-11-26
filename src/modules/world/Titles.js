@@ -21,6 +21,17 @@ import { yearNow, periodTitle } from './Eras.js';
 import { rankOf } from '../military/MilitaryEngine.js';
 
 const GERMANIC = ['DE', 'AT', 'CH', 'LI'];
+/**
+ * Where a knight is Sir and a dame Dame: the Crown's realms, the Commonwealth and the British
+ * territories. Elsewhere a knighthood is written out in the letters only (an honorary KBE
+ * gives no title at all).
+ */
+export const KNIGHTLY = ['GB', 'CA', 'AU', 'NZ', 'IN', 'PK', 'BD', 'LK', 'SG', 'MY', 'BN', 'NG', 'GH', 'KE', 'UG', 'TZ', 'ZM', 'MW', 'ZA', 'BW', 'NA', 'LS', 'SZ', 'MU', 'SC', 'MT', 'CY',
+  'JM', 'TT', 'BB', 'BS', 'BZ', 'GY', 'AG', 'KN', 'LC', 'VC', 'GD', 'DM', 'PG', 'SB', 'VU', 'FJ', 'TO', 'WS', 'TV', 'KI', 'NR', 'GM', 'SL', 'CM', 'RW', 'MZ',
+  'JE', 'GG', 'IM', 'GI', 'BM', 'KY', 'VG', 'TC', 'AI', 'MS', 'FK', 'SH', 'PN', 'IO', 'HK'];
+export const knightlyHere = (state) => KNIGHTLY.includes(state.character.countryId ?? 'US');
+/** The Commonwealth's forces share one custom of rank in retirement. */
+const SPHERE = (c) => (KNIGHTLY.includes(c) || c === 'IE' ? 'commonwealth' : GERMANIC.includes(c) ? 'germanic' : c);
 const IBERO = ['ES', 'MX', 'AR', 'CO', 'CL', 'PE', 'VE', 'EC', 'BO', 'UY', 'PY', 'CR', 'PA', 'GT', 'HN', 'SV', 'NI', 'DO', 'CU'];
 const LUSO = ['PT', 'BR'];
 const FRENCH = ['FR', 'BE', 'LU', 'MC', 'SN', 'CI'];
@@ -59,21 +70,28 @@ export function credentials(state) {
   };
 }
 
-/** Rank to go by: serving, or retired as an officer (or a senior NCO in America). */
+/**
+ * Rank to go by: serving, or retired. The custom is the army's you served in, not the country you
+ * live in: America lets anyone retired keep the rank; Britain and the Commonwealth only officers
+ * of major (or its equal) and above; elsewhere officers. A retired rank is used where that army's
+ * custom runs (a British major is Major Smith in London or Toronto, plain Mr Smith in Ohio).
+ */
 function militaryRank(state) {
   const svc = state.military?.service;
   if (svc) {
     const r = rankOf(svc).title.replace(/^Acting /, '');
-    return { rank: r, retired: false };
+    return { rank: r, retired: false, nation: svc.nation ?? 'US' };
   }
-  // America: anyone retired from the forces. Elsewhere, by custom only officers of major (or its equal) and above.
-  const us = cc(state) === 'US';
-  const last = [...(state.military?.history ?? [])].reverse().find((h) => (us ? h.discharge === 'retired' : h.track !== 'enlisted' && (h.grade ?? 0) >= 3 && ['honorable', 'retired', 'medical'].includes(h.discharge)));
+  const here = cc(state);
+  const last = [...(state.military?.history ?? [])].reverse().find((h) => {
+    const n = h.nation ?? 'US';
+    if (SPHERE(n) !== SPHERE(here)) return false;
+    return n === 'US' ? h.discharge === 'retired' : h.track !== 'enlisted' && (h.grade ?? 0) >= 3 && ['honorable', 'retired', 'medical'].includes(h.discharge);
+  });
   if (!last?.rankTitle) return null;
-  if (last.track === 'enlisted' && !(cc(state) === 'US' && last.discharge === 'retired')) return null;
-  return { rank: last.rankTitle.replace(/^Acting /, ''), retired: true };
+  return { rank: last.rankTitle.replace(/^Acting /, ''), retired: true, nation: last.nation ?? 'US' };
 }
-const RETIRED = (country) => (country === 'US' ? ' (Ret.)' : GERMANIC.includes(country) ? ' a. D.' : ['GB', 'IE', 'AU', 'NZ', 'CA', 'IN'].includes(country) ? '' : ' (retd)');
+const RETIRED = (country) => (country === 'US' ? ' (Ret.)' : GERMANIC.includes(country) ? ' a. D.' : KNIGHTLY.includes(country) || country === 'IE' ? '' : ' (retd)');
 
 /**
  * Your title: { prefix, suffix, address, why } (any may be null). `knight`: you are Sir/Dame, so Dr is dropped.
@@ -87,7 +105,7 @@ export function professionalTitle(state, { knight = false } = {}) {
   // Rank first: in uniform you are your rank.
   const mil = militaryRank(state);
   // In German usage the retirement goes with the rank: Oberst a. D. Lukas Becker.
-  if (mil) return GERMANIC.includes(c) && mil.retired ? { prefix: `${mil.rank} a. D.`, suffix: null, address: mil.rank, why: 'your rank, kept in retirement' } : { prefix: mil.rank, suffix: mil.retired ? RETIRED(c) : null, address: mil.rank, why: mil.retired ? 'your rank, kept in retirement' : 'your rank' };
+  if (mil) return GERMANIC.includes(mil.nation) && mil.retired ? { prefix: `${mil.rank} a. D.`, suffix: null, address: mil.rank, why: 'your rank, kept in retirement' } : { prefix: mil.rank, suffix: mil.retired ? RETIRED(mil.nation) : null, address: mil.rank, why: mil.retired ? 'your rank, kept in retirement' : 'your rank' };
   if (k.police) return { prefix: k.police, suffix: null, address: k.police, why: 'your rank in the police' };
   if (NORDIC.includes(c)) {
     // Scandinavians drop titles in daily life; a professor stays a professor.
@@ -166,7 +184,7 @@ export function addressOf(state) {
   const bought = !p ? usedPrefix(state) : null;
   if (bought && !outrankedBy(state)) return `${bought} ${c.lastName}`;
   // A knight or dame is Sir John, Dame Olivia, whatever else they are (a serving officer keeps the rank).
-  if (/^(Sir|Dame)$/.test(p ?? '') && !state.military?.service) return `${p} ${state.character.firstName}`;
+  if (/^(Sir|Dame)$/.test(p ?? '') && knightlyHere(state) && !state.military?.service) return `${p} ${state.character.firstName}`;
   return professionalTitle(state)?.address ?? null;
 }
 
