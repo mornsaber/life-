@@ -18,7 +18,9 @@
  * Its own random stream: the rest of the year rolls as it always did.
  */
 import { Random } from '../../core/Random.js';
-import { yearNow, PRESENT, setLeavingAge, setUniversityGate } from '../world/Eras.js';
+import { yearNow, PRESENT, setLeavingAge, setUniversityGate, addEraWorkRule } from '../world/Eras.js';
+import { JOB_FIELDS, getProfession } from '../career/JobTrees.js';
+import { promote } from '../career/CareerEngine.js';
 import { demographyAt } from '../world/HistoricalData.js';
 import { ADMISSION_HOOKS } from './EducationEngine.js';
 import { statuteIn, statuteOverride, FREE_FROM } from '../politics/StatuteBook.js';
@@ -90,12 +92,44 @@ ADMISSION_HOOKS.push({
   },
 });
 
+/** Work that needs reading and writing: the office, the professions, teaching, the civil service. */
+const READING_FIELDS = ['business', 'office', 'digital', 'tech', 'law', 'health', 'therapy', 'social', 'education', 'government', 'federalLE', 'intel', 'corrections', 'intl'];
+const readingWork = (id) => READING_FIELDS.some((f) => JOB_FIELDS[f]?.ids.includes(String(id).replace(/^[a-z]{2}_/, '')));
+addEraWorkRule((state, profession) => (state.schooling?.literate === false && readingWork(profession?.id) ? 'You can\'t read: evening classes first' : null));
+
+/** What finishing school at night is called here and then (the GED from 1942 in America). */
+export function nightSchoolName(state) {
+  const y = yearNow(state);
+  const c = cc(state);
+  if (c === 'US') return y >= 1942 ? 'a GED (high school equivalency)' : 'a night-school diploma';
+  if (['GB', 'IE', 'AU', 'NZ', 'CA'].includes(c)) return y >= 1951 ? 'O-levels at night school' : 'evening-class certificates';
+  if (c === 'FR') return y >= 1950 ? 'the certificat d\'études at evening classes' : 'the certificat d\'études for adults';
+  if (c === 'DE') return y >= 1950 ? 'the Abendschule leaving certificate' : 'evening-school certificates';
+  return 'a night-school certificate';
+}
+/** Years of evening classes to finish school, and what they cost a year. */
+export const NIGHT_SCHOOL = { years: 3, cost: 200 };
+/** Can you start night school: left school early, can read, no school certificate yet. */
+export function nightSchoolOpen(state) {
+  const s = state.schooling ?? {};
+  if (s.nightSchool || s.literate === false) return false;
+  if (state.education?.degrees?.some((d) => d.type === 'highschool' || d.type === 'ged')) return false;
+  // America from 1942 has the GED exam (K12) instead.
+  if (cc(state) === 'US' && yearNow(state) >= 1942) return false;
+  const k = state.k12;
+  return state.character.age >= 14 && state.character.age <= 60 && Boolean(k?.dropout || k?.leftEarly || s.unschooled);
+}
+/** Indentures: the years an apprentice was bound to a master. */
+export const INDENTURE_YEARS = { blacksmith: 7, carpentry: 5 };
+
 export const SchoolingModule = {
   id: 'schooling',
   order: 8.9,
   init(state) { state.schooling ??= {}; },
   onAgeUp(ctx) {
     const { state } = ctx;
+    nightSchoolYear(ctx);
+    indentureYear(ctx);
     if (!state.era || yearNow(state) >= PRESENT) return;
     const s = state.schooling;
     const age = state.character.age;
@@ -125,6 +159,15 @@ export const SchoolingModule = {
     }
   },
   actions: {
+    /** Night school: finish your schooling after work. */
+    nightSchool(ctx) {
+      const { state } = ctx;
+      if (!nightSchoolOpen(state)) return ctx.toast('Night school is for those who left school early and can read.', 'warn');
+      if (!ctx.spend(NIGHT_SCHOOL.cost, 'Night school', { credit: true })) return ctx.toast(`A year of classes costs $${NIGHT_SCHOOL.cost}.`, 'warn');
+      state.schooling.nightSchool = { yearsLeft: NIGHT_SCHOOL.years, name: nightSchoolName(state) };
+      ctx.stat('stress', 4);
+      ctx.log(`You enrolled at night school, three evenings a week after work, working towards ${nightSchoolName(state)}.`, '🌙', 'milestone');
+    },
     /** Evening classes: learn to read as an adult. */
     literacy(ctx) {
       const { state } = ctx;
@@ -139,3 +182,46 @@ export const SchoolingModule = {
     },
   },
 };
+
+/** A year of night school: tired evenings, and at the end a school certificate. */
+function nightSchoolYear(ctx) {
+  const { state, rng } = ctx;
+  const n = state.schooling?.nightSchool;
+  if (!n || n.done) return;
+  if (state.legal?.incarceration) return;
+  if (n.yearsLeft < NIGHT_SCHOOL.years && !ctx.spend(NIGHT_SCHOOL.cost, 'Night school', { credit: true })) {
+    state.schooling.nightSchool = null;
+    return ctx.log('You couldn\'t keep up the night-school fees and gave it up.', '🌙', 'warn');
+  }
+  ctx.stat('stress', 3);
+  n.yearsLeft -= 1;
+  if (n.yearsLeft > 0) return;
+  // The exam at the end.
+  if (state.stats.smarts + rng.int(-15, 15) < 40) {
+    state.schooling.nightSchool = null;
+    return ctx.log(`You sat the exams for ${n.name} and didn't pass. You can enrol again.`, '📉', 'warn');
+  }
+  n.done = true;
+  state.education.degrees.push({ type: 'highschool', programId: 'nightSchool', major: null, year: state.character.age, nightSchool: true });
+  ctx.stat('smarts', 3);
+  ctx.stat('happiness', 6);
+  ctx.log(`Three years of evenings after work: you passed ${n.name}. Doors that were shut are open.`, '🎓', 'milestone');
+}
+
+/** An apprentice bound to a master: at the end of the indenture, out of your time as a journeyman. */
+function indentureYear(ctx) {
+  const { state } = ctx;
+  const ind = state.schooling?.indenture;
+  if (!ind) return;
+  const job = state.career?.job;
+  if (!job || job.professionId !== ind.professionId) { state.schooling.indenture = null; return ctx.log('You broke your indenture: the apprenticeship ended without a trade.', '🔨', 'warn'); }
+  if (state.character.age < ind.until) return;
+  state.schooling.indenture = null;
+  const p = getProfession(job.professionId);
+  const jm = p.levels.find((l) => l.id === 'journeyman');
+  const at = p.levels.findIndex((l) => l.id === job.levelId);
+  if (jm && at < p.levels.indexOf(jm)) promote(ctx, jm.id);
+  state.education.degrees.push({ type: 'vocational', programId: `indenture:${p.id}`, major: null, schoolId: 'apprenticeship', year: state.character.age, apprenticeship: true });
+  ctx.stat('happiness', 6);
+  ctx.log(`Your indenture is served: at ${state.character.age} you are out of your time, a journeyman ${p.id === 'blacksmith' ? 'smith' : 'carpenter'} free to work for wages anywhere.`, '🔨', 'milestone');
+}

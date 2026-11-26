@@ -52,6 +52,7 @@ import { presidencyInEra, AUTONOMOUS } from './Eras.js';
 import { colonialEmployerName } from '../content/packs/careers-colonial.js';
 import { regionsIn } from '../life/Regions.js';
 import '../career/PlaceSize.js';
+import { INDENTURE_YEARS } from '../education/SchoolingOfTheDay.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -1331,9 +1332,15 @@ export const HistoryModule = {
       const { state, rng } = ctx;
       if (optionId === 'home') { state.k12.helpsAtHome = true; return ctx.log('You stayed home to help your mother: the washing, the younger ones and the vegetables.', '🏠', 'info'); }
       const p = getProfession(optionId);
-      const level = p?.levels?.[0];
+      // An apprentice is bound to a master for years; everyone else starts at the bottom rung.
+      const years = INDENTURE_YEARS[p?.id];
+      const level = (years && p.levels.find((l) => l.id === 'apprentice')) || p?.levels?.[0];
       if (!level) return;
       const job = hire(ctx, { professionId: p.id, levelId: level.id, employer: createEmployer(rng, state, p, state.character.regionId) });
+      if (job && years) {
+        (state.schooling ??= {}).indenture = { professionId: p.id, until: state.character.age + years };
+        return ctx.log(`At ${state.character.age} you were bound apprentice to ${job.employer?.name ?? 'a master'} for ${years} years: board and lodging, pocket money, and at the end a trade.`, '🔨', 'milestone');
+      }
       if (job) ctx.log(`At ${state.character.age} you started as ${/^[aeiou]/i.test(level.title) ? 'an' : 'a'} ${level.title.toLowerCase()} at ${job.employer?.name ?? 'your first place'}. Your wages go to your mother on Friday.`, '🧒', 'milestone');
     },
     civilRights(ctx, data, optionId) {
