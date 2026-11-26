@@ -231,7 +231,8 @@ export function demographyAt(cc, year) {
   const mix = (arr) => (arr[i] == null ? arr[i + 1] : arr[i + 1] == null ? arr[i] : arr[i] + (arr[i + 1] - arr[i]) * t);
   // Before a series starts, carry its first value back; after it ends, its last.
   const firstOf = (arr) => arr.find((v) => v != null) ?? null;
-  const at = (arr) => mix(arr) ?? (year < 1900 ? firstOf(arr) : [...arr].reverse().find((v) => v != null) ?? null);
+  // (Before, not 1900: a series that starts in 1950 carries 1950's value back to 1900, not 2016's.)
+  const at = (arr) => mix(arr) ?? (year < ys[Math.max(0, arr.findIndex((v) => v != null))] ? firstOf(arr) : [...arr].reverse().find((v) => v != null) ?? null);
   return { gdp: at(d.gdp), pop: at(d.pop), life: at(d.life) };
 }
 /** Life expectancy at birth today, for comparison (the series' last value). */

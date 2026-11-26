@@ -15,7 +15,7 @@ import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
 import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText, fitsEra } from '../modules/world/Eras.js';
-import { eraFirstNames, dataYear, setDataYear } from '../modules/world/HistoricalData.js';
+import { eraFirstNames, dataYear, setDataYear, demographyAt } from '../modules/world/HistoricalData.js';
 import { OLD_FIRST_NAMES, US_OLD_SURNAMES } from '../modules/world/data/oldNames.js';
 import { decodePicks } from '../modules/world/StartPicks.js';
 
@@ -81,9 +81,17 @@ export function randomName(rng, gender) {
 }
 
 /** A random country of birth for a random life (everyone the game models, the US weighted a little higher). */
+/**
+ * Where a random life is born: roughly by each country's share of the world's people in that
+ * year (damped a little, so small countries still turn up now and then), with the game's home
+ * countries favoured: America and Britain most, the other English-speaking countries a little.
+ */
+const BIRTH_FAVOUR = { US: 6, GB: 8, CA: 2, AU: 2, IE: 2, NZ: 2 };
 export function randomCountryId(rng, year = 9999) {
+  const y = Math.min(year, PRESENT);
   const ids = Object.keys(COUNTRIES).filter((id) => bornIn(id, year));
-  return rng.weighted(ids.map((id) => [id, id === 'US' ? 3 : 1]), ([, w]) => w)[0];
+  const weight = (id) => Math.pow(Math.max(0.05, demographyAt(id, y)?.pop ?? 1), 0.75) * (BIRTH_FAVOUR[id] ?? 1);
+  return rng.weighted(ids.map((id) => [id, weight(id)]), ([, w]) => w)[0];
 }
 
 /** A royal birth is in a kingdom: the country you chose if it has a crown of its own, else Britain. */

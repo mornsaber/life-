@@ -32,7 +32,7 @@ import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, neare
 import { RECORD_VIEW } from '../../core/State.js';
 import { checkRequirements, totalWorkYears } from '../credentials/LicensingEngine.js';
 import { setApplyLevel } from './Assignments.js';
-import { degreesOptional } from '../world/Eras.js';
+import { degreesOptional, yearNow } from '../world/Eras.js';
 import { credentialRequired } from '../world/Eras.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
 import { educationFields } from '../education/Catalog.js';
@@ -230,6 +230,8 @@ const degreeGated = (req) => {
  */
 export function minimumAge(state, profession) {
   const min = profession.minAge ?? 18;
+  // A child who left school at 10 or 12 in the days of child labour can take the work children did.
+  if (state.k12?.leftEarly && profession.sector === 'private' && min <= 16 && yearNow(state) < 1945) return Math.min(min, Math.max(10, state.character.age));
   if (min <= 18) return min;
   if (degreeGated(profession.entry)) return 18;
   return (state.character.countryId ?? 'US') === 'US' ? min : 18;

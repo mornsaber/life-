@@ -26,7 +26,7 @@ import { orgOf } from '../org/Organizations.js';
 import { LEGISLATURES } from '../politics/NationalOffices.js';
 import { OFFICES } from '../politics/Offices.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
-import { setAvailabilityFilter, getProfession } from '../career/JobTrees.js';
+import { setAvailabilityFilter, getProfession, professionsFor } from '../career/JobTrees.js';
 import { eraHidden, colonialHere, eraWorkBlock } from './Eras.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
@@ -584,6 +584,32 @@ function leaveSchoolPrompt(ctx) {
     { id: 'leave', label: '🏭 Leave school and start work', hint: poor ? 'The family needs it' : 'Like nearly everyone' },
     { id: 'stay', label: '📚 Stay on at school', hint: poor ? 'A sacrifice for your family' : 'For a better job later' },
   ], data: {} });
+}
+
+/**
+ * What a child who has left school does next: the work children did, by era and place. A
+ * half-timer in the mill, a farm hand, a pit boy (until girls and women were barred from the pits),
+ * a hall boy or a scullery maid in service, an errand boy, a trade apprenticeship, or helping at
+ * home. Each is the bottom rung of a real career (the job board takes children who left early).
+ */
+const CHILD_WORK = [
+  ['agriculture', '🌾 Work on the land', 'Farm hand: up at five, paid at harvest'],
+  ['millWork', '🧵 Into the mill', 'A half-timer: mornings at the frames, afternoons at school'],
+  ['coalMining', '⛏️ Down the pit', 'A trapper boy, opening the ventilation doors in the dark', (s) => s.character.gender === 'male'],
+  ['domesticService', '🧹 Into service', (s) => (s.character.gender === 'male' ? 'Hall boy in a big house' : 'Scullery maid in a big house')],
+  ['milkRound', '🛒 Errands and deliveries', (s) => (s.character.gender === 'male' ? 'Errand boy for the dairy and the shops' : 'Delivering for the dairy and the shops')],
+  ['blacksmith', '🔨 Apprenticed to a trade', 'Seven years bound to a master, and a trade for life'],
+  ['carpentry', '🪚 Apprenticed to a carpenter', 'Bound to a master joiner'],
+  ['fishing', '🎣 To sea with the boats', 'Ship\'s boy on a fishing smack'],
+];
+function firstWorkPrompt(ctx) {
+  const { state } = ctx;
+  const open = new Set(professionsFor(state).map((p) => p.id));
+  const options = CHILD_WORK.filter(([id, , , ok]) => open.has(id) && (!ok || ok(state))).map(([id, label, hint]) => ({ id, label, hint: typeof hint === 'function' ? hint(state) : hint }));
+  ctx.prompt({ type: 'history.firstWork', icon: '🧒', title: 'Your First Work', text: `You're ${state.character.age}, and school is behind you. Children your age work: what will it be?`, data: {}, options: [
+    ...options,
+    { id: 'home', label: '🏠 Help at home', hint: 'The washing, the younger ones, the garden plot' },
+  ] });
 }
 
 function movementPrompt(ctx) {
@@ -1281,10 +1307,20 @@ export const HistoryModule = {
         k.dropout = true;
         k.leftEarly = true;
         k.activities = [];
-        return void ctx.log(`You left school at ${state.character.age}, as most children did, and started work.`, '🏭', 'info');
+        ctx.log(`You left school at ${state.character.age}, as most children did.`, '🏭', 'info');
+        return void firstWorkPrompt(ctx);
       }
       if (state.people?.wealth === 'low') { ctx.stat('stress', 4); for (const p of state.people.list.filter((x) => ['mother', 'father'].includes(x.relation))) p.relationship = Math.max(0, p.relationship - 4); }
       ctx.log('You stayed on at school. Not many of your friends did.', '📚', 'good');
+    },
+    firstWork(ctx, _data, optionId) {
+      const { state, rng } = ctx;
+      if (optionId === 'home') { state.k12.helpsAtHome = true; return ctx.log('You stayed home to help your mother: the washing, the younger ones and the vegetables.', '🏠', 'info'); }
+      const p = getProfession(optionId);
+      const level = p?.levels?.[0];
+      if (!level) return;
+      const job = hire(ctx, { professionId: p.id, levelId: level.id, employer: createEmployer(rng, state, p, state.character.regionId) });
+      if (job) ctx.log(`At ${state.character.age} you started as ${/^[aeiou]/i.test(level.title) ? 'an' : 'a'} ${level.title.toLowerCase()} at ${job.employer?.name ?? 'your first place'}. Your wages go to your mother on Friday.`, '🧒', 'milestone');
     },
     civilRights(ctx, data, optionId) {
       const { state, rng } = ctx;
