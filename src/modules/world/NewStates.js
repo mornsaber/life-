@@ -35,3 +35,24 @@ export function dynamicRegionState(regionId, year) {
 let GONE = {};
 export const setDissolved = (o = {}) => { GONE = o ?? {}; };
 export const dissolvedInto = (cc, year = 9999) => (GONE[cc] && year >= GONE[cc].year ? GONE[cc].into : null);
+
+/**
+ * History's breakups in this world (world/History.js sovietCollapse, yugoslaviaBreakup, velvetDivorce):
+ * the year each member state became independent here (Infinity: not yet, or never), against our
+ * history's year. Only set for lives begun before our date; otherwise history stands.
+ */
+export const BREAKUPS = {
+  sovietCollapse: { EE: 1991, LV: 1991, LT: 1991, UA: 1991, BY: 1991, MD: 1991, GE: 1991, AM: 1991, AZ: 1991, KZ: 1991, UZ: 1991, TM: 1991, KG: 1991, TJ: 1991 },
+  yugoslaviaBreakup: { SI: 1991, HR: 1991, MK: 1991, BA: 1992 },
+  velvetDivorce: { CZ: 1993, SK: 1993 },
+};
+let HELD = {};
+export const setBreakups = (o = {}) => { HELD = o ?? {}; };
+/** true/false where this world's breakup differs from ours in that year; undefined where it doesn't. */
+export function breakupSovereign(cc, year) {
+  const h = HELD[cc];
+  if (!h) return undefined;
+  if (year >= h.ours && year < h.here) return false;
+  if (year >= h.here && year < h.ours) return true;
+  return undefined;
+}

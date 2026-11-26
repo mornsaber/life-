@@ -40,6 +40,13 @@ export const validStartYear = (y) => { const n = Math.round(Number(y)); return N
 
 export const yearNow = (state) => (state?.character?.birthYear != null ? currentYear(state) : PRESENT);
 const hap = (s, id) => Boolean(s.era?.events?.[id]);
+/** Has this world's breakup (History.js yugoslaviaBreakup, velvetDivorce) happened by year y? */
+export function brokeUp(s, id, at, y = yearNow(s)) {
+  const rec = s?.era?.events?.[id];
+  if (rec) return y >= rec.year;
+  if (!s?.era || (s.era.skipped ?? []).includes(id)) return !s?.era && y >= at;
+  return s.era.start > at && y >= at;
+}
 const over = (s, id) => s.era?.events?.[id]?.ended != null;
 
 /* ------------------------------------------------------------------ */
@@ -245,7 +252,12 @@ export const PERIODS = [
   { cc: ['AL'], regime: { ...EAST_BLOC, name: 'Hoxha\'s Albania, allied to China, the world\'s first atheist state', leader: 'Enver Hoxha, First Secretary', religion: 'banned', surveillance: 0.35 }, active: (s) => yearNow(s) >= 1967 && yearNow(s) < 1978 },
   { cc: ['AL'], regime: { ...EAST_BLOC, name: 'the People\'s Socialist Republic of Albania, alone against the world', leader: 'the First Secretary of the Party of Labour', religion: 'banned', surveillance: 0.35 }, active: (s) => yearNow(s) >= 1978 && yearNow(s) < 1991 },
   // Tito's Yugoslavia: one party and social ownership, but its people could work abroad from the 1960s.
-  { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: { ...EAST_BLOC, name: 'socialist Yugoslavia, under the League of Communists', leader: 'Marshal Tito', exit: 'restricted' }, active: (s) => yearNow(s) >= 1945 && yearNow(s) < 1990 },
+  { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: { ...EAST_BLOC, name: 'socialist Yugoslavia, under the League of Communists', leader: 'Marshal Tito', exit: 'restricted' }, active: (s) => yearNow(s) >= 1945 && yearNow(s) < 1980 },
+  { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: { ...EAST_BLOC, name: 'socialist Yugoslavia, after Tito', leader: 'the President of the Presidency', exit: 'restricted' }, active: (s) => yearNow(s) >= 1980 && yearNow(s) < 1990 && !brokeUp(s, 'yugoslaviaBreakup', 1991) },
+  // In this world Yugoslavia held together past 1990: a federation without its communists.
+  { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: G({ kind: 'hybrid', name: 'the Yugoslav federation, holding together after communism', elections: 'controlled', press: 'free', surveillance: 0.04, leader: 'the Federal Presidency' }), active: (s) => yearNow(s) >= 1990 && !brokeUp(s, 'yugoslaviaBreakup', 1991) },
+  // ... and Czechoslovakia, a democracy again, stayed one country.
+  { cc: ['CZ', 'SK'], regime: G({ kind: 'democracy', name: 'the Czech and Slovak Federative Republic', leader: 'the President' }), active: (s) => hap(s, 'sovietCollapse') && yearNow(s) >= 1990 && !brokeUp(s, 'velvetDivorce', 1993) },
   { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Empire under the Kaiser', elections: 'controlled', leader: 'the Kaiser' }), active: (s) => hap(s, 'germanUnification') && !over(s, 'ww1') },
   { cc: ['AT'], regime: G({ kind: 'monarchy', name: 'Austria-Hungary under the Emperor', elections: 'controlled', leader: 'the Emperor' }), active: (s) => !over(s, 'ww1') },
   { cc: ['DE', 'AT'], regime: DICTATOR('a totalitarian dictatorship, the Third Reich', 'the Führer', { kind: 'totalitarian', elections: 'sham', surveillance: 0.35, exit: 'restricted', party: true }), active: (s) => hap(s, 'fascismDE') && !(over(s, 'ww2') && !s.era.events.ww2.axisWon) },
@@ -1287,8 +1299,8 @@ export function periodFlag(state, cc) {
     case 'LY': return y >= 1977 && y < 2011 ? { id: 'libyaGreen' } : { img: cc };
     // The Habsburg lands flew the black and gold until 1918 (Hungary its own tricolour after 1867).
     case 'AT': return y < 1918 ? { id: 'habsburg' } : y >= 1938 && y < 1945 ? { id: 'germanEmpire' } : { img: cc };
-    case 'CZ': case 'SK': return y < 1918 ? { id: 'habsburg' } : y < 1993 ? { img: 'CZ' } : { img: cc };
-    case 'HR': case 'SI': case 'BA': return y < 1918 ? { id: 'habsburg' } : y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    case 'CZ': case 'SK': return y < 1918 ? { id: 'habsburg' } : !brokeUp(state, 'velvetDivorce', 1993, y) ? { img: 'CZ' } : { img: cc };
+    case 'HR': case 'SI': case 'BA': return y < 1918 ? { id: 'habsburg' } : !brokeUp(state, 'yugoslaviaBreakup', 1991, y) ? { id: 'yugoslavia' } : { img: cc };
     case 'RO': return y >= 1948 && y < 1990 ? { id: 'romaniaRSR' } : { img: cc };
     case 'BG': return y >= 1946 && y < 1991 ? { id: 'bulgariaPRB' } : { img: cc };
     case 'AL': return y >= 1946 && y < 1992 ? { id: 'albaniaPSR' } : { img: cc };
@@ -1297,7 +1309,7 @@ export function periodFlag(state, cc) {
     case 'GL': return y < 1985 ? { img: 'DK' } : { img: cc };
     case 'JE': return y < 1981 ? { id: 'jerseyOld' } : { img: cc };
     case 'GG': return y < 1985 ? { id: 'stGeorge' } : { img: cc };
-    case 'RS': case 'MK': case 'ME': return y >= 1918 && y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    case 'RS': case 'MK': case 'ME': return y >= 1918 && !brokeUp(state, 'yugoslaviaBreakup', 1991, y) ? { id: 'yugoslavia' } : { img: cc };
     case 'PL': return y < 1918 ? { img: 'RU' } : { img: cc };
     case 'IE': return y < 1922 ? { img: 'GB' } : { img: cc };
     case 'BD': return y >= 1947 && y < 1971 ? { img: 'PK' } : { img: cc };
@@ -1345,6 +1357,8 @@ export function periodCountryName(state, cc, name) {
   if (st && st.ruler !== cc && st.name) return st.name;
   const ussr = hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse');
   const soviet = (ssr) => (ussr && y >= 1922 ? `the Soviet Union (${ssr})` : null);
+  const yug = brokeUp(state, 'yugoslaviaBreakup', 1991, y);
+  const czs = brokeUp(state, 'velvetDivorce', 1993, y);
   const R = {
     RU: y < 1917 ? 'the Russian Empire' : ussr ? (y < 1922 ? 'Soviet Russia' : 'the Soviet Union') : null,
     UA: soviet('the Ukrainian SSR') ?? (y < 1917 ? 'the Russian Empire (Ukraine)' : null), BY: soviet('the Byelorussian SSR'), KZ: soviet('the Kazakh SSR'), UZ: soviet('the Uzbek SSR'), GE: soviet('the Georgian SSR'),
@@ -1358,9 +1372,9 @@ export function periodCountryName(state, cc, name) {
     IR: y < 1935 ? 'Persia' : y < 1979 ? 'Imperial Iran' : null,
     AT: y < 1867 ? 'the Austrian Empire' : y < 1918 ? 'Austria-Hungary' : y >= 1938 && y < 1945 ? 'Austria (annexed to Germany)' : null,
     HU: y >= 1867 && y < 1918 ? 'Austria-Hungary (Kingdom of Hungary)' : null,
-    CZ: y < 1918 ? 'Austria-Hungary (Bohemia)' : y < 1993 ? 'Czechoslovakia' : null, SK: y < 1918 ? 'Austria-Hungary (Upper Hungary)' : y < 1993 ? 'Czechoslovakia' : null,
-    HR: y >= 1918 && y < 1991 ? 'Yugoslavia' : null, SI: y >= 1918 && y < 1991 ? 'Yugoslavia' : null, BA: y >= 1918 && y < 1992 ? 'Yugoslavia' : null, MK: y >= 1918 && y < 1991 ? 'Yugoslavia' : null,
-    RS: y >= 1918 && y < 1992 ? 'Yugoslavia' : y >= 1992 && y < 2006 ? 'Serbia and Montenegro' : null, ME: y >= 1918 && y < 1992 ? 'Yugoslavia' : y < 2006 && y >= 1992 ? 'Serbia and Montenegro' : null,
+    CZ: y < 1918 ? 'Austria-Hungary (Bohemia)' : !czs ? 'Czechoslovakia' : null, SK: y < 1918 ? 'Austria-Hungary (Upper Hungary)' : !czs ? 'Czechoslovakia' : null,
+    HR: y >= 1918 && !yug ? 'Yugoslavia' : null, SI: y >= 1918 && !yug ? 'Yugoslavia' : null, BA: y >= 1918 && !brokeUp(state, 'yugoslaviaBreakup', 1992, y) ? 'Yugoslavia' : null, MK: y >= 1918 && !yug ? 'Yugoslavia' : null,
+    RS: y >= 1918 && !yug ? 'Yugoslavia' : y < 2006 ? 'Serbia and Montenegro' : null, ME: y >= 1918 && !yug ? 'Yugoslavia' : y < 2006 ? 'Serbia and Montenegro' : null,
     PL: y < 1918 ? 'Congress Poland (Russian Empire)' : y >= 1945 && y < 1989 ? "the Polish People's Republic" : null,
     GB: y < 1801 ? 'the Kingdom of Great Britain' : y < 1922 ? 'the United Kingdom of Great Britain and Ireland' : null,
     IE: y < 1922 ? 'Ireland (United Kingdom)' : y < 1937 ? 'the Irish Free State' : null,

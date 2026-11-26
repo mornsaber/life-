@@ -33,6 +33,8 @@ import { eligible } from '../src/core/Pools.js';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
 import { eraFlag, START_ERAS, periodText } from '../src/modules/world/Eras.js';
 import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
+import { periodCountryName as pcn, periodFlag as pflag } from '../src/modules/world/Eras.js';
+import { sovereignIn as sovIn } from '../src/modules/world/HistoricalData.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { holySeeOf } from '../src/modules/world/HolySee.js';
 import { currentYear } from '../src/core/State.js';
@@ -57,6 +59,24 @@ function live(engine, state, years) {
 const allText = (state) => state.log.flatMap((b) => b.entries.map((e) => e.text));
 
 const tests = {
+  'history\'s breakups can come early, late or not at all; after our date they stand'() {
+    const { engine, state } = life({ countryId: 'HR', startYear: 1975 });
+    (state.era.skipped ??= []).push('yugoslaviaBreakup', 'velvetDivorce');
+    state.character.birthYear = 1975; state.character.age = 25;
+    engine.hydrate(state);
+    assert.equal(pcn(state, 'HR', 'Croatia'), 'Yugoslavia', 'Yugoslavia held together');
+    assert.equal(pflag(state, 'HR').id, 'yugoslavia');
+    assert.equal(sovIn('HR', 2000), false, 'no independent Croatia in this world');
+    const late = life({ countryId: 'SK', startYear: 1975 }).state;
+    late.era.events.velvetDivorce = { year: 2003 };
+    late.character.age = 25;
+    assert.equal(pcn(late, 'SK', 'Slovakia'), 'Czechoslovakia', 'not yet, in 2000');
+    late.character.age = 29;
+    assert.notEqual(pcn(late, 'SK', 'Slovakia'), 'Czechoslovakia', 'split in 2003');
+    const today = life({ countryId: 'HR', startYear: 2000 }).state;
+    assert.equal(today.era.events.yugoslaviaBreakup?.year, 1991, 'a life begun in 2000 has our history behind it');
+    assert.ok(today.era.events.sovietCollapse);
+  },
   'a life started today has all of history behind it and nothing changes'() {
     const { engine, state } = life({ countryId: 'RU' });
     assert.equal(state.character.birthYear, PRESENT);

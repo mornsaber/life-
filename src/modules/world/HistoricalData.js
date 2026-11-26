@@ -11,7 +11,7 @@
  *   periodCurrency    the money of the day (ISO 4217 history and official conversion rates)
  *   warsStarting / warsEnding   Correlates of War wars our countries fought
  */
-import { independentSince, dynamicRegionState, dissolvedInto } from './NewStates.js';
+import { independentSince, dynamicRegionState, dissolvedInto, breakupSovereign } from './NewStates.js';
 import { REGIME_YEARS } from './data/regimes.js';
 import { DEMOGRAPHY, DEMOGRAPHY_YEARS } from './data/demography.js';
 import { US_NAMES_BY_DECADE } from './data/names.js';
@@ -56,6 +56,8 @@ export function sovereignIn(cc, year) {
   const since = independentSince(cc);
   if (since != null && year >= since) return true;
   if (dissolvedInto(cc, year)) return false;
+  const held = breakupSovereign(cc, year);
+  if (held !== undefined) return held;
   const spans = SOVEREIGN_YEARS[cc];
   if (!spans) return true;
   if (year < 1816) return true;

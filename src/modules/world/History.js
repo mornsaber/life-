@@ -14,6 +14,7 @@
  * A life started today has all of this behind it: nothing here runs for it.
  */
 import { Random, clamp } from '../../core/Random.js';
+import { BREAKUPS, setBreakups } from './NewStates.js';
 import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
@@ -367,11 +368,26 @@ export const EVENTS = {
   iranRevolution: { at: 1979, window: [1976, 1981], odds: 0.85, start(ctx) { news(ctx, 'The Shah flees; Iran becomes an Islamic republic', '🕌', 'world', 8); if (hereIs(ctx, 'IR')) ctx.log('The Shah has fled. The new Islamic Republic has brought in religious law: veils, no alcohol, no dissent.', '🕌', 'milestone'); } },
   koreaDemocracy: { at: 1987, window: [1984, 1990], needs: (s) => yearNow(s) >= 1960, start(ctx) { if (hereIs(ctx, 'KR')) { ctx.log('Students and workers filled the streets until the generals gave in: free elections at last.', '🗳️', 'milestone'); ctx.stat('happiness', 4); } } },
   taiwanDemocracy: { at: 1987, window: [1984, 1991], needs: (s) => yearNow(s) >= 1960, start(ctx) { if (hereIs(ctx, 'TW')) { ctx.log('Martial law is over. Taiwan is becoming a democracy.', '🗳️', 'milestone'); ctx.stat('happiness', 4); } } },
+  // History's breakups can come early, late or not at all (fixed: for a life begun after our date, they happened on it).
   sovietCollapse: {
-    at: 1991, window: [1987, 1994], odds: 0.92, needs: (s) => hap(s, 'russianRevolution') && !s.era?.events?.ww2?.axisWon,
+    at: 1991, window: [1985, 2000], odds: 0.85, fixed: true, needs: (s) => hap(s, 'russianRevolution') && !s.era?.events?.ww2?.axisWon,
     start(ctx) {
       news(ctx, 'The Berlin Wall falls; the Soviet Union breaks apart', '🧱', 'world', 10);
       if (hereIs(ctx, 'RU', 'PL', 'RO')) { ctx.log('The communist state has collapsed. Shops are empty, savings are worthless, and anything seems possible.', '🧱', 'milestone'); recession(ctx, 'financial', 3, '📉 The planned economy has collapsed. Prices have gone through the roof.'); }
+    },
+  },
+  yugoslaviaBreakup: {
+    at: 1991, window: [1987, 2000], odds: 0.85, fixed: true,
+    start(ctx) {
+      news(ctx, 'Yugoslavia breaks apart: Slovenia and Croatia declare independence', '💔', 'world', 9);
+      if (hereIs(ctx, 'HR', 'SI', 'BA', 'MK', 'RS', 'ME', 'XK')) { ctx.log('Yugoslavia is coming apart. Neighbours who were Yugoslavs last year are Croats, Serbs and Bosniaks now, and some of them are arming.', '💔', 'milestone'); ctx.stat('stress', 8); }
+    },
+  },
+  velvetDivorce: {
+    at: 1993, window: [1990, 2005], odds: 0.6, fixed: true, needs: (s) => hap(s, 'sovietCollapse'),
+    start(ctx) {
+      news(ctx, 'The Velvet Divorce: Czechoslovakia splits in two, without a shot', '✂️', 'world', 7);
+      if (hereIs(ctx, 'CZ', 'SK')) ctx.log('At midnight Czechoslovakia ceased to exist: two countries now, the Czech Republic and Slovakia. Nobody was asked in a referendum.', '✂️', 'milestone');
     },
   },
   apartheidEnds: { at: 1994, window: [1988, 1996], needs: (s) => hap(s, 'apartheid'), start(ctx) { news(ctx, 'Mandela is free; South Africa votes as one nation', '🗳️', 'world', 9); if (hereIs(ctx, 'ZA')) { ctx.log('Apartheid is over. Everyone queued together to vote, for hours, and nobody minded.', '🗳️', 'milestone'); ctx.stat('happiness', 6); } } },
@@ -599,7 +615,7 @@ function movementPrompt(ctx) {
 function seedPast(state) {
   const era = state.era;
   for (const [id, ev] of Object.entries(EVENTS)) {
-    if (era.events[id] || ev.window[1] >= era.start) continue;
+    if (era.events[id] || (ev.window[1] >= era.start && !(ev.fixed && ev.at < era.start))) continue;
     const lasts = ev.lasts ? Math.round((ev.lasts[0] + ev.lasts[1]) / 2) : null;
     const rec = (era.events[id] = { year: ev.at, past: true });
     if (lasts != null) { rec.lasts = lasts; if (ev.at + lasts <= era.start) rec.ended = ev.at + lasts; else rec.resume = true; }
@@ -611,7 +627,20 @@ function seedPast(state) {
   era.seeded = true;
 }
 
-export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); setEraState(state); };
+/** This world's breakups, for sovereignIn (world/NewStates.js). */
+function breakupLayer(state) {
+  const out = {};
+  const era = state.era;
+  if (!era) return out;
+  for (const [id, members] of Object.entries(BREAKUPS)) {
+    const ev = EVENTS[id];
+    if (era.start > ev.at) continue;
+    const rec = era.events?.[id];
+    for (const [cc, ours] of Object.entries(members)) out[cc] = { ours, here: rec ? rec.year + (ours - ev.at) : Infinity };
+  }
+  return out;
+}
+export const sync = (state) => { setBreakups(breakupLayer(state)); setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); setEraState(state); };
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {
