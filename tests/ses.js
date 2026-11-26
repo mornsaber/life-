@@ -14,7 +14,7 @@ import { hire, promotionStatus } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js';
-import { SeniorExecutiveModule, sesReadiness, SES_PAY } from '../src/modules/publicservice/SeniorExecutive.js';
+import { SeniorExecutiveModule, sesReadiness, SES_PAY, sesLevelFor } from '../src/modules/publicservice/SeniorExecutive.js';
 import { scopeOfType } from '../src/core/PromptScope.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { sesCard } from '../src/ui/views/SesView.js';
@@ -48,6 +48,17 @@ const tick = (ctx, state) => {
 };
 
 const tests = {
+  'joining the senior civil service is a step, never a leap to Director General'() {
+    const at = (id, grade) => { const p = getProfession(id); const l = [...p.levels].filter((x) => x.grade <= grade).sort((a, b) => b.grade - a.grade)[0]; return { professionId: id, levelId: l.id, grade: l.grade }; };
+    for (const id of ['gb_ministry', 'gb_borderPatrol', 'gb_federalPrisons', 'gb_sigint', 'gb_intelligence', 'gb_fbi', 'regulatory', 'fbi']) {
+      const job = at(id, 7);
+      const lvl = sesLevelFor(job);
+      assert.ok(!lvl || lvl.grade <= job.grade + 1, `${id}: entry at ${lvl?.title} (G${lvl?.grade}) from G${job.grade}`);
+      assert.ok(!/Director[- ]General/.test(lvl?.title ?? ''), `${id}: not straight to ${lvl?.title}`);
+    }
+    assert.equal(sesLevelFor(at('gb_ministry', 7))?.title, 'Director', 'a Grade 7 Assistant Secretary enters as Director');
+    assert.equal(sesLevelFor(at('gb_ministry', 8)), null, 'a Director joins in post');
+  },
   'executive rungs need SES certification; you cannot buy it on the Licenses tab'() {
     const { state, job } = fed(1, 'regulatory', 'branchChief');
     job.yearsInLevel = 10;

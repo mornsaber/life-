@@ -192,11 +192,27 @@ export function slstReadiness(state) {
 }
 
 /** The lowest executive rung you could be appointed to in your career (null if none). */
+/**
+ * Entry to the senior service is a step, never a leap: the executive rung at your grade or the
+ * one above it, not the top of the ladder (where a career's only executive rung is its Director
+ * General, joining the SCS doesn't make you one). Abroad the senior civil service starts at its
+ * own first grade (Britain's SCS at Deputy Director): the next rung up. No rung within a grade:
+ * you join the senior service in the post you hold.
+ */
+/** The first grade of a senior civil service abroad (Britain's SCS pay band 1). */
+const SENIOR_ENTRY = 8;
 export function sesLevelFor(job) {
   const p = getProfession(job?.professionId);
-  const map = sesMap(job?.professionId);
-  if (!p || !map) return null;
-  return p.levels.filter((l) => map[l.id] && map[l.id] !== 'pas' && l.grade >= job.grade).sort((a, b) => a.grade - b.grade)[0] ?? null;
+  if (!p || !job) return null;
+  const map = sesMap(job.professionId);
+  const near = (l) => l.grade >= job.grade && l.grade <= job.grade + 1 && !l.appointed;
+  const exec = map ? p.levels.filter((l) => map[l.id] && map[l.id] !== 'pas' && near(l)).sort((a, b) => a.grade - b.grade)[0] : null;
+  if (exec) return exec;
+  if (!p.country || job.grade >= SENIOR_ENTRY) return null;
+  // A national civil service abroad: its first senior grade, the next rung up (management track first).
+  const here = p.levels.find((l) => l.id === job.levelId);
+  const up = p.levels.filter((l) => l.grade === SENIOR_ENTRY && l.grade === job.grade + 1 && !l.appointed);
+  return up.find((l) => l.track === (here?.track ?? 'mgmt')) ?? up.find((l) => l.track === 'mgmt' || l.abilities?.includes('supervise')) ?? null;
 }
 
 const ses = (state) => state.ses;
