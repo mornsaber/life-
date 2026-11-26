@@ -32,6 +32,7 @@ import { addHonor } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';
 import { WORLD_EPISODES } from './WorldEpisodes.js';
 import { REGIONAL_EPISODES } from './RegionalEpisodes.js';
+import { PLACE_EPISODES } from './PlaceEpisodes.js';
 import { MORE_EPISODES, FOLLOW_UPS } from './MoreEpisodes.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
@@ -190,7 +191,7 @@ export function epidemicOptions(state, e) {
 }
 
 /** Britain and America's episodes, then the rest of the world's (WorldEpisodes.js). */
-export const ALL_EPISODES = [...EPISODES, ...WORLD_EPISODES, ...REGIONAL_EPISODES, ...MORE_EPISODES, ...FOLLOW_UPS];
+export const ALL_EPISODES = [...EPISODES, ...WORLD_EPISODES, ...REGIONAL_EPISODES, ...PLACE_EPISODES, ...MORE_EPISODES, ...FOLLOW_UPS];
 
 /** What you lived through, and the choice you made (follow-ups years later read it: MoreEpisodes.chose). */
 function record(state, id, text, icon, option = null) { livedOf(state).push({ id, year: yearNow(state), text, icon, ...(option ? { option } : {}) }); }

@@ -30,8 +30,9 @@ import careersGovernment from './packs/careers-government.js';
 import careersContractors from './packs/careers-contractors.js';
 import careersIntel from './packs/careers-intel.js';
 import careersIntlOrgs from './packs/careers-intl-orgs.js';
+import careersPlaces from './packs/careers-places.js';
 
-export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersColonial, careersFuture, careersPeriod, careersGendarmerie, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal, careersGovernment, careersContractors, careersIntel, careersIntlOrgs];
+export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersColonial, careersFuture, careersPeriod, careersGendarmerie, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal, careersGovernment, careersContractors, careersIntel, careersIntlOrgs, careersPlaces];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};

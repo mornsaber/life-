@@ -16,6 +16,8 @@ import { sovereignIn } from '../src/modules/world/HistoricalData.js';
 import { secedeProvince, mergeCountry, transferProvince, reintegrate, changeQuestions, recognise } from '../src/modules/world/StateChanges.js';
 import { questionsHere } from '../src/modules/politics/Referendums.js';
 import { causesNow } from '../src/modules/civic/Activism.js';
+import { PLACE_EPISODES } from '../src/modules/world/PlaceEpisodes.js';
+import { professionsFor } from '../src/modules/career/JobTrees.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { bornIn, settleIn } from '../src/modules/world/Habitation.js';
 import { honoursSystem } from '../src/modules/world/HonoursOfTheDay.js';
@@ -144,5 +146,36 @@ t('you can lead a breakaway movement and force the question', () => {
   }
   assert.ok(forced, 'the moment came');
   assert.ok(said(state, /referendum you forced/));
+});
+t('moments and work that belong to one place', () => {
+  const byId = Object.fromEntries(PLACE_EPISODES.map((e) => [e.id, e]));
+  const at = (cc, region, year, age = 30) => ({ character: { countryId: cc, regionId: region, age }, era: { events: {} } });
+  assert.ok(byId['nl.confederation'].when(at('CA', 'ca_stjohns'), 1948));
+  assert.ok(!byId['nl.confederation'].when(at('CA', 'toronto'), 1948), 'not in Toronto');
+  assert.ok(byId['hi.statehood'].when(at('US', 'honolulu'), 1959));
+  assert.ok(byId['tx.revolution'].when(at('US', 'sanantonio'), 1836));
+  assert.ok(byId['ti.uprising'].when(at('CN', 'lhasa'), 1959));
+  assert.ok(byId['hy.polo'].when(at('IN', 'hyderabad'), 1948));
+  assert.ok(byId['re.chik'].when(at('RE', 're_stdenis'), 2006));
+  assert.ok(byId['gu.organic'].when(at('GU', 'gu_hagatna'), 1950));
+  const jobs = (cc, region) => { const l = life(cc, region); return professionsFor(l.state).map((p) => p.id); };
+  assert.ok(!jobs('CA', 'toronto').includes('hudsonsBay'), 'the fur trade posts were sold in 1987');
+  assert.ok(jobs('US', 'honolulu').includes('hawaiiSugar') === false, 'the last mill closed in 2016');
+  assert.ok(jobs('GB', 'london').includes('antarctic'));
+  assert.ok(!jobs('IN', 'hyderabad').includes('nizamService'), 'gone with the Nizam');
+  const then = (cc, region, birthYear) => {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(1), modules: MODULES });
+    const state = engine.newLife({ countryId: cc, startYear: birthYear, gender: 'male' });
+    state.character.regionId = region; state.character.age = 25;
+    engine.hydrate(state);
+    return professionsFor(state).map((p) => p.id);
+  };
+  assert.ok(then('CA', 'ca_stjohns', 1880).includes('hudsonsBay'));
+  assert.ok(!then('GB', 'london', 1880).includes('hudsonsBay'));
+  assert.ok(then('US', 'honolulu', 1900).includes('hawaiiSugar'));
+  assert.ok(!then('US', 'nyc', 1900).includes('hawaiiSugar'));
+  assert.ok(then('IN', 'hyderabad', 1900).includes('nizamService'));
+  assert.ok(!then('IN', 'mumbai', 1900).includes('nizamService'));
+  assert.ok(!then('IN', 'hyderabad', 1940).includes('antarctic'), 'India wintered from 1983');
 });
 console.log(`statechanges: ${n} passed`);

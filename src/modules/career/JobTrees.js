@@ -28,6 +28,7 @@ import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { dioceseName, anglicanDioceseName } from '../community/Dioceses.js';
+import { yearNow } from '../world/Eras.js';
 
 /** Private-sector professions: the careers-private pack and the other career packs (content/careerPacks.js), plus the careers still written as code. */
 export const PRIVATE_PROFESSIONS = {};
@@ -205,7 +206,9 @@ function professionsUncached(state) {
   const cc = state?.character?.countryId ?? 'US';
   // One ministry per faith: your own church's clergy career, not three side by side.
   const ministry = state?.community ? clergyCareerFor(state.community.faith?.traditionId ?? state.community.orders?.tradition) : null;
-  const local = (p) => (!ministry || !CLERGY_CAREERS.includes(p.id) || p.id === ministry) && (!availabilityFilters.length || !state?.character || availabilityFilter(state, p));
+  // Work that belonged to one place (content/packs/careers-places.js): the Hudson's Bay Company in Canada, the Nizam's service in Hyderabad.
+  const place = (p) => !state?.character || ((!p.countries || p.countries.includes(cc)) && (!p.cities || p.cities.includes(state.character.regionId)) && (!p.provinces || p.provinces.includes(REGIONS[state.character.regionId]?.state ?? stateIdOf(state))) && !(p.countryFrom?.[cc] > yearNow(state)));
+  const local = (p) => (!ministry || !CLERGY_CAREERS.includes(p.id) || p.id === ministry) && place(p) && (!availabilityFilters.length || !state?.character || availabilityFilter(state, p));
   if (cc === 'US') {
     const list = PROFESSION_LIST.filter(local);
     return list.length === PROFESSION_LIST.length ? PROFESSION_LIST : list;
