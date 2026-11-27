@@ -37,7 +37,7 @@ export const LEISURE = {
   danceHall: { label: 'The dance hall', icon: '💃', from: 1920, until: 1970, minAge: 15, cost: 8, stats: { happiness: 6, fitness: 1 }, text: (y) => (y < 1940 ? 'The foxtrot and the Charleston at the Palais.' : 'A big band, a glitterball, and someone who asked you to dance.') },
   speakeasy: { label: 'A speakeasy', icon: '🥃', from: 1920, until: 1933, where: (s) => prohibitionHere(s), minAge: 18, cost: 30, stats: { happiness: 7 }, text: 'A password at an unmarked door, bathtub gin, and jazz.', risk: [0.15, 'The police raided the speakeasy. You went out the back way, minus your hat.', { stress: 4 }] },
   driveIn: { label: 'The drive-in', icon: '🚗', from: 1933, until: 1985, where: (s) => cc(s) === 'US', minAge: 14, cost: 10, stats: { happiness: 5 }, text: 'A double feature through the windscreen, the speaker hooked on the window.' },
-  television: { label: 'A night in front of the television', icon: '📺', from: 1950, until: 9999, minAge: 4, cost: 0, stats: { happiness: 2, stress: -3 }, text: (y) => (y < 1970 ? 'The whole family round a small grey screen.' : 'A night in with the television.') },
+  television: { label: 'A night in front of the television', icon: '📺', from: 1950, until: 9999, where: (state) => yearNow(state) >= (TV_FROM[state.character.countryId ?? 'US'] ?? 1965), minAge: 4, cost: 0, stats: { happiness: 2, stress: -3 }, text: (y) => (y < 1970 ? 'The whole family round a small grey screen.' : 'A night in with the television.') },
   bingo: { label: 'Bingo', icon: '🎱', from: 1961, until: 9999, where: (s) => ['GB', 'IE'].includes(cc(s)), minAge: 18, cost: 15, stats: { happiness: 4 }, text: '"Two fat ladies, eighty-eight!" A full house, nearly.' },
   disco: { label: 'The discotheque', icon: '🪩', from: 1965, until: 1990, minAge: 16, cost: 25, stats: { happiness: 7, fitness: 1 }, text: 'A dancefloor lit from beneath, and a song you will hear for the rest of your life.' },
   arcade: { label: 'The video arcade', icon: '🕹️', from: 1975, until: 1995, minAge: 8, cost: 10, stats: { happiness: 4 }, text: 'A pocketful of coins and your initials on the high-score table.' },
@@ -55,6 +55,8 @@ export const LEISURE = {
   roadTrip: { label: 'A road trip', icon: '🛣️', from: 1925, until: 9999, where: (s) => ['US', 'CA', 'AU'].includes(cc(s)), minAge: 4, cost: 600, stats: { happiness: 8, stress: -6 }, text: (y) => (y < 1960 ? 'Route 66 in the family car: motor courts and diners.' : 'A road trip: motels, diners and a lot of sky.') },
 };
 
+/** When most homes had a set: America by the early 1950s, Japan after 1955, India only in the 1980s. */
+const TV_FROM = { US: 1950, GB: 1953, CA: 1953, AU: 1958, NZ: 1962, JP: 1957, DE: 1958, FR: 1960, IT: 1958, NL: 1958, SE: 1958, ES: 1965, MX: 1965, BR: 1968, AR: 1962, KR: 1972, IN: 1982, CN: 1985, NG: 1980, PK: 1980, ID: 1980, EG: 1970, TR: 1975, RU: 1960 };
 export function leisureNow(state) {
   const y = yearNow(state);
   return Object.entries(LEISURE).filter(([, l]) => y >= l.from && y < l.until && (!l.where || l.where(state)) && !(l.maxAge < state.character.age)).map(([id, l]) => ({ id, ...l }));
@@ -77,9 +79,9 @@ function go(ctx, id) {
 /** The six everyday activities, in the words of the day. */
 export function activityLabel(state, a) {
   const y = yearNow(state);
-  if (a.id === 'gym' && y < 1950) return y < 1880 ? 'Take a constitutional walk' : 'Physical culture at the gymnasium';
+  if (a.id === 'gym' && y < 1980) return y < 1880 ? 'Take a constitutional walk' : y < 1950 ? 'Physical culture at the gymnasium' : 'Work out at the gym';
   if (a.id === 'meditate' && y < 1965) return 'Quiet prayer and reflection';
-  if (a.id === 'salon' && y < 1950) return y < 1900 ? 'The barber and the bathhouse' : 'The hairdresser';
+  if (a.id === 'salon' && y < 1985) return y < 1900 ? 'The barber and the bathhouse' : y < 1960 ? 'The hairdresser' : 'The hair salon';
   if (a.id === 'library' && y < 1850) return 'The circulating library';
   return a.label;
 }
