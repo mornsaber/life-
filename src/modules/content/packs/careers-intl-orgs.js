@@ -67,6 +67,52 @@ export function orgMember(org, cc, y = eraYear()) {
 }
 export const citizenOf = (state, org) => citizenshipsOf(state).some((c) => orgMember(org, c));
 
+/*
+ * Who the universal bodies recruit from: nationals of their member states, which were not every
+ * state. A sovereign state counts from its independence (or 1945) unless it joined later or left.
+ */
+const NEVER = ['VA', 'XK', 'PS', 'EH', 'XS', 'XW', 'XQ', 'XC', 'XF', 'XD', 'XR'];
+/** UN: the late admissions, and the seats that changed hands (China's in 1971). */
+const UN_FROM = { DE: 1973, JP: 1956, IT: 1955, AT: 1955, PT: 1955, ES: 1955, IE: 1955, FI: 1955, HU: 1955, RO: 1955, BG: 1955, AL: 1955, LA: 1955, KH: 1955, LK: 1955, NP: 1955, LY: 1955, JO: 1955,
+  KR: 1991, KP: 1991, CH: 2002, MN: 1961, CN: 1971, VN: 1977, BT: 1971, LI: 1990, AD: 1993, MC: 1993, SM: 1992, TO: 1999, NR: 1999, KI: 1999, TV: 2000, YE: 1947, KW: 1963, TL: 2002, ME: 2006, SS: 2011 };
+/** Members before independence: British India, the Philippines, and Soviet Ukraine and Byelorussia had seats from 1945. */
+const UN_EARLY = ['IN', 'PH', 'UA', 'BY'];
+const UN_UNTIL = { TW: 1971 };
+export function unMember(cc, y = eraYear()) {
+  if (NEVER.includes(cc) || y < 1945 || (UN_UNTIL[cc] != null && y >= UN_UNTIL[cc])) return false;
+  if (UN_FROM[cc] != null && y < UN_FROM[cc]) return false;
+  return UN_EARLY.includes(cc) || sovereignIn(cc, y);
+}
+/** IMF and World Bank: the Soviet bloc stayed out (or left) until the end of the Cold War; China's seat was Taipei's until 1980. */
+const IMF_SPANS = { IN: [[1945]], PH: [[1945]], RU: [[1992]], UA: [[1992]], BY: [[1992]], PL: [[1946, 1950], [1986]], CZ: [[1945, 1954], [1990]], SK: [[1993]], HU: [[1982]], RO: [[1972]], BG: [[1990]], AL: [[1991]],
+  CN: [[1980]], TW: [[1945, 1980]], CU: [[1946, 1964]], KP: [], MN: [[1991]], DE: [[1952]], JP: [[1952]], IT: [[1947]], AT: [[1948]], ES: [[1958]], PT: [[1961]], CH: [[1992]], AD: [[2020]], LI: [], MC: [], TV: [[2010]], NR: [[2016]], XK: [[2009]], VN: [[1956]] };
+export function imfMember(cc, y = eraYear()) {
+  if (y < 1945 || (NEVER.includes(cc) && cc !== 'XK')) return false;
+  const spans = IMF_SPANS[cc];
+  if (spans) return spans.some(([from, until]) => y >= from && (until == null || y < until));
+  return sovereignIn(cc, y);
+}
+/** GATT (1948) and the WTO (1995): the Soviet bloc mostly outside GATT; latecomers and those still outside the WTO. */
+const GATT_FROM = { CZ: 1948, PL: 1967, YU: 1966, RS: 1966, RO: 1971, HU: 1973, MX: 1986, JP: 1955, DE: 1951, ES: 1963, CH: 1966, IL: 1962, KR: 1967, AR: 1967, TH: 1982, PH: 1979, VE: 1990, CO: 1981, CR: 1990, BO: 1990, MA: 1987, TN: 1990, EG: 1970, IE: 1967 };
+const GATT_NEVER = ['RU', 'UA', 'BY', 'CN', 'TW', 'BG', 'AL', 'MN', 'KP', 'VN', 'LA', 'KH', 'CU', 'IR', 'IQ', 'SY', 'SA', 'DZ', 'ET', 'LY', 'LB', 'AF', 'KZ', 'UZ', 'AZ', 'TM', 'EE', 'LV', 'LT', 'AM', 'GE', 'MD', 'KG', 'TJ'];
+const WTO_FROM = { CN: 2001, TW: 2002, RU: 2012, VN: 2007, SA: 2005, UA: 2008, KZ: 2015, AF: 2016, LR: 2016, MN: 1997, BG: 1996, AL: 2000, EE: 1999, LV: 1999, LT: 2001, GE: 2000, AM: 2003, MD: 2001, KG: 1998, TJ: 2013, LA: 2013, KH: 2004, NP: 2004, TO: 2007, WS: 2012, VU: 2012, ME: 2012, MK: 2003, HR: 2000, SI: 1995, CU: 1995, SC: 2015, YE: 2014, KM: 2024, TL: 2024 };
+const WTO_NEVER = ['IR', 'IQ', 'SY', 'DZ', 'ET', 'UZ', 'BY', 'AZ', 'SO', 'SD', 'KP', 'TM', 'LY', 'LB', 'BA', 'RS', 'BT', 'GQ', 'ER', 'SS', 'AD', 'MC', 'SM', 'XK'];
+export function wtoMember(cc, y = eraYear()) {
+  if (y < 1948 || NEVER.includes(cc) || !sovereignIn(cc, y)) return false;
+  if (y < 1995) return !GATT_NEVER.includes(cc) && !(GATT_FROM[cc] > y);
+  return !WTO_NEVER.includes(cc) && !(WTO_FROM[cc] > y);
+}
+/** A gate on nationality: null if one of your citizenships is a member, else the reason. */
+const nationalOf = (member, reason) => (state) => (citizenshipsOf(state).some((c) => member(c)) ? null : reason);
+// Switzerland, outside the UN until 2002, sent its nationals to its Geneva offices all the same.
+const unGate = nationalOf((c) => unMember(c) || (c === 'CH' && eraYear() >= 1946), 'Nationals of UN member states only');
+// The specialised agencies took states the General Assembly had not yet (West Germany and Japan in the early 1950s).
+const agencyGate = nationalOf((c) => unMember(c) || imfMember(c) || (c === 'CH' && eraYear() >= 1946), 'Nationals of member states only');
+const imfGate = nationalOf(imfMember, 'Nationals of IMF and World Bank member countries only');
+const wtoGate = (state) => nationalOf(wtoMember, eraYear() < 1995 ? 'Nationals of GATT contracting parties only' : 'Nationals of WTO members only')(state);
+/** Put a nationality gate in front of a career's own rule. */
+const gated = (gate, rule) => (state) => { const why = gate(state); return why ? { ok: false, reason: why } : rule(state); };
+
 /** Was this country a member in the year being played? */
 export const memberIn = (list, cc, y = eraYear()) => (list === EU_MEMBERS ? euMemberIn(cc, y) : list.includes(cc) && !(((list === NATO_MEMBERS ? (NATO_JOINED[cc] ?? 0) + (NATO_JOINED[cc] > 1990 ? membershipShift(cc) : 0) : 0)) > y));
 export const citizenOfAny = (state, list) => citizenshipsOf(state).some((c) => memberIn(list, c));
@@ -122,11 +168,12 @@ const careers = {
     ...INTL, id: 'unSecretariat', name: 'United Nations Secretariat', icon: '🇺🇳', sector: 'private', payMultiplier: 1.3, background: 'strict',
     employers: ['United Nations Secretariat (New York)', 'United Nations Office at Geneva', 'UN peace operations (Department of Peace Operations)', 'United Nations Office at Vienna', 'United Nations Office at Nairobi', 'Office for the Coordination of Humanitarian Affairs (OCHA)', 'Office of the High Commissioner for Human Rights (OHCHR)', 'UN Economic and Social Commission for Asia and the Pacific (ESCAP)', 'UN Economic Commission for Africa (ECA)'],
     entry: { education: { level: 'bachelor' } },
-    eligible: (state) => {
+    // (The League of Nations Secretariat, before 1946, hired nationals of non-members too: Americans among them.)
+    eligible: gated((state) => (eraYear() < 1946 ? null : unGate(state)), (state) => {
       if (state.character.age <= 32 && passed(state, 'ypp')) return { ok: true };
       if (intlExperience(state) >= 7 && state.education.degrees.some((d) => ['master', 'doctorate', 'professional'].includes(d.type))) return { ok: true };
       return { ok: false, reason: state.character.age <= 32 ? 'Pass the UN Young Professionals Programme exam (or 7 years\' relevant experience and a master\'s)' : 'Lateral entry needs 7 years\' relevant experience and a master\'s' };
-    },
+    }),
     valued: ['languageProficiency'],
     ladder: [
       ['p2', 'Associate Officer (P-2)', 5, { years: 2 }],
@@ -147,7 +194,7 @@ const careers = {
     ...INTL, id: 'unAgencies', name: 'UN Agencies, Funds & Programmes', icon: '🌍', sector: 'private', payMultiplier: 1.22, background: 'standard',
     employers: ['UNICEF', 'UNHCR (the UN Refugee Agency)', 'World Food Programme', 'World Health Organization', 'UNDP', 'UNESCO', 'Food and Agriculture Organization', 'International Labour Organization', 'International Atomic Energy Agency'],
     entry: { education: { level: 'bachelor' } },
-    eligible: (state) => (state.character.age <= 32 || intlExperience(state) >= 5 ? { ok: true } : { ok: false, reason: 'Junior Professional Officers are 32 and under; later, 5 years\' relevant experience' }),
+    eligible: gated(agencyGate, (state) => (state.character.age <= 32 || intlExperience(state) >= 5 ? { ok: true } : { ok: false, reason: 'Junior Professional Officers are 32 and under; later, 5 years\' relevant experience' })),
     ladder: [
       ['jpo', 'Junior Professional Officer', 4, { years: 2 }],
       ['associate', 'Associate Programme Officer (P-2)', 5],
@@ -212,7 +259,7 @@ const careers = {
     ...INTL, id: 'intlFinance', name: 'World Bank & IMF', icon: '🏦', sector: 'private', payMultiplier: 1.5, background: 'strict',
     employers: ['World Bank Group', 'International Monetary Fund'],
     entry: { education: { level: 'master' }, smarts: 60 },
-    eligible: (state) => (passed(state, 'wbYpp') || intlExperience(state) >= 6 ? { ok: true } : { ok: false, reason: 'Pass the Young Professionals Program selection (or 6 years\' experience in finance or development)' }),
+    eligible: gated(imfGate, (state) => (passed(state, 'wbYpp') || intlExperience(state) >= 6 ? { ok: true } : { ok: false, reason: 'Pass the Young Professionals Program selection (or 6 years\' experience in finance or development)' })),
     ladder: [
       ['jpa', 'Junior Professional Associate (GD)', 5],
       ['analyst', 'Analyst (GE)', 6, { years: 2 }],
@@ -230,7 +277,7 @@ const careers = {
     ...INTL, id: 'intlJustice', name: 'International Courts & Tribunals', icon: '⚖️', sector: 'private', payMultiplier: 1.3, background: 'strict',
     employers: ['International Criminal Court', 'International Court of Justice'],
     entry: { education: { program: 'jd' } },
-    eligible: (state) => (yearsIn(state, ['law', 'prosecution', 'publicDefender', 'courts', 'intlJustice']) >= 3 || state.character.age <= 30 ? { ok: true } : { ok: false, reason: 'Needs 3 years practising law' }),
+    eligible: gated(unGate, (state) => (yearsIn(state, ['law', 'prosecution', 'publicDefender', 'courts', 'intlJustice']) >= 3 || state.character.age <= 30 ? { ok: true } : { ok: false, reason: 'Needs 3 years practising law' })),
     ladder: [
       ['intern', 'Legal Intern', 3],
       ['associate', 'Associate Legal Officer (P-2)', 5, { years: 2, abilities: ['represent'] }],
@@ -400,7 +447,7 @@ const careers = {
     ...INTL, id: 'wto', name: 'World Trade Organization Secretariat', icon: '🚢', sector: 'private', payMultiplier: 1.35, background: 'standard',
     employers: ['World Trade Organization (Geneva)'],
     entry: { education: { level: 'master' } },
-    eligible: (state) => (state.character.age <= 32 || intlExperience(state) >= 5 ? { ok: true } : { ok: false, reason: 'Young Professionals are 32 and under; later, 5 years in trade policy or law' }),
+    eligible: gated(wtoGate, (state) => (state.character.age <= 32 || intlExperience(state) >= 5 ? { ok: true } : { ok: false, reason: 'Young Professionals are 32 and under; later, 5 years in trade policy or law' })),
     ladder: [
       ['yp', 'Young Professional', 4, { years: 1 }],
       ['eao', 'Economic Affairs Officer', 6, { years: 3 }],
