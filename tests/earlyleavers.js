@@ -11,7 +11,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { eraWorkBlock } from '../src/modules/world/Eras.js';
-import { nightSchoolOpen, nightSchoolName } from '../src/modules/education/SchoolingOfTheDay.js';
+import { nightSchoolOpen, nightSchoolName, lettersSchool, scholarshipName, SchoolingModule } from '../src/modules/education/SchoolingOfTheDay.js';
 import { schoolingCard } from '../src/ui/views/SchoolingCard.js';
 import { childWorkAge } from '../src/modules/world/ChildLabour.js';
 import { minimumAge } from '../src/modules/career/CareerEngine.js';
@@ -93,6 +93,39 @@ const tests = {
     assert.ok(!state.prompts.some((p) => p.type === 'history.firstWork'), 'no work at nine');
     state.prompts = []; state.stats.health = 90; engine.ageUp();
     assert.ok(state.prompts.some((p) => p.type === 'history.firstWork'), 'asked at ten');
+  },
+  'a child who never went to school can learn letters at Sunday school or the ragged school'() {
+    const { engine, state } = life('GB', 1850);
+    grow(engine, 8);
+    state.people.wealth = 'low';
+    assert.equal(lettersSchool(state).name, 'the ragged school');
+    assert.equal(lettersSchool(life('FR', 1850).state).name, 'the parish catechism class');
+    state.schooling.literate = false;
+    const ctx = engine.context();
+    for (let i = 0; i < 10 && state.schooling.literate === false; i++) SchoolingModule.resolvers.letters(ctx, { name: 'the ragged school' }, 'go');
+    assert.equal(state.schooling.literate, true);
+  },
+  'a bright working child can win a scholarship back to school'() {
+    const { engine, state } = life('GB', 1900);
+    grow(engine, 12);
+    assert.equal(scholarshipName(state), 'a free place at the grammar school');
+    Object.assign((state.k12 ??= {}), { leftEarly: true, dropout: true });
+    const ctx = engine.context();
+    MODULES.find((m) => m.id === 'history').resolvers.firstWork(ctx, {}, 'agriculture');
+    SchoolingModule.resolvers.scholarship(ctx, { name: 'a free place at the grammar school' }, 'accept');
+    assert.equal(state.career.job, null, 'gave up the job');
+    assert.equal(state.k12.leftEarly, false);
+    assert.equal(state.k12.dropout, false, 'back at school');
+  },
+  'a working child\'s wages go home'() {
+    const { engine, state } = life('GB', 1880);
+    grow(engine, 12);
+    Object.assign((state.k12 ??= {}), { leftEarly: true, dropout: true });
+    MODULES.find((m) => m.id === 'history').resolvers.firstWork(engine.context(), {}, 'agriculture');
+    if (!state.career.job) return;
+    state.finances.cash = 10000;
+    state.prompts = []; engine.ageUp();
+    assert.match(said(state), /wage packet goes to your mother/);
   },
   'work that needs reading is closed to those who can\'t'() {
     const { engine, state } = life('GB', 1860);

@@ -20,7 +20,7 @@
 import { Random } from '../../core/Random.js';
 import { yearNow, PRESENT, setLeavingAge, setUniversityGate, addEraWorkRule } from '../world/Eras.js';
 import { JOB_FIELDS, getProfession } from '../career/JobTrees.js';
-import { promote } from '../career/CareerEngine.js';
+import { promote, leaveJob } from '../career/CareerEngine.js';
 import { demographyAt } from '../world/HistoricalData.js';
 import { ADMISSION_HOOKS } from './EducationEngine.js';
 import { statuteIn, statuteOverride, FREE_FROM } from '../politics/StatuteBook.js';
@@ -119,6 +119,31 @@ export function nightSchoolOpen(state) {
   const k = state.k12;
   return state.character.age >= 14 && state.character.age <= 60 && Boolean(k?.dropout || k?.leftEarly || s.unschooled);
 }
+/** Where a child who never went to school might still learn letters. */
+const PROTESTANT = ['GB', 'US', 'CA', 'AU', 'NZ', 'DE', 'NL', 'SE', 'NO', 'DK', 'FI', 'ZA'];
+const CATHOLIC = ['FR', 'IT', 'ES', 'PT', 'BE', 'AT', 'PL', 'IE', 'MX', 'BR', 'AR', 'CL', 'CO', 'PE', 'PH'];
+export function lettersSchool(state) {
+  const c = cc(state);
+  const y = yearNow(state);
+  if (['GB', 'IE'].includes(c) && y >= 1844 && y < 1880 && state.people?.wealth === 'low') return { name: 'the ragged school', what: 'free lessons for poor children, with a meal' };
+  if (PROTESTANT.includes(c)) return { name: 'Sunday school', what: 'reading from the Bible on the one day off' };
+  if (CATHOLIC.includes(c)) return { name: 'the parish catechism class', what: 'letters and the catechism from the priest' };
+  if (c === 'IN') return { name: 'the village pathshala', what: 'letters and sums under a tree with the village teacher' };
+  return { name: 'lessons with the village teacher', what: 'letters in the evenings' };
+}
+/** The scholarship that could take a bright working child back to school. */
+export function scholarshipName(state) {
+  const c = cc(state);
+  const y = yearNow(state);
+  if (['GB', 'IE'].includes(c)) return y >= 1907 ? 'a free place at the grammar school' : 'a scholarship to the grammar school';
+  if (c === 'FR') return 'a bourse to the lycée';
+  if (['DE', 'AT', 'CH'].includes(c)) return 'a scholarship to the Gymnasium';
+  if (c === 'US') return 'a scholarship to the high school';
+  return 'a scholarship to go back to school';
+}
+/** The share of a working child's wages handed over to the family. */
+export const WAGES_HOME = 0.7;
+
 /** Indentures: the years an apprentice was bound to a master. */
 export const INDENTURE_YEARS = { blacksmith: 7, carpentry: 5 };
 
@@ -148,6 +173,32 @@ export const SchoolingModule = {
         if (!statuteIn(state, 'freeSchooling') && state.people?.wealth !== 'upper') { s.feesPaid = true; ctx.log('You started school. Your family pays the schoolmaster a few pennies a week.', '🪙', 'info'); }
       }
     }
+    // A child who never went to school: Sunday school, the ragged school, the village teacher.
+    if (s.unschooled && s.literate === false && age >= 6 && age <= 14 && !s.lettersAsked && yearNow(state) < 1950 && rng.chance(0.3)) {
+      s.lettersAsked = age;
+      const l = lettersSchool(state);
+      ctx.prompt({ type: 'schooling.letters', icon: '📖', title: l.name[0].toUpperCase() + l.name.slice(1), text: `There's ${l.name} nearby: ${l.what}. Will you go?`, data: { name: l.name }, options: [
+        { id: 'go', label: `📖 Go to ${l.name}`, hint: 'Learn your letters' },
+        { id: 'no', label: '🏠 No time for it', hint: 'Work and chores come first' },
+      ] });
+    }
+    // A bright child at work: a scholarship back to school.
+    if (k?.leftEarly && !s.scholarship && age >= 11 && age <= 13 && yearNow(state) < 1945 && state.stats.smarts >= 80 && s.literate !== false && rng.chance(0.4)) {
+      s.scholarship = 'offered';
+      const name = scholarshipName(state);
+      ctx.prompt({ type: 'schooling.scholarship', icon: '🎓', title: 'A Scholarship', text: `Your old teacher put your name forward, and you've been offered ${name}. It means giving up your wages.`, data: { name }, options: [
+        { id: 'accept', label: '🎓 Take the place', hint: 'Back to school; no wages' },
+        { id: 'decline', label: '👛 The family needs the money', hint: 'Keep working' },
+      ] });
+    }
+    // A working child's wages go home.
+    if (k?.leftEarly && age < 16 && state.career?.job) {
+      const pay = Math.round((state.career.job.salary ?? 0) * WAGES_HOME);
+      if (pay > 0 && ctx.spend(pay, 'Wages handed over to your family')) {
+        if (!s.wagesTold) { s.wagesTold = true; ctx.log('Every Friday your wage packet goes to your mother unopened; you get a few coppers back for yourself.', '👛', 'info'); }
+        for (const p of (state.people?.list ?? []).filter((x) => ['mother', 'father'].includes(x.relation) && x.alive !== false)) p.relationship = Math.min(100, (p.relationship ?? 50) + 2);
+      }
+    }
     // The exam at ten or eleven.
     const t = trackHere(state);
     if (t && age === t.age && !s.examTaken && !s.unschooled && k && !k.done) {
@@ -157,6 +208,29 @@ export const SchoolingModule = {
       ctx.log(pass ? `You passed the exam for the ${t.academic}: Latin, mathematics, and a road to university.` : `You didn't pass for the ${t.academic}. It's the ${t.general} for you, and work at the leaving age.`, pass ? '📜' : '📘', pass ? 'milestone' : 'info');
       ctx.stat('happiness', pass ? 4 : -3);
     }
+  },
+  resolvers: {
+    letters(ctx, data, optionId) {
+      const { state } = ctx;
+      const s = state.schooling;
+      if (optionId !== 'go') return ctx.log('There was no time for lessons: work and chores came first.', '🏠', 'info');
+      if (schrng(state).chance(0.7)) { s.literate = true; ctx.stat('smarts', 3); return ctx.log(`At ${data.name} you learned to read and write.`, '📖', 'milestone'); }
+      ctx.stat('smarts', 1);
+      ctx.log(`You went to ${data.name} for a while and learned your letters, though reading still comes hard. Evening classes could finish the job.`, '📖', 'info');
+    },
+    scholarship(ctx, data, optionId) {
+      const { state } = ctx;
+      const s = state.schooling;
+      if (optionId !== 'accept') { s.scholarship = 'declined'; ctx.stat('happiness', -3); return ctx.log(`You turned down ${data.name}. The family needed your wages.`, '👛', 'info'); }
+      s.scholarship = 'taken';
+      if (state.career?.job) leaveJob(ctx, 'Won a scholarship back to school');
+      const k = state.k12;
+      Object.assign(k, { leftEarly: false, dropout: false, done: false });
+      state.schooling.indenture = null;
+      state.schooling.track = 'academic';
+      ctx.log(`You won ${data.name} and went back to school: Latin, mathematics, and a road that might lead to university.`, '🎓', 'milestone');
+      ctx.stat('happiness', 6);
+    },
   },
   actions: {
     /** Night school: finish your schooling after work. */
