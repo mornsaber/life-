@@ -3,6 +3,8 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { counsellorSeat, excoSeat } from '../modules/world/PrivyCouncil.js';
+import { COURTS } from '../modules/legal/Judiciary.js';
 import { resumeView } from './views/ResumeView.js';
 import { titlesCard, titleMarketCard, walletCard } from './views/TitlesView.js';
 import { uniformCard, insigniaHistoryCard } from './Uniform.js';
@@ -351,10 +353,36 @@ export const VIEWS = {
     const duties = posts.length ? card('Ceremonial Duties', `${posts.map((p) => `<p><b>${esc(p.name)}</b>${p.rec ? ` <small class="muted">${p.rec.years} yr · ${p.rec.events} duties</small>` : ''}</p>${meter(p.rec?.standing ?? 50, { label: p.kind === 'lieutenancy' ? '🏰 Standing in the county' : '🎖️ Standing with the regiment' })}`).join('')}<p class="fine">Each year brings a duty: how you handle it decides whether the post is renewed and how you're remembered.</p>`, { icon: '🎖️' }) : '';
     // Privy councils and executive councils (world/PrivyCouncil.js): for life, or while you serve.
     const councils = (state.privyCouncil ?? []).map((m) => `<li>📜 <b>${esc(m.name.replace(/^./, (c) => c.toUpperCase()))}</b>${m.letters ? ` (${esc(m.letters)})` : ''} <small class="muted">since ${m.since}${m.until ? `, until ${m.until}` : ', for life'} · ${esc(m.style ?? '')}</small></li>`).join('');
-    const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul><p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
+    const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul>${councilActions(state)}<p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
     return `${titlesCard(state)}${titleMarketCard(state)}${walletCard(state)}${uniformCard(state)}${insigniaHistoryCard(state)}${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
+
+/** What a counsellor can do: attend, be briefed, chair a review, hear appeals; on a colony's council, advise, press for reform, resign. */
+function councilActions(state) {
+  const pc = counsellorSeat(state);
+  const ex = excoSeat(state);
+  const y = state.yearly ?? {};
+  const rows = [];
+  if (pc) {
+    const judge = pc.council === 'GB' && (COURTS[state.judiciary?.seat?.court]?.rank ?? 0) >= 3;
+    rows.push(`<div class="toggle-row">${[
+      button('🏛️ Attend a meeting of the Council', 'privyCouncil.attend', { variant: 'small', disabled: Boolean(y['privyCouncil.attend']), hint: 'Orders in Council, read standing' }),
+      state.politics?.office ? button('🤫 A briefing on Privy Council terms', 'privyCouncil.briefing', { variant: 'small', disabled: Boolean(y['privyCouncil.briefing']), hint: 'Secrets you can never repeat · +approval' }) : '',
+      state.character.age >= 45 ? button('📑 Chair a Privy Counsellors\' review', 'privyCouncil.review', { variant: 'small', disabled: (pc.lastReview ?? -99) > currentYear(state) - 4, hint: 'Into a national failure · every few years' }) : '',
+      judge ? button('⚖️ Sit on the Judicial Committee', 'privyCouncil.appeal', { variant: 'small', disabled: Boolean(y['privyCouncil.appeal']), hint: 'The final court of appeal for the Empire and Commonwealth' }) : '',
+      button('🚪 Resign from the Council', 'privyCouncil.resign', { variant: 'small ghost', hint: 'Give up the style for good' }),
+    ].join('')}</div>`);
+  }
+  if (ex) {
+    rows.push(`${meter(ex.standing ?? 60, { label: 'The Governor\'s confidence' })}${meter(ex.voice ?? 40, { label: 'Standing with your own people' })}<div class="toggle-row">${[
+      button('📜 Take the year\'s business', 'privyCouncil.advise', { variant: 'small', disabled: Boolean(y['privyCouncil.advise']), hint: 'A question before the Council' }),
+      button('🗳️ Press for more local members', 'privyCouncil.pressReform', { variant: 'small', disabled: (ex.lastPress ?? -99) > currentYear(state) - 2, hint: 'Raises the pressure for self-government; the Governor won\'t like it' }),
+      button('✊ Resign in protest', 'privyCouncil.resignProtest', { variant: 'small danger', hint: 'Leave, and say why in public' }),
+    ].join('')}</div>`);
+  }
+  return rows.join('');
+}
 
 /** Your coat of arms, the blazon, and what each part of it records — or how to get arms where you live. */
 function armsCard(state) {
