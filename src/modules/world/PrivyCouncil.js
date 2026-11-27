@@ -78,7 +78,7 @@ function appealFrom(state, rng) {
   return pick(rng, from)[0];
 }
 /** The question before an Executive Council in a colony this year. */
-function councilQuestion(state, rng) {
+export function councilQuestion(state, rng) {
   const y = currentYear(state);
   return pick(rng, [
     { id: 'strike', text: `The ${y >= 1920 ? 'dock and railway workers have struck' : 'plantation labourers have stopped work'}. The Colonial Secretary wants troops on the streets.`, official: 'Back the Colonial Secretary: order restored first', local: 'Ask for an inquiry into wages and conditions' },

@@ -2,6 +2,8 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
+import { colonyPoliticsInfo } from '../../modules/politics/ColonialPolitics.js';
+import { rulerName } from '../../modules/world/Eras.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { INITIATIVES } from '../../modules/politics/Statecraft.js';
 import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
@@ -268,18 +270,20 @@ function politicsOfDayCard(state) {
 export function politicsView(state) {
   const x = politicsParts(state);
   const work = `${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${patronageCard(state)}${crownCards(state)}`;
-  const none = x.current || work.trim() ? '' : card('No Office', `<p class="muted">You don't hold public office. ${oneParty(state) ? 'Posts are given by the Party: see 🎗️ Party.' : 'Stand for election from 📣 Campaign, and follow the chambers in 🏛️ Chamber.'}</p>`, { icon: '🗳️' });
-  return `${x.current}${politicsOfDayCard(state)}${presidencyCard(state)}${officeLifeCard(state)}${state.politics?.office ? protectionCard(state) : ''}${none}${work}${x.history}`;
+  const none = x.current || work.trim() || colonyPoliticsInfo(state) ? '' : card('No Office', `<p class="muted">You don't hold public office. ${oneParty(state) ? 'Posts are given by the Party: see 🎗️ Party.' : 'Stand for election from 📣 Campaign, and follow the chambers in 🏛️ Chamber.'}</p>`, { icon: '🗳️' });
+  return `${colonialSeatsCard(state)}${x.current}${politicsOfDayCard(state)}${presidencyCard(state)}${officeLifeCard(state)}${state.politics?.office ? protectionCard(state) : ''}${none}${work}${x.history}`;
 }
 
 /** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */
 export function chamberView(state) {
   // A land ruled from abroad has no parliament of its own: its laws come from the empire's capital.
   const reg = regimeHere(state);
+  const council = colonialChamberCard(state);
+  if (council && reg?.kind === 'colony') return council;
   if (reg?.kind === 'colony') return card('No Legislature Here', `<p class="muted">${esc(reg.name ?? 'This land')}: laws are made far away, and ${esc(reg.leader ?? 'the governor')} governs by decree. There is no chamber to sit in.</p>`, { icon: '🏛️' });
   const seat = state.politics?.office;
   const note = seat ? '' : `<p class="fine" style="margin:4px 2px 10px">🏛️ You hold no seat: this is the chamber as it stands. ${state.character.age >= 18 ? 'Stand for office from the Campaign tab, or join a party from the Party tab.' : 'You can stand for office from 18.'}</p>`;
-  return `${note}${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;
+  return `${council}${note}${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;
 }
 
 /** 🎗️ Party: your party, your platform, your votes. */
@@ -289,6 +293,8 @@ export function partyTabView(state) {
 
 /** 📣 Campaign: the race you're in, and the offices you could run for. */
 export function campaignView(state) {
+  const colonial = colonialCampaignCard(state);
+  if (colonial) return colonial;
   const x = politicsParts(state);
   return `${x.campaign}${x.ladderCard || card('Elections', '<p class="muted">There are no contested elections here: the Party fills every post.</p>', { icon: '🗳️' })}`;
 }
@@ -418,4 +424,45 @@ function campaignCard(state, c) {
       ${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}
     </div>
     ${disclosure('politics.townhall', '🏟️ Town halls: make the race about an issue', `<div class="toggle-row">${ISSUE_IDS.map((id) => button(`${ISSUES[id].icon} ${ISSUES[id].name}`, 'politics.townHall', { arg: id, variant: 'tiny' })).join('')}</div><p class="fine">Pick one where you're closer to the voters than ${esc(opp?.name ?? 'your opponent')} is.</p>`)}`, { icon: '🗳️', accent: 'green' });
+}
+
+/** Your seats on a colony's councils (or a SAR's), and what you can do in them. */
+function colonialSeatsCard(state) {
+  const info = colonyPoliticsInfo(state);
+  if (!info) return '';
+  const { p, c } = info;
+  const y = state.yearly ?? {};
+  const seats = Object.values(c.seats ?? {});
+  const rows = seats.map((s) => `<li>🏛️ <b>${esc(s.name)}</b> <small>${s.how} ${s.since}, term to ${s.ends}</small></li>`).join('');
+  const lead = c.leader ? `<li>⭐ <b>${esc(c.leader.title)}</b> <small>since ${c.leader.since}</small></li>` : '';
+  const acts = [
+    c.seats?.council ? button('❓ Ask a question in Council', 'colonyPolitics.question', { variant: 'small', disabled: Boolean(y['colonyPolitics.question']) }) : '',
+    c.seats?.council ? button('🏛️ The session\'s business', 'colonyPolitics.debate', { variant: 'small', disabled: Boolean(y['colonyPolitics.debate']) }) : '',
+    c.leader && !p.sar ? button('✈️ Press for self-government', 'colonyPolitics.selfRule', { variant: 'small', disabled: (c.lastTalks ?? -99) > currentYear(state) - 2, hint: 'A constitutional conference in the imperial capital' }) : '',
+    c.leader && p.sar ? button('📜 Deliver the Policy Address', 'colonyPolitics.policyAddress', { variant: 'small', disabled: Boolean(y['colonyPolitics.policyAddress']) }) : '',
+    ...seats.map((s) => button(`🚪 Resign from the ${s.body === 'municipal' ? 'town council' : 'Council'}`, 'colonyPolitics.resign', { arg: s.body, variant: 'small ghost' })),
+  ].join('');
+  const body = rows || lead ? `<ul class="history">${lead}${rows}</ul>${acts ? `<div class="toggle-row">${acts}</div>` : ''}` : `<p class="muted">You hold no seat. ${esc(p.colony)} is governed by ${esc(info.governor)}${p.council ? `, with the ${esc(p.council)}` : ''}. See 📣 Campaign for what is open to you.</p>`;
+  return card(p.sar ? 'Your Seats' : 'Colonial Politics', `${meter(c.recognition, { label: 'Your name' })}${meter(c.standing, { label: p.sar ? "Beijing's confidence" : "The Governor's confidence" })}${meter(c.voice, { label: 'Standing with your own people' })}${body}`, { icon: '🏛️' });
+}
+/** Elections and nominations open here. */
+function colonialCampaignCard(state) {
+  const info = colonyPoliticsInfo(state);
+  if (!info) return '';
+  const { p, c } = info;
+  const y = state.yearly ?? {};
+  const row = (body, name, kind, why) => name ? `<li class="job-row ${why ? 'locked' : ''}"><span class="job-icon">${body === 'municipal' ? '🏙️' : '🏛️'}</span><div class="job-info"><b>${esc(name)}</b><small>${esc(info.voteLabel[kind ?? 'none'])}${why ? '' : ` · campaign ~${money(info.cost[body])}`}</small></div>${button(why ? '🔒' : 'Stand', 'colonyPolitics.stand', { arg: body, variant: 'small', disabled: Boolean(why), title: why ?? '' })}${why ? `<span class="why">${esc(why)}</span>` : ''}</li>` : '';
+  const pending = c.candidacy ? `<p class="fine">🗳️ You are standing for the ${esc(c.candidacy.body === 'municipal' ? p.municipal : p.council)}: the poll comes at year's end.</p>` : '';
+  const nominated = p.council && !p.sar && ['none', 'settlers', 'property', 'indirect'].includes(p.vote ?? 'none') && !p.nobody ? `<p class="fine">Most unofficial members are nominated by ${esc(info.governor)}: be known, be trusted at Government House, and the letter may come.</p>` : '';
+  const leader = p.leader ? `<p class="fine">⭐ ${p.leaderBy === 'committee' ? `The ${esc(p.leader)} is chosen by an Election Committee: in practice, by Beijing.` : `The ${esc(p.leader)} comes from the elected side: win a seat with a party behind you.`}</p>` : '';
+  const timeline = p.notes.length ? disclosure('colony.timeline', '📜 How the council came to be', `<ul class="history">${p.notes.map(([yr, t]) => `<li><b>${yr}</b> ${esc(t)}</li>`).join('')}</ul>`) : '';
+  return `${card(p.sar ? 'Elections Here' : 'Councils and Elections', `${pending}<ul class="job-board">${row('municipal', p.municipal, p.mvote, info.standMunicipal)}${row('council', p.council, p.vote, info.standCouncil)}</ul>${nominated}${leader}<div class="toggle-row">${button('✍️ Organise a petition', 'colonyPolitics.petition', { variant: 'small', disabled: Boolean(y['colonyPolitics.petition']) || state.character.age < 16, hint: `Your voice up, ${p.sar ? 'Beijing' : 'the Governor'}'s view of you down` })}${button(p.sar ? '🎩 Work the advisory committees' : '🎩 Be seen at Government House', 'colonyPolitics.cultivate', { variant: 'small', disabled: Boolean(y['colonyPolitics.cultivate']) || state.character.age < 21, hint: `~${money(info.cost.municipal)}` })}</div>${timeline}`, { icon: '🗳️' })}`;
+}
+/** The council as it stands. */
+function colonialChamberCard(state) {
+  const info = colonyPoliticsInfo(state);
+  if (!info?.p.council) return '';
+  const { p } = info;
+  const last = p.notes.at(-1);
+  return card(p.council, `<p class="muted">${esc(p.colony)}: ${esc(info.governor)} governs${p.sar ? '' : ` for ${esc(rulerName(p.ruler))}`}. The ${esc(p.council)}: ${esc(info.voteLabel[p.vote ?? 'none'])}.${last ? ` <b>${last[0]}:</b> ${esc(last[1])}` : ''}</p>${p.nobody ? '' : '<p class="fine">Stand or be nominated from 📣 Campaign.</p>'}`, { icon: '🏛️' });
 }

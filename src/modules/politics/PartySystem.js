@@ -203,10 +203,11 @@ export const PARTIES = {
     P('ishin', 'Japan Innovation Party', 'Ishin', '#6fba2c', 45, B, 2015, NOW, 0.1),
   ],
   IN: [
-    P('inc', 'Indian National Congress', 'INC', '#19aaed', -20, L, 1885, NOW, 0.4),
+    P('inc', 'Indian National Congress', 'INC', '#19aaed', -20, L, 1885, NOW, 0.4, { banned: [[1932, 1935], [1942, 1945]] }),
     P('ml', 'All-India Muslim League', 'ML', '#00873e', 30, B, 1906, 1947, 0.2),
     P('bjs', 'Bharatiya Jana Sangh / BJP', 'BJP', '#ff9933', 55, B, 1951, NOW, 0.3),
-    P('cpi', 'Communist Party of India (Marxist)', 'CPI(M)', '#cc0d0d', -80, L, 1925, NOW, 0.06),
+    P('cpi', 'Communist Party of India', 'CPI', '#cc0d0d', -75, L, 1925, NOW, 0.03, { banned: [[1934, 1942]] }),
+    P('cpim', 'Communist Party of India (Marxist)', 'CPI(M)', '#b00000', -80, L, 1964, NOW, 0.05),
     P('janata', 'Janata Party / Janata Dal', 'JD', '#2e8b57', -5, L, 1977, NOW, 0.06),
     P('reg', 'Regional parties (DMK, TMC, SP, TDP…)', 'Reg', '#8b0000', -10, L, 1949, NOW, 0.12),
   ],
@@ -225,6 +226,90 @@ export const PARTIES = {
     P('pt', 'Workers\' Party (PT)', 'PT', '#cc0000', -45, L, 1980, NOW, 0.18),
     P('psdb', 'Brazilian Social Democracy Party (PSDB)', 'PSDB', '#0080ff', 15, B, 1988, NOW, 0.1),
     P('pl', 'Liberal Party (PL)', 'PL', '#003399', 65, B, 2006, NOW, 0.18),
+  ],
+  // Colonies and their successors: the parties that fought the councils, then the elections.
+  HK: [
+    P('reform', 'Reform Club of Hong Kong', 'RC', '#7a5c2e', 15, B, 1949, 1995, 0.3),
+    P('civicassoc', 'Hong Kong Civic Association', 'HKCA', '#2e5c7a', 25, B, 1954, 1995, 0.25),
+    P('meeting', 'Meeting Point', 'MP', '#3a9d3a', -20, L, 1983, 1994, 0.15),
+    P('udhk', 'United Democrats of Hong Kong', 'UDHK', '#1f8a3a', -25, L, 1990, 1994, 0.35),
+    P('dem', 'Democratic Party', 'DP', '#1f8a3a', -25, L, 1994, NOW, 0.25),
+    P('dab', 'Democratic Alliance for the Betterment and Progress of Hong Kong (DAB)', 'DAB', '#1d5fa8', 40, B, 1992, NOW, 0.25),
+    P('lib', 'Liberal Party', 'LP', '#00a0e0', 50, B, 1993, NOW, 0.08),
+    P('ftu', 'Hong Kong Federation of Trade Unions', 'FTU', '#d7261e', 20, L, 1985, NOW, 0.08),
+    P('civic', 'Civic Party', 'CP', '#6a2c91', -20, L, 2006, 2023, 0.12),
+    P('lsd', 'League of Social Democrats', 'LSD', '#b5121b', -50, L, 2006, NOW, 0.05),
+    P('npp', 'New People\'s Party', 'NPP', '#2b4f9c', 35, B, 2011, NOW, 0.07),
+    P('bpa', 'Business and Professionals Alliance for Hong Kong', 'BPA', '#0b3d91', 55, B, 2012, NOW, 0.1),
+  ],
+  MO: [
+    P('adim', 'Association for the Defence of the Interests of Macau (ADIM)', 'ADIM', '#7a2e2e', 25, B, 1974, 1992, 0.35),
+    P('cdm', 'Macau Democratic Centre (CDM)', 'CDM', '#2e7a4a', -10, L, 1974, 1984, 0.25),
+    P('upp', 'Union for Promoting Progress (UPP)', 'UPP', '#d7261e', 15, L, 1988, NOW, 0.25),
+    P('nma', 'New Macau Association', 'ANM', '#1f8a3a', -25, L, 1992, NOW, 0.2),
+    P('upd', 'Union for Development', 'UPD', '#e8a33d', 20, L, 1996, NOW, 0.2),
+    P('acum', 'United Citizens Association of Macau', 'ACUM', '#0b3d91', 35, B, 2001, NOW, 0.2),
+  ],
+  SG: [
+    P('progressive', 'Progressive Party', 'PP', '#1c4f9c', 30, B, 1947, 1956, 0.35),
+    P('labourfront', 'Labour Front', 'LF', '#e3000f', -20, L, 1954, 1960, 0.3),
+    P('pap', 'People\'s Action Party', 'PAP', '#1d5fa8', 0, L, 1954, NOW, 0.5),
+    P('barisan', 'Barisan Sosialis', 'BS', '#b00000', -70, L, 1961, 1988, 0.25),
+    P('wp', 'Workers\' Party', 'WP', '#5c8fd6', -20, L, 1957, NOW, 0.1),
+  ],
+  KE: [
+    P('kau', 'Kenya African Union', 'KAU', '#006600', -20, L, 1944, 1953, 0.5),
+    P('kanu', 'Kenya African National Union (KANU)', 'KANU', '#cc0000', -5, L, 1960, NOW, 0.45),
+    P('kadu', 'Kenya African Democratic Union (KADU)', 'KADU', '#1c4f9c', 20, B, 1960, 1964, 0.3),
+    P('ford', 'FORD-Kenya', 'FORD', '#e8a33d', -10, L, 1991, NOW, 0.1),
+    P('narc', 'National Rainbow Coalition (NARC)', 'NARC', '#00a651', 0, L, 2002, 2007, 0.35),
+    P('odm', 'Orange Democratic Movement', 'ODM', '#f58220', -15, L, 2005, NOW, 0.3),
+    P('jubilee', 'Jubilee Party', 'JP', '#c8102e', 20, B, 2016, NOW, 0.35),
+    P('uda', 'United Democratic Alliance', 'UDA', '#ffd700', 20, B, 2021, NOW, 0.35),
+  ],
+  NG: [
+    P('nndp', 'Nigerian National Democratic Party', 'NNDP', '#1c4f9c', -10, L, 1923, 1944, 0.4),
+    P('nym', 'Nigerian Youth Movement', 'NYM', '#3a9d3a', -15, L, 1934, 1951, 0.3),
+    P('ncnc', 'National Council of Nigeria and the Cameroons (NCNC)', 'NCNC', '#e3000f', -20, L, 1944, 1966, 0.3),
+    P('npc', 'Northern People\'s Congress', 'NPC', '#006600', 30, B, 1949, 1966, 0.35),
+    P('ag', 'Action Group', 'AG', '#1c4f9c', 0, L, 1951, 1966, 0.25),
+    P('npn', 'National Party of Nigeria', 'NPN', '#006600', 25, B, 1978, 1983, 0.4),
+    P('upn', 'Unity Party of Nigeria', 'UPN', '#1c4f9c', -15, L, 1978, 1983, 0.3),
+    P('sdp', 'Social Democratic Party', 'SDP', '#e3000f', -10, L, 1989, 1993, 0.5),
+    P('nrc', 'National Republican Convention', 'NRC', '#1c4f9c', 15, B, 1989, 1993, 0.45),
+    P('pdp', 'People\'s Democratic Party', 'PDP', '#e3000f', 0, L, 1998, NOW, 0.4),
+    P('apc', 'All Progressives Congress', 'APC', '#1c4f9c', 15, B, 2013, NOW, 0.4),
+    P('lp', 'Labour Party', 'LP', '#3a9d3a', -25, L, 2002, NOW, 0.1),
+  ],
+  GH: [
+    P('ugcc', 'United Gold Coast Convention', 'UGCC', '#1c4f9c', 25, B, 1947, 1951, 0.3),
+    P('cpp', 'Convention People\'s Party', 'CPP', '#e3000f', -30, L, 1949, 1966, 0.55),
+    P('nlm', 'National Liberation Movement', 'NLM', '#006600', 25, B, 1954, 1957, 0.25),
+    P('pp', 'Progress Party', 'PP', '#1c4f9c', 25, B, 1969, 1972, 0.55),
+    P('npp', 'New Patriotic Party', 'NPP', '#1c4f9c', 25, B, 1992, NOW, 0.45),
+    P('ndc', 'National Democratic Congress', 'NDC', '#00a651', -15, L, 1992, NOW, 0.48),
+  ],
+  JM: [
+    P('pnp', 'People\'s National Party', 'PNP', '#f58220', -20, L, 1938, NOW, 0.48),
+    P('jlp', 'Jamaica Labour Party', 'JLP', '#00a651', 20, B, 1943, NOW, 0.48),
+  ],
+  LK: [
+    P('cnc', 'Ceylon National Congress', 'CNC', '#1c4f9c', 10, B, 1919, 1946, 0.4),
+    P('lssp', 'Lanka Sama Samaja Party', 'LSSP', '#e3000f', -70, L, 1935, NOW, 0.1),
+    P('unp', 'United National Party', 'UNP', '#006600', 25, B, 1946, NOW, 0.4),
+    P('slfp', 'Sri Lanka Freedom Party', 'SLFP', '#1d5fa8', -20, L, 1951, NOW, 0.35),
+    P('tamil', 'Federal Party and the Tamil parties', 'ITAK', '#e8a33d', 0, L, 1949, NOW, 0.08),
+    P('slpp', 'Sri Lanka Podujana Peramuna', 'SLPP', '#7a1f5c', 30, B, 2016, NOW, 0.3),
+    P('jvp', 'Janatha Vimukthi Peramuna / National People\'s Power', 'NPP', '#b00000', -60, L, 1982, NOW, 0.05),
+  ],
+  MY: [
+    P('umno', 'United Malays National Organisation (UMNO)', 'UMNO', '#e3000f', 30, B, 1946, NOW, 0.4),
+    P('mca', 'Malayan Chinese Association', 'MCA', '#1c4f9c', 25, B, 1949, NOW, 0.1),
+    P('mic', 'Malayan Indian Congress', 'MIC', '#006600', 20, B, 1946, NOW, 0.04),
+    P('pas', 'Pan-Malaysian Islamic Party (PAS)', 'PAS', '#00a651', 50, B, 1951, NOW, 0.12),
+    P('dap', 'Democratic Action Party', 'DAP', '#d7261e', -20, L, 1965, NOW, 0.12),
+    P('pkr', 'People\'s Justice Party (PKR)', 'PKR', '#00aeef', -10, L, 1998, NOW, 0.15),
+    P('mcp', 'Malayan Communist Party', 'MCP', '#b00000', -90, L, 1930, 1989, 0.02, { banned: [[1948, 1989]] }),
   ],
   ZA: [
     P('sap', 'South African Party', 'SAP', '#e8a33d', 30, B, 1911, 1934, 0.45),
@@ -348,6 +433,8 @@ export function partySystem(cc, y = eraYear(), regionId = null) {
     const banned = own.filter((p) => p.name !== name && p.short !== short).map((p) => ({ ...p, status: 'banned' }));
     return { system: 'one', parties: [rulingParty, ...sats, ...banned] };
   }
+  // A colony: the parties that organised under the Governor were legal unless he banned them (Congress in 1932 and 1942, the KAU in 1953).
+  if (r?.kind === 'colony') return { system: 'colonial', parties: own.map((p) => ({ ...p, status: bannedThen(p, y) ? 'banned' : 'legal' })) };
   if (r?.elections === 'none') return { system: 'none', parties: own.map((p) => ({ ...p, status: 'banned' })) };
   const parties = base.map((p) => ({ ...p, status: bannedThen(p, y) ? 'banned' : 'legal' }));
   return { system: r?.elections === 'controlled' ? 'dominant' : 'multi', parties };
@@ -373,6 +460,14 @@ const CURVES = {
     lab: [[1900, 0.013], [1906, 0.048], [1918, 0.21], [1924, 0.33], [1929, 0.37], [1945, 0.48], [1983, 0.28], [1997, 0.43], [2010, 0.29], [2024, 0.34]],
     lib: [[1859, 0.45], [1906, 0.49], [1918, 0.13], [1924, 0.18], [1929, 0.23], [1935, 0.06], [1951, 0.025], [1974, 0.18], [1983, 0.25], [1988, 0.2]],
   },
+  HK: {
+    dem: [[1995, 0.3], [2008, 0.2], [2016, 0.15], [2021, 0.002]],
+    civic: [[2006, 0.1], [2016, 0.1], [2021, 0.002]],
+    dab: [[1995, 0.15], [2016, 0.25], [2021, 0.4]],
+  },
+  MO: { nma: [[1992, 0.1], [2009, 0.2], [2021, 0.01]] },
+  KE: { kanu: [[1960, 0.6], [1997, 0.4], [2002, 0.29], [2007, 0.05]], jubilee: [[2016, 0.45], [2021, 0.35], [2023, 0.05]] },
+  LK: { jvp: [[1982, 0.03], [2019, 0.03], [2024, 0.6]], slpp: [[2016, 0.3], [2020, 0.6], [2024, 0.03]] },
   FR: {
     pcf: [[1920, 0.05], [1924, 0.1], [1936, 0.15], [1946, 0.28], [1981, 0.16], [2002, 0.05], [2017, 0.03]],
   },
