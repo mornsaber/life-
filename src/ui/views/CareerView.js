@@ -4,7 +4,7 @@
  * workforce model), job board grouped by sector, and history.
  */
 import { weekHours, paidHolidays, saturdayWork } from '../../modules/career/WorkingConditions.js';
-import { periodTitle } from '../../modules/world/Eras.js';
+import { periodTitle, businessInEra } from '../../modules/world/Eras.js';
 import { workLifeCard } from '../../modules/career/WorkLife.js';
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { intlOrgsCard } from './IntlOrgsView.js';
@@ -112,7 +112,8 @@ function jobMarketCard(state) {
   const claims = state.career.claims;
   if (!job && !nc && !claims?.active && !claims?.history.length) return '';
   const mode = workModeOf(job);
-  const modes = job ? Object.entries(WORK_MODES).map(([id, m]) => button(`${m.icon} ${m.label}`, 'jobMarket.workMode', { arg: id, variant: mode === id ? 'small on' : 'small', disabled: mode === id || Boolean(state.yearly['jobMarket.mode']), hint: m.desc })).join('') : '';
+  // Remote work from the mid-1990s, hybrid from the 2000s.
+  const modes = job ? Object.entries(WORK_MODES).filter(([id]) => id === mode || !state.era || yearNow(state) >= ({ remote: 1995, hybrid: 2005 }[id] ?? 0)).map(([id, m]) => button(`${m.icon} ${m.label}`, 'jobMarket.workMode', { arg: id, variant: mode === id ? 'small on' : 'small', disabled: mode === id || Boolean(state.yearly['jobMarket.mode']), hint: m.desc })).join('') : '';
   const c = claims?.active;
   const stage = c && { reported: 'Reported to HR', eeoc: 'EEOC investigation', rightToSue: 'Right-to-sue letter issued', lawsuit: 'Lawsuit pending' }[c.stage];
   return card('Job Market', `
@@ -472,7 +473,7 @@ export function careerView(state, ui = {}) {
   const fastPaths = directEntryCard(state);
   // Your job, its own dedicated cards, then the year's work; reference material folded after.
   const mins = job ? commuteOf(state, job) : 0;
-  const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
+  const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. ${!state.era || yearNow(state) >= 1995 ? 'Working remotely (Job Market) ends it.' : ''}</p>` : '';
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
   return `${current}${workLifeCard(state)}${careerPlayCard(state)}${advancementCard(state)}${companyCard(state)}${ministryCard(state)}${boardroomCard(state)}${chiefCard(state)}${postingsCard(state)}${commandCard(state)}${wearCard(state)}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${careerCredentialsSummary(state)}${job ? organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
@@ -566,7 +567,7 @@ function ownerSeatCard(state) {
 function fieldBusinessesCard(state) {
   const job = state.career.job;
   if (!job || state.business?.current) return '';
-  const ids = businessesFor(job.professionId);
+  const ids = businessesFor(job.professionId).filter((id) => businessInEra(state, id));
   if (!ids.length) return '';
   const items = ids.map((id) => {
     const r = ownershipRules(state, id);

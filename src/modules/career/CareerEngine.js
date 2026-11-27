@@ -397,7 +397,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
     professionId,
     sector: profession.sector,
     employer,
-    remote: employer.remote,
+    // (Working from home for an employer elsewhere: from the mid-1990s.)
+    remote: Boolean(employer.remote) && !(state.era && yearNow(state) < 1995),
     step,
     // Company pay: where you start in the salary band (from the step you negotiated).
     ...(onBands({ sector: profession.sector, professionId }) ? { band: bandFromStep(step) } : {}),

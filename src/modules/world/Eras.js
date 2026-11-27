@@ -1455,6 +1455,26 @@ const DRUG_FROM = { meth: 1970, mdma: 1985, fentanyl: 2013, cocaine: 1885, heroi
 const DRUG_PROHIBITION = { US: 1914, GB: 1920, IE: 1920, CA: 1908, AU: 1906, NZ: 1901, FR: 1916, DE: 1929, NL: 1919, IT: 1923, JP: 1930, CN: 1906, IN: 1930 };
 export const drugTradeIllegal = (state) => yearNow(state) >= (DRUG_PROHIBITION[state.character.countryId ?? 'US'] ?? 1925);
 const LAB_FROM = { grow: 1975, cook: 1980, press: 2014 };
+/**
+ * Career options of their day, by what they're called: specialist units, postings, routes and
+ * techniques that a job offers (SWAT from 1968, offshore platforms from 1947, hostage negotiators
+ * from 1972). An option may also carry its own `from`.
+ */
+const OPTION_FROM = [
+  [/\bSWAT\b|Special Action Force|Special Weapons/i, 1968], [/negotiat(or|ion team)|Hostage/i, 1972], [/Paramedic/i, 1970], [/crash-fire-rescue|Airport (fire|police)/i, 1925],
+  [/\bDP vessels|dynamic positioning/i, 1980], [/Offshore (platform|supply)/i, 1947], [/Remote-control operator/i, 1985], [/video-call|Digital services/i, 2005],
+  [/Aviation desk/i, 1925], [/TV doctor|television/i, 1950], [/School resource officer/i, 1953], [/K-9|Police dog/i, 1946], [/Gang unit|Gang intelligence/i, 1970],
+  [/Traffic \/ motors|motorcycle/i, 1910], [/Internal affairs/i, 1950], [/Dignitary protection/i, 1900], [/Hazmat|hazardous materials/i, 1975], [/Wildland strike team|Hotshot/i, 1947],
+  [/Technical rescue|rope rescue/i, 1970], [/Flight (nurse|paramedic|medic)|air ambulance|Helicopter/i, 1950], [/Cyber|digital forensics|data analytics/i, 1995], [/drone/i, 2012],
+  [/wiretap/i, 1900], [/body ?cam/i, 2014], [/telehealth|telemedicine/i, 1995],
+];
+export const optionOfDay = (state, o) => {
+  if (!state?.era || !o) return true;
+  const y = yearNow(state);
+  if (o.from > y) return false;
+  const text = `${o.name ?? o.label ?? ''} ${o.desc ?? ''}`;
+  return !OPTION_FROM.some(([re, from]) => y < from && re.test(text));
+};
 export const drugInEra = (state, id) => !(DRUG_FROM[id] > yearNow(state));
 export const labInEra = (state, id) => !(LAB_FROM[id] > yearNow(state));
 
@@ -1781,6 +1801,9 @@ const RENAMES = [
   [/\bChief Executive Officer\b/g, 1975, (y) => (y >= 1900 ? 'Managing Director' : 'Senior Partner')],
   [/\bAubagne\b/g, 1962, () => 'Sidi Bel Abbès'], // the Legion's depot moved from Algeria in 1962
   [/Debate & Model UN/g, 1947, () => 'Debating society'],
+  [/Gulf Coast Offshore/g, 1947, () => 'Gulf Coast Shipping'],
+  [/pole cameras, subpoenas, trash pulls/g, 1990, () => 'stake-outs, subpoenas, going through the rubbish'],
+  [/Sponsors, streams and appearances/g, 2005, (y) => (y >= 1925 ? 'Records, broadcasts and appearances' : 'Fees, sheet music and appearances')],
   [/Royal Military Academy Sandhurst/g, 1947, () => 'Royal Military College, Sandhurst'], // the RMA (Woolwich) and RMC (Sandhurst) merged in 1947
   [/\bForensic Accountant\b/g, 1980, () => 'Investigating Accountant'],
   [/\bInvestment Banking\b/g, 1930, () => 'Merchant Banking'],

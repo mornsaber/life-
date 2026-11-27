@@ -8,6 +8,7 @@
  * job.nonCompete: { years } — signed with this employer
  * state.career.nonCompete: { professionId, untilAge, employer, stateId } — binding you after you leave
  */
+import { yearNow as yearNowJM } from '../world/Eras.js';
 import { eraYear, yearlyPayNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { lawValue } from '../politics/Laws.js';
@@ -69,7 +70,7 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false, regio
     if (gap >= 2 && i > 0 && ladder[i - 1].track === 'shared') { level = ladder[i - 1]; levelled = 'down'; }
     else if (gap <= -2 && up.length) { level = up[0]; levelled = 'up'; }
   }
-  const modes = ['onsite', ...(canGoHybrid(profession, employer) ? ['hybrid'] : []), ...(canGoRemote(profession) ? ['remote'] : [])];
+  const modes = ['onsite', ...(canGoHybrid(profession, employer) && !(state.era && yearNowJM(state) < 2005) ? ['hybrid'] : []), ...(canGoRemote(profession) && !(state.era && yearNowJM(state) < 1995) ? ['remote'] : [])];
   const workMode = rng.pick(modes);
   // A name in the field is worth money.
   const salary = Math.round(job.salary * (1 + rng.float(...raise) + reputationOf(state) / 1000) * (workMode === 'remote' ? 0.95 : 1));

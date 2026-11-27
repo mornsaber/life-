@@ -1,4 +1,5 @@
 /** Police and fire on the Career tab. */
+import { optionOfDay } from '../../modules/world/Eras.js';
 import { esc, button, card, chip, kv, disclosure } from '../Components.js';
 import { areaOk, AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility, unitName, bureauName, isDetective } from '../../modules/publicsafety/PoliceLife.js';
 import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, teamName, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
@@ -39,7 +40,7 @@ export function policeCard(state) {
   const detective = isDetective(job);
   const areas = Object.entries(AREAS).filter(([id]) => areaOk(state, id).ok).map(([id, a]) => button(`${a.icon} ${a.name}`, 'police.area', { arg: id, variant: p.area === id ? 'small on' : 'small', disabled: p.area === id || Boolean(state.yearly['police.area']), hint: a.desc })).join('');
   const shifts = Object.entries(PSHIFTS).map(([id, s]) => button(`${s.icon} ${s.name}`, 'police.shift', { arg: id, variant: p.shift === id ? 'small on' : 'small', disabled: p.shift === id || Boolean(state.yearly['police.shift']), hint: s.pay > 1 ? `+${Math.round((s.pay - 1) * 100)}% differential` : '' })).join('');
-  const units = Object.entries(UNITS).filter(([id, u]) => !u.minSize || unitEligibility(state, id).reason !== 'Only large forces have this unit').map(([id, u]) => {
+  const units = Object.entries(UNITS).filter(([id, u]) => optionOfDay(state, { ...u, name: unitName(state, id) ?? u.name })).filter(([id, u]) => !u.minSize || unitEligibility(state, id).reason !== 'Only large forces have this unit').map(([id, u]) => {
     const on = p.unit === id;
     const ok = unitEligibility(state, id);
     return button(`${u.icon} ${on ? '✓ ' : ''}${esc(unitName(state, id))}`, 'police.unit', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && (!ok.ok || Boolean(state.yearly['police.unit'])), hint: on ? 'Return to patrol' : ok.ok ? `${u.pay ? `+$${n(u.pay)}/yr · ` : ''}${u.desc}` : ok.reason });
@@ -70,12 +71,12 @@ export function fireCard(state) {
   if (!isFirefighter(job) || !f) return '';
   const st = STATIONS[f.station] ?? STATIONS[stationsFor(job.professionId)[0]];
   // Only the stations your city actually has.
-  const stations = Object.entries(STATIONS).filter(([id]) => stationsFor(job.professionId).includes(id) && !/doesn't have one|this size|dense city/.test(stationEligibility(state, id).reason ?? '')).map(([id, s]) => {
+  const stations = Object.entries(STATIONS).filter(([, st]) => optionOfDay(state, st)).filter(([id]) => stationsFor(job.professionId).includes(id) && !/doesn't have one|this size|dense city/.test(stationEligibility(state, id).reason ?? '')).map(([id, s]) => {
     const ok = stationEligibility(state, id);
     return button(`${s.icon} ${s.name}`, 'fireLife.station', { arg: id, variant: f.station === id ? 'small on' : 'small', disabled: f.station === id || !ok.ok || Boolean(state.yearly['fire.station']), hint: ok.ok ? s.desc : ok.reason });
   }).join('');
   const shifts = Object.entries(FSHIFTS).map(([id, s]) => button(`${s.icon} ${s.name}`, 'fireLife.shift', { arg: id, variant: f.shift === id ? 'small on' : 'small', disabled: f.shift === id || Boolean(state.yearly['fire.shift']), hint: s.desc })).join('');
-  const teams = Object.entries(TEAMS).filter(([id]) => !/Not an? .* team/.test(teamEligibility(state, id).reason ?? '')).map(([id, t]) => {
+  const teams = Object.entries(TEAMS).filter(([, t]) => optionOfDay(state, t)).filter(([id]) => !/Not an? .* team/.test(teamEligibility(state, id).reason ?? '')).map(([id, t]) => {
     const on = Boolean(f.teams[id]);
     const ok = teamEligibility(state, id);
     return button(`${t.icon} ${on ? '✓ ' : ''}${esc(teamName(state, id))}`, 'fireLife.team', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && !ok.ok, hint: on ? 'Leave the team' : ok.ok ? `${t.pay ? `+$${n(t.pay)}/yr · ` : ''}${t.desc}` : ok.reason });

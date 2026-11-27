@@ -9,7 +9,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
-import { yearNow } from '../src/modules/world/Eras.js';
+import { yearNow, periodText } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -42,7 +42,7 @@ for (const [cc, born] of CELLS) {
       const where = `${cc} ${yearNow(state)} age ${state.character.age}`;
       for (const [id, view] of Object.entries(VIEWS)) {
         let html = '';
-        try { html = view(state, {}) ?? ''; } catch { continue; }
+        try { html = periodText(view(state, {}) ?? ''); } catch { continue; }
         for (const m of html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)) add(id, `▣ ${strip(m[1]).slice(0, 70)}`, where);
         for (const m of html.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)) { const t = strip(m[1]).slice(0, 70); if (t && t.length > 2) add(id, `• ${t}`, where); }
         for (const m of html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/g)) { const t = strip(m[1]).slice(0, 60); if (t) add(id, `◦ ${t}`, where); }

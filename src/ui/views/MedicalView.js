@@ -2,6 +2,7 @@
  * Medicine on screen: pre-med and medical school (School tab), residency
  * and practice (Career tab).
  */
+import { yearNow as yearNowMV } from '../../modules/world/Eras.js';
 import { esc, button, card, chip, kv, meter } from '../Components.js';
 import { SPECIALTIES, PRACTICES, TRAINING_LEVELS, isDoctor, practiceMultiplier } from '../../modules/career/Medicine.js';
 import { MCAT, ROTATIONS, PREMED_CAP, MED_SCHOOL_PROGRAMS, mcatEligibility, step1Odds } from '../../modules/medicine/MedicalLife.js';
@@ -80,7 +81,7 @@ export function caseFilesCard(state) {
     <div class="action-grid">
       ${btn('🤲 Volunteer at a free clinic', 'freeClinic', 'Less burnout · maybe a case')}
       ${btn('🌍 Medical mission', 'mission', 'A month unpaid · lives saved')}
-      ${btn('📺 TV doctor & health column', 'media', 'Extra income')}
+      ${btn(state.era && yearNowMV(state) < 1950 ? '📰 A health column in the papers' : '📺 TV doctor & health column', 'media', 'Extra income')}
     </div>
     <p class="fine">Most years a patient walks in with a puzzle. Read the clues and make the call — or order more tests to be safe. Getting critical cases right saves lives.</p>`, { icon: '🗂️', accent: 'cyan' });
 }

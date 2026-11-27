@@ -3,6 +3,7 @@
  * book of business, projects, seasons, audience). Read-only: they never
  * create records.
  */
+import { optionOfDay } from '../../modules/world/Eras.js';
 import { showbizOf, showbizKind } from '../../modules/career/Showbiz.js';
 import { clubOf } from '../../modules/career/SportClubs.js';
 import { institutionOf, KINDS as INSTITUTION_KINDS } from '../../modules/career/Institutions.js';
@@ -29,7 +30,7 @@ function shiftSection(state) {
   const v = shiftView(state);
   if (!v) return '';
   const { cfg, rec, postId } = v;
-  const posts = Object.entries(cfg.posts).map(([id, p]) => {
+  const posts = Object.entries(cfg.posts).filter(([, o]) => optionOfDay(state, o)).map(([id, p]) => {
     const ok = postEligibility(state, id);
     return button(`${p.icon} ${p.name}`, 'shiftWork.post', { arg: id, variant: id === postId ? 'small on' : 'small', disabled: id === postId || !ok.ok, hint: ok.ok ? `${p.desc}${p.pay > 1 ? ` · +${Math.round((p.pay - 1) * 100)}% pay` : ''}` : ok.reason });
   }).join('');
@@ -43,7 +44,7 @@ function caseSection(state) {
   const { cfg, rec } = v;
   const k = scaleOf(cfg);
   const focus = rec?.focus ?? 'balanced';
-  const buttons = Object.entries(FOCUS).map(([id, f]) => button(`${f.icon} ${f.name}`, 'caseload.focus', { arg: id, variant: id === focus ? 'small on' : 'small', disabled: id === focus || Boolean(state.yearly['caseload.focus']), hint: f.desc })).join('');
+  const buttons = Object.entries(FOCUS).filter(([, o]) => optionOfDay(state, o)).map(([id, f]) => button(`${f.icon} ${f.name}`, 'caseload.focus', { arg: id, variant: id === focus ? 'small on' : 'small', disabled: id === focus || Boolean(state.yearly['caseload.focus']), hint: f.desc })).join('');
   const cases = (rec?.cases ?? []).slice(0, 8).map((c) => `<li class="report-row"><div><b>${esc(c.name)}</b> <small class="muted">${esc(c.kind)} · ${'●'.repeat(c.difficulty)}${'○'.repeat(3 - c.difficulty)}</small></div><small>${esc(cfg.stages[Math.min(c.stage, cfg.stages.length - 1)])}</small></li>`).join('');
   const open = (rec?.cases.length ?? 0) * k;
   const stats = rec ? `<p>${chip(`📂 ${open} open`, open > cfg.cap ? 'warn' : '')} ${chip(`✅ ${rec.good * k} closed well`, 'good')} ${rec.bad ? chip(`❌ ${rec.bad * k} badly`, 'warn') : ''}</p>${meter(rec.rep, { label: 'Reputation' })}` : '';
@@ -71,7 +72,7 @@ function projectSection(state) {
   if (!v) return '';
   const { cfg, rec } = v;
   const approach = rec?.approach ?? 'careful';
-  const buttons = Object.entries(APPROACH).map(([id, a]) => button(`${a.icon} ${a.name}`, 'projectWork.approach', { arg: id, variant: id === approach ? 'small on' : id === 'corners' ? 'small danger' : 'small', disabled: id === approach || Boolean(state.yearly['projectWork.approach']), hint: a.desc })).join('');
+  const buttons = Object.entries(APPROACH).filter(([, o]) => optionOfDay(state, o)).map(([id, a]) => button(`${a.icon} ${a.name}`, 'projectWork.approach', { arg: id, variant: id === approach ? 'small on' : id === 'corners' ? 'small danger' : 'small', disabled: id === approach || Boolean(state.yearly['projectWork.approach']), hint: a.desc })).join('');
   const p = rec?.project;
   const now = p ? `<p><b>${esc(p.name.replace(/^./, (c) => c.toUpperCase()))}</b></p>${meter(p.progress, { label: 'Progress' })}${meter(p.quality, { label: 'Quality' })}` : '<p class="fine">Your next project starts with the new year.</p>';
   const port = (rec?.portfolio ?? []).map((x) => `<li class="report-row"><div><b>${esc(x.name.replace(/^./, (c) => c.toUpperCase()))}</b> <small class="muted">age ${x.age}</small></div><small class="${x.outcome === 'trouble' ? 'neg' : ''}">${{ acclaimed: '🏆 acclaimed', delivered: '✅ delivered', trouble: '⚠️ trouble' }[x.outcome]}</small></li>`).join('');
@@ -83,7 +84,7 @@ function seasonSection(state) {
   if (!v) return '';
   const { cfg, rec } = v;
   const planId = rec?.plan ?? Object.keys(cfg.plans)[0];
-  const buttons = Object.entries(cfg.plans).map(([id, p]) => button(`${p.icon} ${p.name}`, 'seasonWork.plan', { arg: id, variant: id === planId ? 'small on' : 'small', disabled: id === planId || Boolean(state.yearly['seasonWork.plan']), hint: p.desc })).join('');
+  const buttons = Object.entries(cfg.plans).filter(([, o]) => optionOfDay(state, o)).map(([id, p]) => button(`${p.icon} ${p.name}`, 'seasonWork.plan', { arg: id, variant: id === planId ? 'small on' : 'small', disabled: id === planId || Boolean(state.yearly['seasonWork.plan']), hint: p.desc })).join('');
   const past = (rec?.seasons ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>Age ${x.age}</b> <small class="muted">${esc(cfg.plans[x.plan]?.name ?? '')}</small></div><small class="${x.tier >= cfg.tiers.length - 2 ? 'neg' : ''}">${esc(x.result)}${x.pay ? ` · $${x.pay.toLocaleString()}` : ''}</small></li>`).join('');
   const best = rec?.best ? `<p>${chip(`🌟 Best: ${esc(rec.best.result)} (age ${rec.best.age})`, 'good')}</p>` : '<p class="fine">Your first season is still ahead.</p>';
   return disclosure('engine.season', `${cfg.icon} ${esc(cfg.label)}`, `${best}<h4 class="sub">Next season</h4><div class="toggle-row">${buttons}</div>${past ? `<h4 class="sub">Past seasons</h4><ul class="history">${past}</ul>` : ''}${rec ? meter(rec.rep, { label: 'Reputation' }) : ''}<p class="fine">Plan the season once a year. Skill, weather, markets and luck decide the result, which pays on top of your base.</p>`, { count: cfg.plans[planId]?.name });
@@ -96,7 +97,7 @@ function audienceSection(state) {
   const y = state.yearly ?? {};
   const pace = rec?.pace ?? 'steady';
   const paces = Object.entries(PACE).map(([id, p]) => button(`${p.icon} ${p.name}`, 'audience.pace', { arg: id, variant: id === pace ? 'small on' : 'small', disabled: id === pace || Boolean(y['audience.pace']), hint: p.desc })).join('');
-  const releases = Object.entries(cfg.releases).map(([id, r]) => button(`${r.icon} ${r.name}`, 'audience.release', { arg: id, variant: 'small', disabled: Boolean(y['audience.release']), hint: `${r.desc}${r.cost ? ` · $${r.cost.toLocaleString()}` : ''}` })).join('');
+  const releases = Object.entries(cfg.releases).filter(([, o]) => optionOfDay(state, o)).map(([id, r]) => button(`${r.icon} ${r.name}`, 'audience.release', { arg: id, variant: 'small', disabled: Boolean(y['audience.release']), hint: `${r.desc}${r.cost ? ` · $${r.cost.toLocaleString()}` : ''}` })).join('');
   const past = (rec?.releases ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>${esc(x.name.replace(/^./, (c) => c.toUpperCase()))}</b> <small class="muted">age ${x.age}</small></div><small class="${x.reception === 'controversy' || x.reception === 'flop' ? 'neg' : ''}">${{ hit: '🚀 hit', 'well received': '👍 well received', flop: '😶 flop', controversy: '🔥 controversy' }[x.reception]}</small></li>`).join('');
   const stats = rec ? `<p>${chip(`${cfg.icon} ${fansLabel(rec.fans)} ${esc(cfg.noun)}`, 'good')} ${chip(`📈 peak ${fansLabel(rec.peak)}`)} ${rec.income ? chip(`💵 $${rec.income.toLocaleString()} last year`, 'good') : ''}</p>${meter(rec.rep, { label: 'Reputation' })}${meter(rec.burnout, { label: 'Burnout' })}` : '<p class="fine">Your audience starts with your first year.</p>';
   return disclosure('engine.audience', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your pace</h4><div class="toggle-row">${paces}</div><h4 class="sub">This year's big release</h4><div class="toggle-row">${releases}</div>${past ? `<h4 class="sub">Past releases</h4><ul class="history">${past}</ul>` : ''}<p class="fine">${cfg.perFan ? `Sponsors, streams and appearances pay by the size of your following. ` : ''}Burnout past 85 forces a break.</p>`, { count: rec ? `${fansLabel(rec.fans)} ${cfg.noun}` : null });
@@ -108,7 +109,7 @@ function investigationSection(state) {
   const { cfg, rec, working } = v;
   if (!working) return disclosure('engine.investigations', `${cfg.icon} ${esc(cfg.label)}`, '<p class="fine">Cases come once you finish training.</p>');
   const tech = rec?.technique ?? 'surveillance';
-  const buttons = Object.entries(TECHNIQUES).map(([id, t]) => { const ok = techniqueEligibility(state, id); return button(`${t.icon} ${t.name}`, 'investigations.technique', { arg: id, variant: id === tech ? 'small on' : id === 'undercover' ? 'small danger' : 'small', disabled: id === tech || !ok.ok, hint: ok.ok ? t.desc : ok.reason }); }).join('');
+  const buttons = Object.entries(TECHNIQUES).filter(([, o]) => optionOfDay(state, o)).map(([id, t]) => { const ok = techniqueEligibility(state, id); return button(`${t.icon} ${t.name}`, 'investigations.technique', { arg: id, variant: id === tech ? 'small on' : id === 'undercover' ? 'small danger' : 'small', disabled: id === tech || !ok.ok, hint: ok.ok ? t.desc : ok.reason }); }).join('');
   const c = rec?.case;
   const now = c ? `<p><b>${esc(c.target.replace(/^./, (x) => x.toUpperCase()))}</b> <small class="muted">${esc(c.kind)} · year ${c.years}</small></p>${meter(Math.min(100, c.evidence), { label: 'Evidence' })}${meter(Math.min(100, c.heat * 2), { label: 'Exposure' })}${button('🚨 Take it down now', 'investigations.takedown', { variant: 'small', disabled: c.evidence < 40, hint: c.evidence < 40 ? 'Not enough for a prosecutor yet' : 'Arrest now — weaker evidence, likelier acquittals' })}` : '<p class="fine">A new case opens with the new year.</p>';
   const closed = (rec?.closed ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>${esc(x.target.replace(/^./, (y) => y.toUpperCase()))}</b> <small class="muted">${esc(x.kind)} · age ${x.age}</small></div><small class="${['acquitted', 'blown'].includes(x.outcome) ? 'neg' : ''}">${{ landmark: '🏆 landmark', convicted: '⚖️ convicted', acquitted: '❌ acquitted', blown: '💨 blown' }[x.outcome]}</small></li>`).join('');
@@ -121,8 +122,8 @@ function routeSection(state) {
   if (!v) return '';
   const { cfg, rec } = v;
   const lineId = rec?.line ?? Object.keys(cfg.lines)[0];
-  const lines = Object.entries(cfg.lines).map(([id, l]) => { const ok = lineEligibility(state, id); return button(`${l.icon} ${l.name}`, 'routeWork.line', { arg: id, variant: id === lineId ? 'small on' : 'small', disabled: id === lineId || !ok.ok, hint: ok.ok ? `${l.desc}${l.pay > 1 ? ` · +${Math.round((l.pay - 1) * 100)}% pay` : ''}` : ok.reason }); }).join('');
-  const quals = Object.entries(cfg.quals).map(([id, q]) => { const has = Boolean(rec?.quals?.[id]); const ok = qualEligibility(state, id); return button(`${q.icon} ${has ? '✓ ' : ''}${q.name}`, 'routeWork.qualify', { arg: id, variant: has ? 'small on' : 'small', disabled: has || !ok.ok, hint: has ? 'Qualified' : ok.ok ? `${q.desc}${q.cost ? ` · $${q.cost.toLocaleString()}` : ''}${q.pay ? ` · +${Math.round(q.pay * 100)}% pay` : ''}` : ok.reason }); }).join('');
+  const lines = Object.entries(cfg.lines).filter(([, o]) => optionOfDay(state, o)).map(([id, l]) => { const ok = lineEligibility(state, id); return button(`${l.icon} ${l.name}`, 'routeWork.line', { arg: id, variant: id === lineId ? 'small on' : 'small', disabled: id === lineId || !ok.ok, hint: ok.ok ? `${l.desc}${l.pay > 1 ? ` · +${Math.round((l.pay - 1) * 100)}% pay` : ''}` : ok.reason }); }).join('');
+  const quals = Object.entries(cfg.quals).filter(([, o]) => optionOfDay(state, o)).map(([id, q]) => { const has = Boolean(rec?.quals?.[id]); const ok = qualEligibility(state, id); return button(`${q.icon} ${has ? '✓ ' : ''}${q.name}`, 'routeWork.qualify', { arg: id, variant: has ? 'small on' : 'small', disabled: has || !ok.ok, hint: has ? 'Qualified' : ok.ok ? `${q.desc}${q.cost ? ` · $${q.cost.toLocaleString()}` : ''}${q.pay ? ` · +${Math.round(q.pay * 100)}% pay` : ''}` : ok.reason }); }).join('');
   const stats = rec ? `<p>${chip(`${cfg.icon} ${rec.logged.toLocaleString()} ${esc(cfg.unit)} logged`)} ${chip(`🛡️ ${rec.safeYears} safe year${rec.safeYears === 1 ? '' : 's'}`, rec.safeYears >= 3 ? 'good' : '')} ${rec.incidents ? chip(`⚠️ ${rec.incidents} incident${rec.incidents === 1 ? '' : 's'}`, 'warn') : ''}</p>${meter(rec.rep, { label: 'Reputation' })}${rec.checkDue ? `<p class="fine">Next ${esc(cfg.checkName)} at age ${rec.checkDue}.</p>` : ''}` : '<p class="fine">Your logbook opens with your first year.</p>';
   return disclosure('engine.route', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your line (bid by seniority)</h4><div class="toggle-row">${lines}</div><h4 class="sub">Qualifications</h4><div class="toggle-row">${quals}</div><p class="fine">One bid and one course a year. Qualifications open better lines and add pay.</p>`, { count: cfg.lines[lineId]?.name });
 }
