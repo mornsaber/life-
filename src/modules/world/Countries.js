@@ -25,7 +25,7 @@
 import { SERVICE_ABROAD, SERVICE_TERMS } from './ServiceTerms.js';
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
-import { eraCountryName, eraCountryFlag, periodCurrency, moneyRulerOf } from './Eras.js';
+import { eraCountryName, eraCountryFlag, periodCurrency, moneyRulerOf, eraYear } from './Eras.js';
 import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { HISTORIC_TOWNS, HISTORIC_PROVINCES } from './HistoricCities.js';
@@ -458,10 +458,26 @@ export const countryOfRegion = (regionId) => FOREIGN_CITIES[regionId]?.country ?
 /* Money and words, for display                                        */
 /* ------------------------------------------------------------------ */
 
+/** Pounds, shillings and pence: twenty shillings to the pound and twelve pence to the shilling (until decimalisation). */
+export function lsd(pounds) {
+  const neg = pounds < 0;
+  const totalPence = Math.round(Math.abs(pounds) * 240);
+  const l = Math.floor(totalPence / 240);
+  const sh = Math.floor((totalPence % 240) / 12);
+  const d = totalPence % 12;
+  const parts = l >= 100 ? [`£${Math.round(Math.abs(pounds)).toLocaleString('en-US')}`] : [l ? `£${l}` : '', sh || (l && d && l < 10) ? `${sh}s` : '', d && l < 10 ? `${d}d` : ''].filter(Boolean);
+  return `${neg ? '−' : ''}${parts.join(' ') || '1d'}`;
+}
+/** Which pounds still counted in shillings and pence, and until when. */
+const LSD_UNTIL = { GBP: 1971, IEP: 1971, AUP: 1966, NZP: 1967, ZAP: 1961, JMP: 1969, NGP: 1973, GHP: 1965, KEP: 1966, RHP: 1970, CYP: 1955, MTP: 1972 };
 function formatLocal(usd, currency) {
   const v = usd * currency.perUsd;
+  // A pound before decimalisation: small sums in shillings and pence, not "£0".
+  if (currency.symbol === '£' && Math.abs(v) < 100 && eraYear() < (LSD_UNTIL[currency.code] ?? (currency.ofTheDay ? 1971 : 0))) return lsd(v);
   const digits = currency.code === 'JPY' ? -3 : 0;
   const rounded = digits < 0 && Math.abs(v) >= 10000 ? Math.round(v / 1000) * 1000 : Math.round(v);
+  // Small sums in a decimal currency keep their cents, not "€0".
+  if (Math.abs(v) < 10 && Math.abs(v) >= 0.005 && Math.abs(v - Math.round(v)) >= 0.05 && digits === 0 && !['JPY', 'KRW', 'IDR', 'VND', 'IRR'].includes(currency.code)) return `${currency.symbol}${v.toFixed(2)}`;
   return `${currency.symbol}${rounded.toLocaleString('en-US')}`;
 }
 
