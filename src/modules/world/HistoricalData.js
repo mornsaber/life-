@@ -16,7 +16,10 @@ import { REGIME_YEARS } from './data/regimes.js';
 import { DEMOGRAPHY, DEMOGRAPHY_YEARS } from './data/demography.js';
 import { US_NAMES_BY_DECADE } from './data/names.js';
 import { CURRENCY_HISTORY } from './data/currencies.js';
-import { WARS } from './data/wars.js';
+import { WARS as RAW_WARS } from './data/wars.js';
+import { correctedWars } from './data/warFixes.js';
+/** The war record with its corrections (data/warFixes.js): known names, outcomes, a country's own part. */
+export const WARS = correctedWars(RAW_WARS);
 import { STATES, SOVEREIGN_YEARS } from './data/states.js';
 import { PACKS } from './packs/index.js';
 
@@ -287,11 +290,12 @@ export function periodCurrency(cc, year, currency) {
 /* ---------------------------------------------------------------- wars */
 
 /** Wars the history engine already tells in its own words (world/History.js). */
-const SCRIPTED = /World War|Crimean|Mexican-American|Franco-Prussian|Spanish-American|Russo-Japanese|^Korean|Vietnam War|Vietnamese|Spanish Civil|Taiping|Boxer|Invasion of Afghanistan|Opium|Union vs|Confederacy|American Civil|Boer|Indian Mutiny|Sepoy|Napoleon/i;
+const SCRIPTED = /World War|Crimean|Mexican-American|Franco-Prussian|Spanish-American|Russo-Japanese|^Korean|Vietnam War|^Vietnam Phase|Spanish Civil|Taiping|Boxer|Invasion of Afghanistan|Opium|Union vs|Confederacy|American Civil|Boer|Indian Mutiny|Sepoy|Napoleon/i;
+const scripted = (w) => !w.known && SCRIPTED.test(w.name);
 const ours = (w, cc) => w.a.includes(cc) || w.b.includes(cc);
 /** Correlates of War wars starting in a year that a country fought (and history doesn't script). */
-export const warsStarting = (year) => WARS.filter((w) => w.from === year && !SCRIPTED.test(w.name));
-export const warsEnding = (year) => WARS.filter((w) => w.to === year && !SCRIPTED.test(w.name));
+export const warsStarting = (year) => WARS.filter((w) => w.from === year && !scripted(w));
+export const warsEnding = (year) => WARS.filter((w) => w.to === year && !scripted(w));
 /** A recorded war by its id (the game's war ids are `cow.<id>`). */
 const WAR_BY_ID = new Map(WARS.map((w) => [w.id, w]));
 export const recordedWar = (id) => WAR_BY_ID.get(Number(id)) ?? null;

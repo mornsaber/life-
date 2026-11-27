@@ -798,14 +798,14 @@ const WAR_WORDS = /war|rebellion|revolt|revolution|insurrection|uprising|conflic
  */
 /** The country a civil war is fought in: the one it is named after, else the side that lost the most. */
 function civilHost(w) {
+  if (w.host) return w.host;
   const sides = (w.a ?? []).filter((cc) => COUNTRIES[cc]);
   const named = sides.find((cc) => [COUNTRIES[cc].baseName ?? COUNTRIES[cc].name, COUNTRIES[cc].name, COUNTRIES[cc].demonym].some((n) => n && w.name.includes(n)));
   return named ?? [...sides].sort((x, y) => (w.deaths?.[y] ?? 0) - (w.deaths?.[x] ?? 0))[0] ?? w.a?.[0];
 }
-/** The names the wars are known by, where the record's own is a battlefield (Assam, 1962). */
-const KNOWN_AS = { 160: 'the Sino-Indian War' };
 function warTitle(w) {
-  if (KNOWN_AS[w.id]) return KNOWN_AS[w.id];
+  // A name the corrections give (data/warFixes.js) is the war's own.
+  if (w.known) return w.name;
   const n = w.name.replace(/,? Phase \d+$/i, '').replace(/^(\w+)'s (.+)$/, '$2 in $1').trim();
   if (w.kind !== 'civil') return WAR_WORDS.test(n) ? `the ${n}` : `the ${n} War`;
   const own = COUNTRIES[civilHost(w)];

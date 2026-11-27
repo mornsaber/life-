@@ -82,7 +82,8 @@ t('nationalise a sector by statute: America\'s railroads', () => {
   setLaw(w.state, 'US', 'ownership_rail', true);
   w.state.laws.federal = { ...(w.state.laws.federal ?? {}), ownership_rail: true };
   w.engine.ageUp();
-  assert.equal(w.state.career.job.employer.ownership, 'state');
+  // (A furlough in a downturn can take the job that year; the railroads are nationalised all the same.)
+  if (w.state.career.job) assert.equal(w.state.career.job.employer.ownership, 'state');
   assert.equal(employer(w, 'railroad').ownership, 'state');
 });
 t('a planned economy that privatises small trade lets you open a café', () => {

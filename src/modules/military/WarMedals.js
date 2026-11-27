@@ -5,7 +5,7 @@
  *
  *   warMedals(warId, cc, won) → [{ name, ribbon, prestige }]
  */
-import { WARS } from '../world/data/wars.js';
+import { WARS } from '../world/HistoricalData.js';
 import { addHonor } from '../../core/State.js';
 import { colonyHere } from '../world/Eras.js';
 import { COUNTRIES } from '../world/Countries.js';
