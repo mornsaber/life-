@@ -41,6 +41,22 @@ export function officialAtheism(state) {
   return false;
 }
 
+/** When each tradition began (the Global Methodist Church in 2022, Pentecostalism at Azusa Street in 1906). */
+const TRADITION_FROM = { churchPlant: 1970, conservativeMethodist: 2022, evangelical: 1950, ifb: 1928, pentecostal: 1906, apostolic: 1916, lds: 1830, polygamistSect: 1890, reformJewish: 1810, conservativeJewish: 1886, salafi: 1970, unitarian: 1774 };
+/** Where the faiths of later migrants arrived only with them (most of the West after the Second World War; Chinese temples in California from the 1850s). */
+const MIGRANT_WEST = ['GB', 'IE', 'US', 'CA', 'AU', 'NZ', 'DE', 'FR', 'IT', 'ES', 'PT', 'NL', 'BE', 'SE', 'NO', 'DK', 'FI', 'AT', 'CH'];
+const MIGRANT_FAITHS = ['sunni', 'shia', 'salafi', 'hindu', 'sikh', 'buddhist', 'chineseFolk', 'shinto'];
+const ARRIVED = { US: { buddhist: 1850, chineseFolk: 1850, shinto: 1890 }, CA: { buddhist: 1880, chineseFolk: 1880, sikh: 1904 }, AU: { buddhist: 1855, chineseFolk: 1855 }, FR: { sunni: 1920 }, GB: { sunni: 1940 } };
+/** Was this tradition there to be raised in or join, here and now? */
+export function faithExists(state, id) {
+  if (!id || !state?.era) return true;
+  const y = yearNow(state);
+  if (TRADITION_FROM[id] > y) return false;
+  const c = cc(state);
+  if (MIGRANT_WEST.includes(c) && MIGRANT_FAITHS.includes(id)) return y >= (ARRIVED[c]?.[id] ?? 1950);
+  return true;
+}
+
 /** How much of the modern share of "no religion" there was in a year (1 = today's). */
 export function unbeliefScale(state) {
   const y = yearNow(state);
@@ -136,7 +152,9 @@ export const clubsHere = (state) => Object.keys(CLUBS).filter((id) => { const r 
 
 const frng = (state) => {
   state.faithDay ??= { clubs: [] };
-  state.faithDay.seed = ((state.faithDay.seed ?? (((state.world?.seed ?? 3) * 3266489917) >>> 0)) * 1664525 + 1013904223) >>> 0;
+  // (Seeded by the person too: at birth the world's seed isn't drawn yet, and every life would roll the same faith.)
+  const who = [...`${state.character?.firstName ?? ''}${state.character?.lastName ?? ''}${state.character?.birthYear ?? ''}${state.character?.regionId ?? ''}`].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7);
+  state.faithDay.seed = ((state.faithDay.seed ?? ((((state.world?.seed ?? 3) * 3266489917) ^ who) >>> 0)) * 1664525 + 1013904223) >>> 0;
   return new Random(state.faithDay.seed);
 };
 
@@ -184,11 +202,17 @@ export const FaithOfTheDayModule = {
     // Raised in a faith, as nearly everyone was before the 1960s.
     if (state.community && state.era && !fd.eraChecked && state.character.age === 0) {
       fd.eraChecked = true;
+      // A family can only be raised in a faith that was there: no Sikh gurdwara in 1860s Cardiff.
+      if (state.community.upbringing && !faithExists(state, state.community.upbringing)) {
+        const rng = frng(state);
+        const mix = Object.entries(RELIGION_MIX[cc(state)] ?? { mainline: 1 }).filter(([id]) => id !== 'none' && TRADITIONS[id] && faithExists(state, id));
+        if (mix.length) { const t = rng.weighted(mix, ([, w]) => w)[0]; Object.assign(state.community, newCommunity(t, congregationName(rng, t), 0), { mentorYears: state.community.mentorYears ?? 0 }); }
+      }
       const scale = unbeliefScale(state);
       if (state.community.upbringing == null && scale < 1) {
         const rng = frng(state);
         if (!rng.chance(scale)) {
-          const mix = Object.entries(RELIGION_MIX[cc(state)] ?? { mainline: 1 }).filter(([id]) => id !== 'none' && TRADITIONS[id]);
+          const mix = Object.entries(RELIGION_MIX[cc(state)] ?? { mainline: 1 }).filter(([id]) => id !== 'none' && TRADITIONS[id] && faithExists(state, id));
           if (mix.length) {
             const t = rng.weighted(mix, ([, w]) => w)[0];
             Object.assign(state.community, newCommunity(t, congregationName(rng, t), 0), { mentorYears: state.community.mentorYears ?? 0 });

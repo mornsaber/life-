@@ -6,7 +6,7 @@ import { esc, money, button, card, chip, kv, empty, select, disclosure } from '.
 import { accountsHere, accountRoom } from '../../modules/investing/Brokerage.js';
 import { STOCK_INDEX } from '../../modules/world/CountryLaw.js';
 import { ASSETS, PROFILES, DC_FUNDS, IRA_LIMIT, portfolioValue } from '../../modules/investing/index.js';
-import { assetExists, periodAssetName, iraExists, rothExists, dcExists, hasTech } from '../../modules/world/Eras.js';
+import { assetExists, periodAssetName, iraExists, rothExists, dcExists, hasTech, yearNow } from '../../modules/world/Eras.js';
 import { yearlyCount } from '../../core/State.js';
 import { stocksCard } from './StocksView.js';
 import { CAPITAL_GAINS } from '../../modules/life/Finances.js';
@@ -59,7 +59,7 @@ export function investView(state) {
     <h4 class="sub">Holdings</h4>${rows ? `<ul class="history">${rows}</ul>` : empty('No investments yet.')}
     ${spec ? `<h4 class="sub">Speculative bets</h4><ul class="history">${spec}</ul>` : ''}
     ${buyForm}
-    <div class="toggle-row">${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}</div>
+    ${state.era && yearNow(state) < 1976 && !inv.auto.enabled ? '' : `<div class="toggle-row">${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}</div>`}
     ${disclosure('invest.settings', `⚙️ Risk profile, auto-invest, ${!iraExists(state) ? 'and auto-invest' : acc.shared ? (dcExists(state) ? 'IRAs & 401(k)' : 'IRAs') : 'savings accounts & pension'}`, `
     <h4 class="sub">Risk profile</h4><div class="toggle-row">${profiles}
       ${button('⚖️ Rebalance', 'investing.rebalance', { variant: 'small', disabled: !rows, hint: 'Sells everything (taxable) and rebuys the mix' })}</div>

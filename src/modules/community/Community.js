@@ -17,6 +17,7 @@
  * Clergy careers live in the job tree (profession 'clergy'); ordination is
  * gated by clergyEligibility() and titles come from your tradition.
  */
+import { faithExists } from './FaithOfTheDay.js';
 import { schismIssue } from './Religions.js';
 import { Random } from '../../core/Random.js';
 import { addHonor, hasFelony, isIncarcerated, bumpYearly, yearlyCount } from '../../core/State.js';
@@ -34,7 +35,7 @@ export const ATTENDANCE = {
 export const GIVING_LEVELS = [0, 2, 5, 10];
 
 /** When each kind of volunteering began: Habitat for Humanity 1976, hospices 1967, crisis lines 1953, animal shelters 1866, food banks 1967 (soup kitchens before). */
-export const VOLUNTEER_FROM = { habitat: 1976, hospice: 1967, crisisLine: 1953, animalShelter: 1866, foodBank: 1967, tutoring: 1900 };
+export const VOLUNTEER_FROM = { campaign: 1939, habitat: 1976, hospice: 1967, crisisLine: 1953, animalShelter: 1866, foodBank: 1967, tutoring: 1900 };
 export const volunteerInEra = (state, id) => !(VOLUNTEER_FROM[id] > yearNow(state));
 
 export const VOLUNTEER_ORGS = {
@@ -288,6 +289,7 @@ export const Community = {
 
   actions: {
     join(ctx, traditionId) {
+      if (!faithExists(ctx.state, traditionId)) return ctx.toast('There is no congregation of that faith here yet.', 'warn');
       const { state } = ctx;
       const t = TRADITIONS[traditionId];
       if (!t) return;

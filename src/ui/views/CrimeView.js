@@ -6,14 +6,14 @@ import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT, OFFENSES, SEVERITY_LABEL 
 import { EVIDENCE, stageOf, STAGE_LABEL, caseRef } from '../../modules/crime/Cases.js';
 import { docketRole, ROLE_LABEL, resolutions, workActions, workedThisYear, docketMeta } from '../../modules/crime/Docket.js';
 import { PRODUCTS, LABS, BUYS, priceHere, canImport, kg } from '../../modules/crime/Drugs.js';
-import { JUVENILE_CRIMES } from '../../modules/crime/Gangs.js';
+import { JUVENILE_CRIMES, juvenileCrimeHere } from '../../modules/crime/Gangs.js';
 import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../modules/crime/CrimeWorld.js';
 import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
 import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
 import { crimePlan, crimeDesc } from '../../modules/legal/CrimePlan.js';
-import { crimeInEra, drugInEra, labInEra, hasTech } from '../../modules/world/Eras.js';
+import { crimeInEra, drugInEra, drugTradeIllegal, labInEra, hasTech } from '../../modules/world/Eras.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
 const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
@@ -165,7 +165,7 @@ function crimePanel(state, r) {
 
 function crimesCard(state, ui = {}) {
   const age = state.character.age;
-  const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
+  const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.filter((r) => juvenileCrimeHere(state, r)).map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
   const groups = crimePicker(state, ui);
   const kidnapHere = ['MX', 'VE', 'BR', 'CO', 'NG', 'ZA', 'PH', 'HT', 'GT', 'PE', 'EC', 'IN', 'PK'].includes(state.character.countryId);
   const armed = state.legal.crime?.armed;
@@ -190,6 +190,8 @@ function crimesCard(state, ui = {}) {
 
 function drugsCard(state) {
   if (state.character.age < 14) return '';
+  // Before prohibition there was no drug trade to run: laudanum and cocaine tonics were sold over the counter.
+  if (state.era && !drugTradeIllegal(state) && !state.legal.crime?.drugs?.product) return '';
   const d = state.legal.crime?.drugs;
   const law = drugLawHere(state);
   const products = Object.entries(PRODUCTS).filter(([id]) => drugInEra(state, id)).map(([id, p]) => ({ value: id, label: `${p.icon} ${p.label} — $${priceHere(state, id).toLocaleString()}/kg wholesale, $${priceHere(state, id, 'retail').toLocaleString()} street` }));

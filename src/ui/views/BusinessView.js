@@ -3,6 +3,7 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
+import { yearNow } from '../../modules/world/Eras.js';
 import { firmCard, masterCard } from '../../modules/business/FirmLife.js';
 import { groupBoardSize, groupDirectorFee } from '../../modules/business/GroupBoard.js';
 import { EXPERTISE as BOARD_EXPERTISE, VERDICTS as BOARD_VERDICTS } from '../../modules/business/Board.js';
@@ -181,7 +182,7 @@ function listingsCard(state) {
     return `<li class="program ${lic || (!cash.ok && !sba.ok) ? 'locked' : ''}">
       <div><b>${t.icon} ${esc(l.name)}</b><small>${l.years} yrs old · ${l.scale > 1 ? `${l.scale} locations · ` : ''}${money(l.revenue)} revenue · ≈${money(l.profit)}/yr before a manager · asking ${money(l.price)}</small>
         ${lic ? `<small class="why">Only a ${esc(t.credentials.map(credentialName).join(' or '))} holder can own it</small>` : !cash.ok && !sba.ok ? `<small class="why">${esc(sba.reason)}</small>` : ''}</div>
-      <div class="toggle-row">${button('💵 Buy', 'business.buy', { arg: `${l.id}:cash`, variant: 'tiny', disabled: lic || !cash.ok })}${button('🏦 SBA', 'business.buy', { arg: `${l.id}:sba`, variant: 'tiny', disabled: lic || !sba.ok, hint: sba.ok ? `${money(sba.down)} down` : '' })}</div>
+      <div class="toggle-row">${button('💵 Buy', 'business.buy', { arg: `${l.id}:cash`, variant: 'tiny', disabled: lic || !cash.ok })}${button((state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1953 ? '🏦 SBA' : '🏦 Bank loan', 'business.buy', { arg: `${l.id}:sba`, variant: 'tiny', disabled: lic || !sba.ok, hint: sba.ok ? `${money(sba.down)} down` : '' })}</div>
     </li>`;
   }).join('');
   return card('Businesses for Sale', `<p class="muted">Established businesses sell for a few years of owner earnings. New listings every year.</p><ul class="programs">${rows}</ul>`, { icon: '🪧' });

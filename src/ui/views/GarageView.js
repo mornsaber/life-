@@ -29,7 +29,7 @@ function ownedCard(state) {
       state.vehicles.repos.length ? ['Repossessions', `<span class="neg">${state.vehicles.repos.length}</span>`] : null,
     ])}
     ${rows ? `<ul class="history">${rows}</ul>` : `<p class="muted">No vehicles. You get around ${yearNow(state) < 1830 ? 'on foot and by the carrier\'s cart' : yearNow(state) < 1900 ? 'on foot, by omnibus and by train' : 'by bus, bike and favors'}.</p>`}
-    <div class="toggle-row">${button('🚦 Defensive driving course', 'vehicles.trafficSchool', { variant: 'small', disabled: !r.points || Boolean(state.yearly['vehicles.school']), hint: '$150 · −2 points' })}</div>
+    <div class="toggle-row">${state.era && yearNow(state) < 1964 ? '' : button('🚦 Defensive driving course', 'vehicles.trafficSchool', { variant: 'small', disabled: !r.points || Boolean(state.yearly['vehicles.school']), hint: '$150 · −2 points' })}</div>
     <p class="fine">Points, at-fault accidents and DUIs raise your premiums for years. Lenders require full coverage, and repossess when you fall far behind — you still owe what the auction doesn't cover.</p>`, { icon: '🚗', accent: 'cyan' });
 }
 

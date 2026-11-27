@@ -96,7 +96,7 @@ function expatLifeCard(state) {
 
 function gapYearCard(state) {
   const check = gapYearCheck(state);
-  if (state.character.age < 17 || state.character.age > 26 || state.migration?.gapYear) return '';
+  if (state.character.age < 17 || state.character.age > 26 || state.migration?.gapYear || (state.era && yearNow(state) < 1965)) return '';
   const rows = Object.entries(GAP_YEAR).map(([id, g]) => button(g.label, 'expat.gapYear', { arg: id, variant: 'small', hint: g.cost ? money(g.cost) : 'Earn instead', disabled: !check.ok })).join('');
   return card('Gap Year', `<p class="muted">A year off: travel, volunteer abroad or work and save. Working-holiday visas (Move Abroad below) let young people work their way around partner countries.</p>${check.ok ? '' : `<p class="why">${esc(check.reason)}</p>`}<div class="action-grid">${rows}</div>`, { icon: '🎒' });
 }
@@ -202,7 +202,9 @@ function passportCard(state) {
   const studied = Object.entries(state.migration?.languages ?? {}).filter(([l]) => !native.includes(l));
   const target = localLanguage(here);
   const langs = [...native.map((l) => chip(`🗣️ ${l}`, 'good')), ...studied.map(([l, v]) => chip(`🗣️ ${l} ${v >= LANGUAGE_FLUENT ? '' : `${v}%`}`.trim(), v >= LANGUAGE_FLUENT ? 'good' : ''))].join(' ');
-  const learnable = [...new Set([target, ...Object.values(COUNTRIES).map((c) => c.languages[0])])].filter((l) => !native.includes(l) && (state.migration?.languages?.[l] ?? 0) < LANGUAGE_FLUENT);
+  // Classes in the languages taught here and then: before the Second World War, the European ones (and Latin's cousins), not Korean in 1865.
+  const taughtThen = (l) => !state.era || yearNow(state) >= 1950 || l === target || ['French', 'German', 'Italian', 'Spanish', 'English', 'Portuguese', 'Russian', 'Dutch'].includes(l);
+  const learnable = [...new Set([target, ...Object.values(COUNTRIES).map((c) => c.languages[0])])].filter((l) => !native.includes(l) && (state.migration?.languages?.[l] ?? 0) < LANGUAGE_FLUENT && taughtThen(l));
   const classes = state.character.age >= 12 && learnable.length ? `<div class="btn-row">${learnable.slice(0, 6).map((l) => button(`📚 ${l}`, 'migration.study', { arg: l, variant: 'tiny ghost', hint: money(LANGUAGE_CLASS_COST), disabled: Boolean(state.yearly['migration.study']) })).join('')}</div>` : '';
   const renounce = citizenshipsOf(state).length > 1 ? citizenshipsOf(state).filter((c) => c !== here).map((c) => button(`Renounce ${COUNTRIES[c].demonym}`, 'migration.renounce', { arg: c, variant: 'tiny ghost' })).join('') : '';
   const service = servicePassports(state).map((p) => chip(`${PASSPORT_ICON[p.kind]} ${flagImg(p.country) || (ISSUERS[p.country]?.flag ?? '')} ${PASSPORT_LABEL[p.kind]} · ${esc(p.why)}`, p.kind === 'diplomatic' ? 'honor' : 'cyan')).join(' ');

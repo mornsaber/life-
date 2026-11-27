@@ -46,7 +46,9 @@ export const ACTIVITIES = {
 };
 export const MAX_ACTIVITIES = 3;
 /** Cadet programs exist only where schools run them (JROTC in the US; the Combined Cadet Force, NCC… elsewhere). */
-export const activityHere = (state, id) => !(id in (CADETS[state.character.countryId] ?? {})) || Boolean(CADETS[state.character.countryId][id]);
+/** When the clubs began: JROTC 1916, the Scouts 1908, robotics competitions 1992. */
+const ACTIVITY_FROM = { robotics: 1992, jrotc: 1916, scouts: 1908, council: 1900, seaCadets: 1856, volunteer: 1900 };
+export const activityHere = (state, id) => !(state.era && ACTIVITY_FROM[id] > yearNowOf(state)) && (!(id in (CADETS[state.character.countryId] ?? {})) || Boolean(CADETS[state.character.countryId][id]));
 
 /** Teen part-time jobs: hourly wage, hours per week during the school year. */
 export const TEEN_JOBS = {

@@ -2,6 +2,7 @@
  * People tab: family, partner, children, friends and exes, dating, and the
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
+import { adoptionOpen } from '../../modules/people/Fertility.js';
 import { professionalTitle, addressOf } from '../../modules/world/Titles.js';
 import { styledName } from '../../modules/world/Honours.js';
 import { lettersOf } from '../../modules/people/Letters.js';
@@ -35,7 +36,7 @@ function planSection(state) {
   const plan = state.people.plan;
   if (!plan) return '';
   const probate = Math.round(probateAssets(state) * PROBATE_RATE);
-  const trusts = Object.entries(TRUSTS).map(([id, t]) => button(`${t.icon} ${t.label}`, 'estate.trust', { arg: id, variant: plan[id] ? 'small on' : 'small', hint: plan[id] ? (id === 'ilit' ? 'In place (irrevocable)' : 'In place · tap to dissolve') : `${money(TRUST_COSTS[id])} · ${t.desc}` })).join('');
+  const trusts = Object.entries(TRUSTS).filter(([id]) => plan[id] || !state.era || yearNow(state) >= ({ trust: 1965, ilit: 1980 }[id] ?? 0)).map(([id, t]) => button(`${t.icon} ${t.label}`, 'estate.trust', { arg: id, variant: plan[id] ? 'small on' : 'small', hint: plan[id] ? (id === 'ilit' ? 'In place (irrevocable)' : 'In place · tap to dissolve') : `${money(TRUST_COSTS[id])} · ${t.desc}` })).join('');
   const kids = livingChildren(state);
   const options = [['none', 'Nobody (my estate)'], ...(kids.length > 1 ? [['children', 'My children equally']] : []), ...living(state).filter((p) => ['spouse', 'child', 'ex', 'sibling', 'mother', 'father'].includes(p.relation)).map((p) => [p.id, `${fullName(p)} (${RELATION_LABEL[p.relation]})`])];
   const current = plan.beneficiary ?? 'none';
@@ -392,7 +393,7 @@ function familyPlanning(state) {
       ${state.character.gender === 'female' && age >= 25 && age <= 40 && !f.frozen && yearNow(state) >= 2012 ? button('❄️ Freeze your eggs', 'fertility.freezeEggs', { variant: 'small' }) : ''}
       ${law !== 'banned' && yearNow(state) >= 1985 ? button('🤝 Surrogacy', 'fertility.surrogacy', { variant: 'small', disabled: busy, hint: `${law === 'commercial' ? 'Commercial' : 'Altruistic only'} · ~${money(surrogacyCost(state))}` }) : ''}
     </div>
-    <div class="toggle-row">${Object.entries(ADOPTION).map(([id, r]) => button(`🏠 Adopt: ${r.label.toLowerCase()}`, 'fertility.adopt', { arg: id, variant: 'small', disabled: busy || age < (id === 'foster' ? 21 : 25), hint: `${r.wait[0] === r.wait[1] ? r.wait[0] : `${r.wait[0]}–${r.wait[1]}`} yr wait` })).join('')}</div>
+    <div class="toggle-row">${Object.entries(ADOPTION).filter(([id]) => adoptionOpen(state, id)).map(([id, r]) => button(`🏠 Adopt: ${r.label.toLowerCase()}`, 'fertility.adopt', { arg: id, variant: 'small', disabled: busy || age < (id === 'foster' ? 21 : 25), hint: `${r.wait[0] === r.wait[1] ? r.wait[0] : `${r.wait[0]}–${r.wait[1]}`} yr wait` })).join('')}</div>
     ${law === 'banned' ? '<p class="fine">Surrogacy is illegal here.</p>' : ''}`);
 }
 

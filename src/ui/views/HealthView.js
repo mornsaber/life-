@@ -12,6 +12,7 @@ import { medicineCard } from './MedicineCard.js';
 function geneticsBlock(state) {
   const g = genesOf(state);
   if (!g || state.character.age < 18) return '';
+  if (!g.known && state.era && yearNow(state) < 2007) return '';
   if (!g.known) return `<div class="toggle-row">${button('🧬 Take a genetic test', 'health.geneticTest', { variant: 'small', hint: 'Find out what runs in the family' })}</div>`;
   const high = Object.keys(GENE_LABEL).filter((k) => g[k] >= 1.5);
   const prevent = ['cancer', 'heart'].filter((k) => g[k] >= 1.5).map((k) => button(g.prevention[k] ? `✅ ${k === 'cancer' ? 'Risk-reducing surgery done' : 'On statins'}` : k === 'cancer' ? '🧬 Risk-reducing surgery' : '💊 Start statins', 'health.prevent', { arg: k, variant: 'small', disabled: Boolean(g.prevention[k]), hint: k === 'cancer' ? 'Cuts the risk by two-thirds' : 'A daily pill; cuts the risk' })).join('');
@@ -54,7 +55,7 @@ function preventionCard(state) {
   const sys = careSystemHere(state);
   return card('Prevention & Planning', `
     ${due.length ? `<p>Your next checkup includes: ${due.map((s) => esc(s.name.replace(/^An? /, ''))).join(', ')}.</p>` : '<p class="muted">No screenings due at your age.</p>'}
-    <div class="toggle-row">${button('💉 Flu jab', 'health.fluShot', { variant: 'small', disabled: Boolean(state.yearly['health.fluShot']), hint: 'Cuts flu and pneumonia this year' })}${state.character.age >= 18 ? button(h.directive ? '📝 Advance directive written' : '📝 Write an advance directive', 'health.directive', { variant: h.directive ? 'small on' : 'small', disabled: Boolean(h.directive), hint: 'What you want if you can\'t say' }) : ''}</div>
+    <div class="toggle-row">${!state.era || yearNow(state) >= 1945 ? button('💉 Flu jab', 'health.fluShot', { variant: 'small', disabled: Boolean(state.yearly['health.fluShot']), hint: 'Cuts flu and pneumonia this year' }) : ''}${state.character.age >= 18 && (!state.era || yearNow(state) >= 1976) ? button(h.directive ? '📝 Advance directive written' : '📝 Write an advance directive', 'health.directive', { variant: h.directive ? 'small on' : 'small', disabled: Boolean(h.directive), hint: 'What you want if you can\'t say' }) : ''}</div>
     ${geneticsBlock(state)}
     ${care ? kv([['Care', CARE_LABEL[care.kind]], ['Since', `age ${care.since}`], ['Costs you', `${money(careCost(state, care.kind))}/yr`]]) : ''}
     ${state.character.age >= 60 ? `<p class="fine">Long-term care here is paid for by ${esc(sys.name)}. A care home would cost you about ${money(careCost(state, 'facility'))} a year.</p>` : ''}`, { icon: '🛡️' });
@@ -105,7 +106,7 @@ function coverageCard(state) {
       h.va.rating ? ['VA care', `Service-connected care covered (${h.va.rating}% rating)`] : null,
     ])}
     <div class="toggle-row">
-      ${button('🩺 Annual checkup', 'health.checkup', { variant: 'small', disabled: Boolean(state.yearly['health.checkup']), hint: 'Free preventive care; catches silent conditions early' })}
+      ${state.era && yearNow(state) < 1948 ? '' : button('🩺 Annual checkup', 'health.checkup', { variant: 'small', disabled: Boolean(state.yearly['health.checkup']), hint: 'Free preventive care; catches silent conditions early' })}
       ${abroad || yearNow(state) < 2014 ? '' : button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
       ${sys?.private && (plan.id === 'national' || h.privateCover) ? button(h.privateCover ? `🛡️ ${sys.private.name}: ON` : `🛡️ ${sys.private.name}: OFF`, 'health.togglePrivateCover', { variant: h.privateCover ? 'small on' : 'small', hint: `${money(privatePremium(state))}/yr · ${sys.private.skipsWait ? 'skip waiting lists' : 'covers co-payments'}` }) : ''}
     </div>

@@ -61,7 +61,7 @@ fromPacks(JUSTICE, 'JUSTICE');
  */
 export const INSOLVENCY = {
   CA: { liquidation: { name: 'Bankruptcy (Licensed Insolvency Trustee)', wait: 7 }, plan: { name: 'Consumer proposal', years: 5, wait: 2 }, homestead: ppp(10000, CAD), wildcard: ppp(10000, CAD), creditYears: 6 },
-  GB: { liquidation: { name: 'Bankruptcy', wait: 6 }, plan: { name: 'Individual Voluntary Arrangement (IVA)', years: 5, wait: 2 }, homestead: ppp(1000, GBP), wildcard: ppp(1000, GBP), creditYears: 6 },
+  GB: { liquidation: { name: 'Bankruptcy', wait: 6 }, plan: { name: 'Individual Voluntary Arrangement (IVA)', years: 5, wait: 2, from: 1986 }, homestead: ppp(1000, GBP), wildcard: ppp(1000, GBP), creditYears: 6 },
   DE: { liquidation: { name: 'Privatinsolvenz (Verbraucherinsolvenz)', wait: 11, plan: 3 }, homestead: 0, wildcard: ppp(1500, EUR), creditYears: 3 },
   JP: { liquidation: { name: 'Jiko hasan (personal bankruptcy)', wait: 7 }, plan: { name: 'Kojin saisei (individual rehabilitation)', years: 3, wait: 2 }, homestead: 0, wildcard: ppp(990000, JPY), creditYears: 7 },
   KR: { liquidation: { name: 'Gaein pasan (personal bankruptcy)', wait: 7 }, plan: { name: 'Gaein hoesaeng (individual rehabilitation)', years: 3, wait: 2 }, homestead: 0, wildcard: ppp(10000000, KRW), creditYears: 5 },

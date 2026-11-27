@@ -22,6 +22,7 @@
  *                            cycles, surrogacy: { dueAge } | null }
  * state.people.expecting gains { dueAge?, twins?, via? }: births wait for dueAge.
  */
+import { yearNow as yearNowOf } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, hasFelony } from '../../core/State.js';
 import { partnerOf, ageOf } from './People.js';
@@ -79,6 +80,16 @@ export const ADOPTION = {
   international: { label: 'Internationally', cost: 45000, wait: [2, 4], age: [1, 5] },
 };
 
+/** When legal adoption came (before it, a child was taken in, not adopted). */
+const ADOPTION_LAW = { US: 1851, GB: 1926, IE: 1952, FR: 1923, DE: 1900, CA: 1873, AU: 1896, NZ: 1881, NL: 1956, SE: 1917 };
+export function adoptionOpen(state, id) {
+  if (!state.era) return true;
+  const y = yearNowOf(state);
+  if (y < (ADOPTION_LAW[state.character.countryId ?? 'US'] ?? 1920)) return false;
+  if (id === 'international') return y >= 1955;
+  if (id === 'foster') return y >= ((state.character.countryId ?? 'US') === 'US' ? 1980 : 1975);
+  return true;
+}
 /** A year of trying without luck (called from PeopleEngine.tryForBaby). */
 export function noLuck(ctx) {
   const { state } = ctx;
@@ -181,6 +192,7 @@ export const FertilityModule = {
     },
     /** Adopt. arg: 'infant' | 'foster' | 'international'. */
     adopt(ctx, route = 'infant') {
+      if (!adoptionOpen(ctx.state, route)) return ctx.toast('No such adoption here yet.', 'warn');
       const { state, rng } = ctx;
       const r = ADOPTION[route];
       if (!r) return ctx.toast('Unknown route', 'warn');

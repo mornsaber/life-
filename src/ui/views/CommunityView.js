@@ -2,6 +2,7 @@
  * Community tab: your faith and congregation, giving, ministry, volunteering
  * and mentoring.
  */
+import { faithExists } from '../../modules/community/FaithOfTheDay.js';
 import { GIFTS, giftCheck, giftCost, marksHere } from '../../modules/life/Marks.js';
 import { worldLegaciesCard, classCard } from './WorldLegaciesCard.js';
 import { voteBar } from '../../modules/politics/PoliticsOfTheDay.js';
@@ -69,7 +70,7 @@ function joinCard(state) {
   const c = state.community;
   const age = state.character.age;
   const groups = {};
-  for (const [id, t] of Object.entries(TRADITIONS)) (groups[t.group] ??= []).push([id, t]);
+  for (const [id, t] of Object.entries(TRADITIONS)) if (faithExists(state, id) || c.faith?.traditionId === id) (groups[t.group] ??= []).push([id, t]);
   const disabled = age < 16 || Boolean(state.yearly['community.join']);
   return card(c.faith ? 'Convert' : 'Find a Congregation', `
     ${age < 16 ? '<p class="muted">You can choose your own faith at 16.</p>' : ''}
@@ -89,7 +90,7 @@ function serviceCard(state) {
       ['Mentoring', c.mentoring ? `🌱 ${esc(c.mentoring.mentee)} since age ${c.mentoring.since}` : 'None'],
     ])}
     <h4 class="sub">Volunteer (up to two)</h4><div class="toggle-row">${orgs}</div>
-    <h4 class="sub">Mentoring</h4><div class="toggle-row">${button(c.mentoring ? 'End the match' : '🌱 Become a Big Brother / Big Sister', 'community.mentor', { variant: c.mentoring ? 'small ghost' : 'small', disabled: !c.mentoring && age < 21, hint: '21+ · background check' })}</div>
+    ${mentorName(state) ? '<h4 class="sub">Mentoring</h4>' : ''}<div class="toggle-row">${mentorName(state) && button(c.mentoring ? 'End the match' : `🌱 ${mentorName(state)}`, 'community.mentor', { variant: c.mentoring ? 'small ghost' : 'small', disabled: !c.mentoring && age < 21, hint: '21+ · background check' })}</div>
     <p class="fine">Service counts toward a pardon, earns the President's Volunteer Service Award after five years, and is a good place to make friends.</p>`, { icon: '🤲', accent: 'green' });
 }
 
@@ -144,6 +145,13 @@ function religiousCard(state) {
   return card('Religious Life', `<ul class="funds">${rows}</ul>`, { icon: '📿' });
 }
 
+/** Mentoring schemes of their day: Big Brothers (1904) and Big Sisters in America and Canada; youth mentoring schemes elsewhere from the 1990s. */
+const mentorName = (state) => {
+  const y = state.era ? yearNow(state) : 9999;
+  const cc = state.character.countryId ?? 'US';
+  if (['US', 'CA'].includes(cc)) return y >= 1904 ? 'Become a Big Brother / Big Sister' : null;
+  return y >= 1990 ? 'Become a volunteer mentor' : null;
+};
 export function communityView(state) {
   if (!state.community) return '';
   return `${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}${secretSocietiesCard(state)}`;

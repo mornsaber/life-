@@ -115,7 +115,7 @@ function midlife(ctx) {
 /* ---- The bucket list ---- */
 export const BUCKET = {
   aurora: { label: '🌌 See the northern lights', cost: 3000 },
-  marathon: { label: '🏃 Run a marathon', cost: 200, fitness: 60 },
+  marathon: { label: '🏃 Run a marathon', cost: 200, fitness: 60, from: 1896 },
   language: { label: '🗣️ Learn another language', cost: 500 },
   pyramids: { label: '🔺 See the pyramids', cost: 4000 },
   skydive: { label: '🪂 Jump out of a plane', cost: 400, from: 1960 },

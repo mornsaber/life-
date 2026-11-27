@@ -1450,7 +1450,10 @@ const CRIME_FROM = {
 };
 export const crimeInEra = (state, id) => !(CRIME_FROM[id] > yearNow(state));
 /** Drugs and how they were made: cocaine and heroin are old; meth, ecstasy and fentanyl pills are not. */
-const DRUG_FROM = { meth: 1970, mdma: 1985, fentanyl: 2013 };
+const DRUG_FROM = { meth: 1970, mdma: 1985, fentanyl: 2013, cocaine: 1885, heroin: 1898 };
+/** When the drug trade became a crime: before these laws, opium and cocaine were sold over the chemist's counter (America's Harrison Act 1914, Britain's Dangerous Drugs Act 1920). */
+const DRUG_PROHIBITION = { US: 1914, GB: 1920, IE: 1920, CA: 1908, AU: 1906, NZ: 1901, FR: 1916, DE: 1929, NL: 1919, IT: 1923, JP: 1930, CN: 1906, IN: 1930 };
+export const drugTradeIllegal = (state) => yearNow(state) >= (DRUG_PROHIBITION[state.character.countryId ?? 'US'] ?? 1925);
 const LAB_FROM = { grow: 1975, cook: 1980, press: 2014 };
 export const drugInEra = (state, id) => !(DRUG_FROM[id] > yearNow(state));
 export const labInEra = (state, id) => !(LAB_FROM[id] > yearNow(state));
@@ -1776,6 +1779,8 @@ const RENAMES = [
   [/\bChief Information Security Officer\b/g, 1995, (y) => (y >= 1955 ? 'Data Security Manager' : 'Chief Clerk')],
   [/\bChief Financial Officer\b/g, 1970, (y) => (y >= 1900 ? 'Treasurer' : 'Chief Cashier')],
   [/\bChief Executive Officer\b/g, 1975, (y) => (y >= 1900 ? 'Managing Director' : 'Senior Partner')],
+  [/\bAubagne\b/g, 1962, () => 'Sidi Bel Abbès'], // the Legion's depot moved from Algeria in 1962
+  [/Debate & Model UN/g, 1947, () => 'Debating society'],
   [/Royal Military Academy Sandhurst/g, 1947, () => 'Royal Military College, Sandhurst'], // the RMA (Woolwich) and RMC (Sandhurst) merged in 1947
   [/\bForensic Accountant\b/g, 1980, () => 'Investigating Accountant'],
   [/\bInvestment Banking\b/g, 1930, () => 'Merchant Banking'],
@@ -2069,7 +2074,7 @@ export const degreeNameOfDay = (id, base) => (OLD_DEGREE_NAMES[id] ?? []).find((
 const PROGRAM_FROM = [
   [/Cyber|Homeland/i, 2000], [/Data Science|Analytics/i, 2010], [/Computer|Software|Information Tech/i, 1965], [/Solar|Wind|Renewable/i, 2005],
   [/Paralegal|Medical Assistant|Fire Science|Physician Assistant/i, 1967], [/Emergency Medical|Paramedic|\bEMT\b/i, 1970], [/Nurse Practitioner|Nurse Anesthe/i, 1965],
-  [/Sonograph|Ultrasound|\bMRI\b|\bCT\b/i, 1975], [/Respiratory/i, 1950], [/Radiolog|Imaging|X-ray/i, 1920], [/Criminal Justice/i, 1960], [/HVAC|Refrigeration/i, 1930],
+  [/Sonograph|Ultrasound|\bMRI\b|\bCT\b/i, 1975], [/Respiratory/i, 1950], [/Radiolog|Imaging|X-ray/i, 1920], [/Criminal Justice/i, 1960], [/\bCNC\b/i, 1975], [/HVAC/i, 1955], [/Refrigeration/i, 1930],
   [/Aviation|Pilot|Aeronaut/i, 1925], [/Electrical|Electronics/i, 1890], [/Automotive|Diesel/i, 1910], [/Dental Hygien/i, 1915], [/Occupational Therapy|Physical Therapy|Speech/i, 1920],
   [/Cosmetology|Esthetic/i, 1920], [/Welding/i, 1920], [/\bMBA\b|Business Administration/i, 1908], [/Public Health/i, 1916], [/Social Work/i, 1900],
 ];

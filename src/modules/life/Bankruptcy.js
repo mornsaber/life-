@@ -14,13 +14,19 @@
  * Never discharged: student loans, child-support arrears, court fines.
  * Retirement accounts (401(k), IRA, pensions) are always protected.
  */
+import { yearNow as yearNowOf } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { stateIdOf } from './Regions.js';
 import { INSOLVENCY } from '../world/CountryLaw.js';
 import { hasTech } from '../world/Eras.js';
 
 /** The insolvency rules where you live (null in the US). */
-export const insolvencyHere = (state) => INSOLVENCY[state.character.countryId] ?? null;
+/** The routes here, as they were then: a repayment plan only from its year (Britain's IVA, 1986). */
+export const insolvencyHere = (state) => {
+  const r = INSOLVENCY[state.character.countryId] ?? null;
+  if (!r?.plan?.from || !state.era || yearNowOf(state) >= r.plan.from) return r;
+  return { ...r, plan: null };
+};
 /** What each route is called where you live. */
 export function routeName(state, chapter) {
   const r = insolvencyHere(state);

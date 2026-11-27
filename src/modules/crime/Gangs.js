@@ -20,18 +20,21 @@ import { crimeLevelHere } from './CrimeWorld.js';
 import { addGuilt } from './Violence.js';
 import { drugsOf } from './Drugs.js';
 import { priceLevel } from '../world/Countries.js';
+import { yearNow as yearNowOf } from '../world/Eras.js';
 
 /** Crimes children commit (10–17). */
 export const JUVENILE_CRIMES = [
-  { id: 'tag', label: 'Tag Walls and Trains', icon: '🎨', minAge: 11, desc: 'Respect from the crew; vandalism if caught',
+  { id: 'tag', label: 'Tag Walls and Trains', icon: '🎨', minAge: 11, from: 1970, desc: 'Respect from the crew; vandalism if caught',
     run: { offenseId: 'vandalism', money: [0, 0], caughtNow: 0.12, discovery: 0.05, evidence: 0.8, context: 'transport police with photos of your tag', text: 'You hit a train yard at 3 a.m. Your tag is on half the line now.' } },
-  { id: 'joyride', label: 'Take a Car for a Joyride', icon: '🚗', minAge: 13, desc: 'Fast, stupid, and sometimes fatal', custom: 'joyride' },
+  { id: 'joyride', label: 'Take a Car for a Joyride', icon: '🚗', minAge: 13, from: 1905, desc: 'Fast, stupid, and sometimes fatal', custom: 'joyride' },
   { id: 'schoolFight', label: 'Fight After School', icon: '👊', minAge: 10, desc: 'Suspension — or police', custom: 'schoolFight' },
   { id: 'carryKnife', label: 'Carry a Knife "for Protection"', icon: '🔪', minAge: 12, desc: 'Everyone says they do', custom: 'carryKnife' },
-  { id: 'sellAtSchool', label: 'Sell Weed at School', icon: '🌿', minAge: 13, desc: 'Expulsion and a supply charge',
+  { id: 'sellAtSchool', label: 'Sell Weed at School', icon: '🌿', minAge: 13, from: 1960, desc: 'Expulsion and a supply charge',
     run: { offenseId: 'drugDistribution', money: [200, 2500], caughtNow: 0.15, discovery: 0.15, evidence: 0.8, context: 'a teacher found the bags in your locker', text: 'You sold to half of Year 10 out of a backpack.' } },
   { id: 'stealParents', label: 'Steal From Your Parents', icon: '👛', minAge: 10, desc: 'They will find out', custom: 'stealParents' },
 ];
+/** A youth crime children of this year could commit (no joyriding before cars, no tagging trains before 1970). */
+export const juvenileCrimeHere = (state, r) => !(r.from > yearNowOf(state));
 const crewName = (state) => crimeOf(state).youthGang?.name ?? 'the older kids';
 
 const CUSTOM = {
@@ -79,6 +82,7 @@ const CUSTOM = {
 };
 
 export const GangActions = Object.fromEntries(JUVENILE_CRIMES.map((cr) => [cr.id, (ctx) => {
+  if (!juvenileCrimeHere(ctx.state, cr)) return ctx.toast('Not in these times.', 'warn');
   const { state } = ctx;
   if (state.character.age < cr.minAge) return ctx.toast(`Age ${cr.minAge}+`, 'warn');
   if (state.character.age >= 18) return ctx.toast('That\'s kids\' stuff', 'warn');
