@@ -31,6 +31,8 @@ const tests = {
   'international bodies are their real size wherever you join from'() {
     assert.equal(knownStaff('Pontifical Swiss Guard'), 135);
     assert.equal(knownStaff('International Court of Justice'), 120);
+    assert.equal(knownStaff('the Commission of the European Communities', 1980), 11000, 'the Commission was a third of today\'s size in 1980');
+    assert.ok(knownStaff('Missionaries of Charity', 1955) < 300, 'a few hundred sisters in the 1950s');
     const { engine, state } = life('TV');
     for (const [pid, max] of [['swissGuard', 200], ['intlJustice', 2000], ['intlFinance', 20000]]) {
       const p = getProfession(pid);

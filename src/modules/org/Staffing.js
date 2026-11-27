@@ -40,7 +40,31 @@ const KNOWN_STAFF = [
   [/Council of Europe/i, 2200], [/Commonwealth Secretariat/i, 300], [/African Union Commission|African Union/i, 1700], [/ASEAN Secretariat/i, 400], [/Organization of American States/i, 600],
   [/Red Cross|ICRC/i, 22000], [/Missionaries of Charity/i, 5000], [/Society of Jesus/i, 15000], [/Order of Malta/i, 4000],
 ];
-export const knownStaff = (name) => KNOWN_STAFF.find(([re]) => re.test(name ?? ''))?.[1] ?? null;
+/** How the big ones grew (or shrank): [year, staff], read between the points. */
+const STAFF_SERIES = [
+  [/Commission of the European|European Commission/i, [[1958, 1000], [1970, 5000], [1980, 11000], [1995, 16000], [2005, 25000], [2015, 32000]]],
+  [/European Parliament/i, [[1958, 100], [1979, 1500], [1995, 3500], [2010, 6000], [2020, 8000]]],
+  [/Red Cross|ICRC/i, [[1950, 300], [1970, 700], [1990, 5000], [2005, 12000], [2020, 22000]]],
+  [/World Bank/i, [[1946, 100], [1960, 700], [1975, 5000], [1995, 10000], [2020, 16000]]],
+  [/International Monetary Fund/i, [[1946, 200], [1960, 600], [1980, 1700], [2000, 2700], [2020, 3100]]],
+  [/World Health Organization/i, [[1948, 300], [1960, 2000], [1980, 5000], [2020, 8000]]],
+  [/UNHCR|High Commissioner for Refugees/i, [[1951, 100], [1970, 500], [1990, 2500], [2005, 6000], [2020, 18000]]],
+  [/UNICEF/i, [[1946, 100], [1965, 1000], [1990, 6000], [2020, 17000]]],
+  [/World Food Programme/i, [[1961, 100], [1980, 2000], [2000, 8000], [2020, 20000]]],
+  [/Society of Jesus/i, [[1850, 5000], [1900, 15000], [1965, 36000], [1990, 24000], [2020, 15000]]],
+  [/Missionaries of Charity/i, [[1950, 12], [1970, 600], [1990, 3000], [2020, 5000]]],
+];
+const between = (pts, y) => {
+  if (y <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (y <= pts[i][0]) { const [y0, a] = pts[i - 1]; const [y1, b] = pts[i]; return Math.round(a + ((b - a) * (y - y0)) / (y1 - y0)); }
+  return pts.at(-1)[1];
+};
+/** The staff a known body had in the year (today's figure when there's no series). */
+export const knownStaff = (name, year = eraYear()) => {
+  const series = STAFF_SERIES.find(([re]) => re.test(name ?? ''))?.[1];
+  if (series && year) return between(series, Math.min(year, 2025));
+  return KNOWN_STAFF.find(([re]) => re.test(name ?? ''))?.[1] ?? null;
+};
 
 export function capToPlace(org, cc) {
   if (org?.international && org.departments) {
