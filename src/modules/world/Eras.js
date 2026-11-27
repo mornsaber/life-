@@ -1776,6 +1776,7 @@ const RENAMES = [
   [/\bChief Information Security Officer\b/g, 1995, (y) => (y >= 1955 ? 'Data Security Manager' : 'Chief Clerk')],
   [/\bChief Financial Officer\b/g, 1970, (y) => (y >= 1900 ? 'Treasurer' : 'Chief Cashier')],
   [/\bChief Executive Officer\b/g, 1975, (y) => (y >= 1900 ? 'Managing Director' : 'Senior Partner')],
+  [/Royal Military Academy Sandhurst/g, 1947, () => 'Royal Military College, Sandhurst'], // the RMA (Woolwich) and RMC (Sandhurst) merged in 1947
   [/\bForensic Accountant\b/g, 1980, () => 'Investigating Accountant'],
   [/\bInvestment Banking\b/g, 1930, () => 'Merchant Banking'],
   [/\bDirectorate of Digital Innovation\b/g, 2015, (y) => (y >= 1963 ? 'Directorate of Science & Technology' : 'Technical Services Division')],

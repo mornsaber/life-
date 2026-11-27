@@ -11,7 +11,9 @@ import {
 import { MAJORS, majorsFor } from '../../modules/education/Catalog.js';
 import { admissionChance, enrollmentEligibility } from '../../modules/education/EducationEngine.js';
 import { hasFelony } from '../../core/State.js';
-import { activityHere } from '../../modules/education/K12.js';
+import { activityHere, teenJobHere } from '../../modules/education/K12.js';
+import { yearNow, majorInEra } from '../../modules/world/Eras.js';
+import { nightSchoolOpen } from '../../modules/education/SchoolingOfTheDay.js';
 import { EDUCATION } from '../../modules/world/Education.js';
 
 const PAYER = { free: 'Free', parents: 'Your parents pay', aid: 'Need-based scholarship', self: 'You pay' };
@@ -20,6 +22,7 @@ function schoolCard(state) {
   const k = state.k12;
   const age = state.character.age;
   const t = SCHOOL_TYPES[k.type];
+  if (k.dropout && k.leftEarly && state.era) return card('School', '<p class="muted">You left school at the leaving age, as most children did. A scholarship can still bring a bright child back; night school is there for later.</p>', { icon: '🏫' });
   if (k.dropout) {
     return card('High School', `<p class="neg">You left high school without a diploma.</p>
       <div class="action-grid">${age < 18 ? button('🏫 Go back to school', 'k12.reenroll', { disabled: Boolean(state.yearly['k12.transfer']) }) : ''}${gedButton(state)}</div>`, { icon: '🏫', accent: 'red' });
@@ -38,7 +41,12 @@ function schoolCard(state) {
     </div>`, { icon: t.icon, accent: 'yellow' });
 }
 
+/** When a second-chance school-leaving exam existed: America's GED from 1942, Britain's Access to HE from 1989. */
+const GED_FROM = { US: 1942, GB: 1989 };
+export const gedExists = (state) => !state.era || yearNow(state) >= (GED_FROM[state.character.countryId ?? 'US'] ?? 1970);
 function gedButton(state) {
+  // Before it existed, night school (SchoolingCard) is the way.
+  if (!gedExists(state) || nightSchoolOpen(state)) return '';
   const fee = gedFee(state);
   return button('📄 Take the GED', 'k12.ged', { disabled: Boolean(state.yearly['k12.ged']) || state.finances.cash < fee, hint: `${fee ? money(fee) : 'Free under 21'} · pass odds rise with smarts` });
 }
@@ -69,12 +77,14 @@ export function teenJobsCard(state) {
   const age = state.character.age;
   const k = state.k12;
   if (!k || age < 6 || age >= 18 || state.legal.incarceration) return '';
+  // A child who left school for work has a job, not pocket money.
+  if (k.leftEarly && state.career?.job) return '';
   if (k.job) {
     const j = TEEN_JOBS[k.job.id];
     return card('Part-Time Job', `<p>${j.icon} <b>${esc(j.name)}</b> since age ${k.job.since} · ~${j.hours} hrs/week · ${money(teenJobPay(j))}/yr</p>
       <div class="toggle-row">${button('👋 Quit', 'k12.quitJob', { variant: 'small ghost' })}</div>`, { icon: '🧾' });
   }
-  const rows = Object.entries(TEEN_JOBS).map(([id, j]) => {
+  const rows = Object.entries(TEEN_JOBS).filter(([id]) => teenJobHere(state, id)).map(([id, j]) => {
     const why = age < j.minAge ? `Ages ${j.minAge}+` : j.minFitness && state.stats.fitness < j.minFitness ? `Fitness ${j.minFitness}+` : j.minSmarts && state.stats.smarts < j.minSmarts ? `Smarts ${j.minSmarts}+` : state.career.job ? 'You already have a job' : '';
     return `<li class="fund-row"><span>${j.icon} <b>${esc(j.name)}</b> · ${j.pay ? `about ${money(j.pay)} a year` : `$${j.wage}/hr · ${j.hours} hrs/wk`} <small class="muted">${j.pay ? `${j.hours} hrs/wk` : `≈${money(teenJobPay(j))}/yr`}</small></span>
       ${button(why || 'Apply', 'k12.takeJob', { arg: id, variant: 'tiny', disabled: Boolean(why) || Boolean(state.yearly['k12.job']) })}</li>`;
@@ -99,7 +109,7 @@ export function academyCard(state) {
   ].join('');
   const eligible = enrollmentEligibility(state, 'bachelor', 'academy', majorsFor('bachelor')[0]);
   const odds = Math.round(admissionChance(state, 'bachelor', 'academy') * 100);
-  const majors = majorsFor('bachelor').map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }));
+  const majors = majorsFor('bachelor').filter((m) => majorInEra(state, m)).map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }));
   const academyName = EDUCATION[state.character.countryId]?.schools?.academy;
   return card(abroad ? 'Military Academy' : 'Service Academies', `<p class="muted">${abroad ? `${esc(academyName ?? 'The national military academy')}: free tuition and pay, a commission at graduation, then years of service.` : 'West Point, Annapolis, the Air Force and Coast Guard academies: free tuition, a commission at graduation, then a 5-year service obligation.'}</p>
     <ul class="history checklist">${steps}</ul>
@@ -122,7 +132,7 @@ export function k12View(state) {
   }
   // Before the 1940s few finished school, and nobody asked to see a diploma (world/Eras.js diplomaExpected).
   if (!hasDiploma(state) && age >= 16 && !state.legal.incarceration && diplomaExpected(state)) {
-    return card('No Diploma', `<p class="muted">Most colleges, the military and many jobs need a high-school diploma or a GED.</p><div class="action-grid">${gedButton(state)}</div>`, { icon: '📄', accent: 'red' });
+    return gedButton(state) ? card('No Diploma', `<p class="muted">Most colleges, the military and many jobs need a high-school diploma or a GED.</p><div class="action-grid">${gedButton(state)}</div>`, { icon: '📄', accent: 'red' }) : '';
   }
   return '';
 }

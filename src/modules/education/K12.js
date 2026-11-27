@@ -52,21 +52,24 @@ export const activityHere = (state, id) => !(id in (CADETS[state.character.count
 export const TEEN_JOBS = {
   // Little kids: pocket money (a fixed yearly amount, not hourly).
   chores: { name: 'Chores for an allowance', icon: '🧹', minAge: 6, wage: 0, hours: 3, pay: 520 },
-  lemonade: { name: 'Lemonade stand', icon: '🍋', minAge: 6, wage: 0, hours: 2, pay: 300, hustle: true },
+  lemonade: { name: 'Lemonade stand', icon: '🍋', minAge: 6, wage: 0, hours: 2, pay: 300, hustle: true, from: 1880 },
   crafts: { name: 'Selling crafts and drawings', icon: '🖍️', minAge: 8, wage: 0, hours: 3, pay: 450, hustle: true },
-  petSitter: { name: 'Neighborhood pet sitter', icon: '🐈', minAge: 10, wage: 0, hours: 3, pay: 900 },
-  paperRoute: { name: 'Paper route', icon: '🗞️', minAge: 11, wage: 0, hours: 5, pay: 1500, fitness: 1 },
-  babysitter: { name: 'Babysitter', icon: '🍼', minAge: 12, wage: 13, hours: 6 },
-  lawnCare: { name: 'Lawn mowing & yard work', icon: '🌱', minAge: 12, wage: 14, hours: 6 },
-  dogWalker: { name: 'Dog walker', icon: '🐕', minAge: 12, wage: 12, hours: 5 },
-  bagger: { name: 'Grocery bagger', icon: '🛒', minAge: 14, wage: 13, hours: 12 },
+  petSitter: { name: 'Neighborhood pet sitter', icon: '🐈', minAge: 10, wage: 0, hours: 3, pay: 900, from: 1975 },
+  paperRoute: { name: 'Paper route', icon: '🗞️', minAge: 11, wage: 0, hours: 5, pay: 1500, fitness: 1, from: 1880 },
+  babysitter: { name: 'Babysitter', icon: '🍼', minAge: 12, wage: 13, hours: 6, from: 1945 },
+  lawnCare: { name: 'Lawn mowing & yard work', icon: '🌱', minAge: 12, wage: 14, hours: 6, from: 1920 },
+  dogWalker: { name: 'Dog walker', icon: '🐕', minAge: 12, wage: 12, hours: 5, from: 1965 },
+  bagger: { name: 'Grocery bagger', icon: '🛒', minAge: 14, wage: 13, hours: 12, from: 1935 },
   farmhand: { name: 'Farm hand', icon: '🚜', minAge: 14, wage: 13, hours: 12, fitness: 1 },
-  fastFood: { name: 'Fast-food crew', icon: '🍔', minAge: 15, wage: 14, hours: 15 },
-  lifeguard: { name: 'Lifeguard', icon: '🏊', minAge: 15, wage: 16, hours: 12, minFitness: 55, fitness: 1 },
-  cashier: { name: 'Retail cashier', icon: '🛍️', minAge: 16, wage: 15, hours: 15 },
+  fastFood: { name: 'Fast-food crew', icon: '🍔', minAge: 15, wage: 14, hours: 15, from: 1955 },
+  lifeguard: { name: 'Lifeguard', icon: '🏊', minAge: 15, wage: 16, hours: 12, minFitness: 55, fitness: 1, from: 1915 },
+  cashier: { name: 'Retail cashier', icon: '🛍️', minAge: 16, wage: 15, hours: 15, from: 1890 },
   tutor: { name: 'Tutor', icon: '📚', minAge: 16, wage: 22, hours: 5, minSmarts: 70, smarts: 1 },
-  counselor: { name: 'Summer camp counselor', icon: '🏕️', minAge: 16, wage: 14, hours: 8 },
+  counselor: { name: 'Summer camp counselor', icon: '🏕️', minAge: 16, wage: 14, hours: 8, from: 1910 },
 };
+/** Is this part-time job one children did here and now (no fast-food crews in 1883)? */
+import { yearNow as yearNowOf } from '../world/Eras.js';
+export const teenJobHere = (state, id) => !(TEEN_JOBS[id]?.from > (state.era ? yearNowOf(state) : 9999));
 const WORK_WEEKS = 46;
 export const GED_FEE = 150;
 /** Most states subsidize the GED for young adults. */
@@ -359,6 +362,7 @@ export const K12Engine = {
       ctx.log(`You joined ${a.name.toLowerCase()}.`, a.icon);
     },
     takeJob(ctx, id) {
+      if (!teenJobHere(ctx.state, id)) return ctx.toast('Nobody does that job here yet.', 'warn');
       const { state, rng } = ctx;
       const job = TEEN_JOBS[id];
       const k = state.k12;

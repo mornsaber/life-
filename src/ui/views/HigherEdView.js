@@ -3,6 +3,7 @@
  * degrees, early decision, campus jobs, fellowships (School tab); adjunct
  * teaching and publishing (Career tab).
  */
+import { yearNow } from '../../modules/world/Eras.js';
 import { esc, button, card, chip, kv, optionRow, disclosure, money } from '../Components.js';
 import { PROGRAMS } from '../../modules/education/Catalog.js';
 import {
@@ -19,8 +20,8 @@ export function higherEdCard(state) {
   const e = state.education.enrolled;
   const k = state.k12;
   const parts = [];
-  // High school.
-  if (k && !k.done && state.character.age >= 14) {
+  // High school (Advanced Placement from 1955).
+  if (k && !k.done && state.character.age >= 14 && !(state.era && yearNow(state) < 1955)) {
     const ap = apEligibility(state);
     parts.push(`<p class="muted">College credit earned: <b>${(state.education.apCredit ?? 0).toFixed(1)}</b> of ${MAX_AP_CREDIT} year.</p>
       <div class="action-grid">${btn('🎯 Take AP classes', 'higherEd.apCourses', ap, { arg: 'ap', hint: 'Exams in May; credit for 4s and 5s' })}${btn('🏫 Dual-enroll at the community college', 'higherEd.apCourses', ap, { arg: 'dual', hint: 'College credit now' })}</div>`);

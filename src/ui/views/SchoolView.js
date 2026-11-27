@@ -3,6 +3,7 @@
  * diplomas, associate's, bachelor's, graduate/professional) with school,
  * major and pace selectors, and earned diplomas.
  */
+import { yearNow } from '../../modules/world/Eras.js';
 import { esc, money, button, card, meter, kv, empty, select, disclosure, chip } from '../Components.js';
 import { getProfession, professionsFor } from '../../modules/career/JobTrees.js';
 import { nationalProfessionId } from '../../modules/world/NationalAgencies.js';
@@ -56,10 +57,21 @@ function guideCard(state) {
   return disclosure('universities.guide', `University guide — ${COUNTRIES[cc]?.name ?? cc}`, `<ul class="history">${rows}</ul>`, { count: list.length });
 }
 
+/** The entrance exam as it was then: Britain's A-levels from 1951, the Higher School Certificate from 1918, none before. */
+const EXAM_FROM = { GB: [[1918, 'Higher School Certificate'], [1951, null]], FR: [[1808, null]], DE: [[1834, null]], JP: [[1990, null]], KR: [[1994, null]], IN: [[2002, null]], AU: [[1998, null]], MX: [[1990, null]], PH: [[1960, null]], IT: [[1923, null]], CA: [[1970, null]] };
+function entranceExamOfDay(state) {
+  const cc = state.character.countryId;
+  const e = ENTRANCE_EXAMS[cc];
+  if (!e || !state.era) return e;
+  const y = yearNow(state);
+  let at = null;
+  for (const [from, name] of EXAM_FROM[cc] ?? []) if (y >= from) at = { name: name ?? e.name };
+  return at ? { ...e, name: at.name } : null;
+}
 /** Abroad: your university entrance exam score. */
 function entranceCard(state) {
   const ent = state.education.entrance;
-  const e = ENTRANCE_EXAMS[state.character.countryId];
+  const e = entranceExamOfDay(state);
   if (!e || (!ent && (state.character.age < 15 || state.character.age > 19))) return '';
   if (!ent) return card(`The ${e.name}`, `<p class="muted">You sit it in your last school year (at 17). Universities admit on it${e.weight >= 0.9 ? ' almost entirely' : e.weight >= 0.6 ? ' heavily' : ' in part'}. Expected score now: about ${expectedScore(state)}/100.</p>`, { icon: '📝' });
   return card(`The ${e.name}`, `<p>Score <b>${ent.score}/100</b>${ent.sittings > 1 ? ` (best of ${ent.sittings} sittings)` : ''}. ${ent.score >= 80 ? 'Top universities are within reach.' : ent.score >= 60 ? 'Solid: most universities will take you.' : 'Low: selective universities are a long shot.'}</p>${ent.resitAt ? `<p class="fine">You can re-sit next year.</p>` : ''}`, { icon: '📝' });
@@ -69,6 +81,8 @@ function entranceCard(state) {
 function apprenticeCard(state) {
   const sys = apprenticeshipHere(state);
   const a = state.apprenticeship;
+  // The modern schemes (Germany's dual system 1969, Britain's 1964 training boards, Red Seal 1959): before them, a child was bound apprentice to a master.
+  if (!a && state.era && yearNow(state) < 1960) return '';
   if (!sys || (state.character.age < 15 && !a)) return '';
   if (a) {
     const t = TRADES[a.trade];
