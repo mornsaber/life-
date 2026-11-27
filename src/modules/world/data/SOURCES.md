@@ -21,3 +21,24 @@ places it doesn't describe.
 Not yet sourced: invention dates (world/Eras.js `TECH`) are still a hand-made list, since the
 datasets for them (Wikidata, Our World in Data's technology adoption series) could not be reached
 from the build environment.
+
+## Hand-entered date tables
+
+These tables were entered by hand from general historical knowledge, not from a dataset, and
+have not been checked line by line against primary sources. Each was cross-checked once for
+consistency with the commonly cited dates; treat any single year as accurate to within a year
+or two, and correct it here and in the code if a better source disagrees.
+
+| Where | What | Notes |
+|---|---|---|
+| `data/warFixes.js` | Corrections to the Correlates of War record: names wars are known by, outcomes the record leaves open or gets wrong (1965 Indo-Pakistani war a stalemate; Mexico, Turkey and Vietnam winning their wars), India's part in Sri Lanka 1987–90 | Each correction carries a one-line reason |
+| `content/packs/careers-intl-orgs.js` | UN admissions (the 1955 package, Japan 1956, the two Germanys 1973, the Koreas 1991, Switzerland 2002, China's seat 1971), IMF/World Bank membership (Poland 1946–50 and from 1986, Czechoslovakia to 1954 and from 1990, the PRC 1980), GATT contracting parties and WTO accessions (China 2001, Russia 2012) | Recruitment gates only; small states default to their independence year |
+| `org/Staffing.js` | Staff of international bodies, and how the big ones grew (`KNOWN_STAFF`, `STAFF_SERIES`) | Rounded; recent figures from the bodies' own reports as remembered |
+| `world/ChildLabour.js` | Minimum ages for mill and mine work by country and year (Britain's Factory Acts 1833–1918 and Mines Act 1842, Prussia 1839, France 1841/1874, Spain 1873, the US FLSA 1938, Japan 1916, India 1881/1891/1922) | The first law of each kind and its main amendments |
+| `world/Eras.js` `DRUG_PROHIBITION` | When the drug trade became a crime (Harrison Act 1914, Dangerous Drugs Act 1920, Canada's Opium Act 1908, …) | National laws; earlier local bans not counted |
+| `people/Fertility.js` `ADOPTION_LAW` | When legal adoption came (Massachusetts 1851, England and Wales 1926, Ireland 1952, …) | The first general adoption statute |
+| `community/FaithOfTheDay.js` | When traditions began (Pentecostalism 1906, the Global Methodist Church 2022) and when migrants' faiths arrived in Western countries (mostly after 1950) | Arrival years are the start of settled communities, not the first individuals |
+| `life/LeisureOfTheDay.js` `TV_FROM` | When most homes had a television, by country | Mass ownership, not the first broadcasts |
+| `education/K12.js`, `education/SchoolingOfTheDay.js` | Children's part-time jobs by year, night-school certificates by country (the GED 1942), indenture lengths | |
+| `career/PlaceSize.js` | The smallest country (people) each career needs | Judgement, tuned so Pitcairn has the shop and the school but no law firms |
+| `world/Eras.js` `OPTION_FROM` | When specialist units and postings began (SWAT 1968, hostage negotiators 1972, offshore platforms 1947, …) | Matched on the option's name |
