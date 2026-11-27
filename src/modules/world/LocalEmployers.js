@@ -3,9 +3,13 @@
  * English, as in Britain): a German mill hand works for a Spinnerei, a docker in Bombay for the Port
  * Trust, a French railwayman for the Compagnie du Nord. Built from the city where you live.
  *
- *   localEmployer(professionId, cc, city, year, rng) → a name, or null to keep the English one.
+ *   localEmployer(professionId, cc, city, year, rng, profession, regionId) → a name, or null to keep the English one.
+ *
+ * Britain, Ireland and the Dominions take their private firms from AngloEmployers.js (solicitors,
+ * chartered accountants, the Co-op, the BBC and ITV); the US keeps the professions' own lists.
  */
 import { COUNTRIES } from './Countries.js';
+import { angloEmployer } from './AngloEmployers.js';
 
 const ANGLO = ['US', 'GB', 'IE', 'CA', 'AU', 'NZ', 'ZA'];
 
@@ -133,8 +137,9 @@ export function localFirmName(cc, city, year, rng, { health = false } = {}) {
   return names?.length ? rng.pick(names) : null;
 }
 
-export function localEmployer(professionId, cc, city, year, rng, profession = null) {
-  if (!cc || ANGLO.includes(cc)) return null;
+export function localEmployer(professionId, cc, city, year, rng, profession = null, regionId = null) {
+  if (!cc || cc === 'US') return null;
+  if (ANGLO.includes(cc)) return profession?.sector && profession.sector !== 'private' ? null : angloEmployer(professionId, cc, city, year, rng, { regionId, profession });
   const generic = profession && !['government', 'federal', 'state', 'municipal'].includes(profession.sector) && !profession.campus && !profession.intl && (profession.employers?.length ?? 0) >= 3
     ? (c, y) => (HEALTH.test(professionId) ? hospital(cc, c, y, rng) : firm(cc, c, y, rng)) : null;
   const f = T[cc]?.[professionId] ?? (professionId === 'agriculture' ? (c, y) => (['RU', 'UA', 'BY'].includes(cc) && y >= 1930 && y < 1992 ? ['the collective farm (kolkhoz)', 'the state farm (sovkhoz)'] : cc === 'CN' && y >= 1958 && y < 1983 ? ['the people\'s commune'] : ['a family farm in the village', 'a landowner\'s estate', 'the big farm outside town']) : generic);

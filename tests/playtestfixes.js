@@ -10,6 +10,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { localEmployer } from '../src/modules/world/LocalEmployers.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { funeralOf } from '../src/modules/people/Remembered.js';
 import { fitsEra, periodTitle, setEraYear } from '../src/modules/world/Eras.js';
@@ -29,8 +30,28 @@ const tests = {
     const rng = new Random(3);
     assert.match(localEmployer('nursing', 'FR', 'Lyon', 1860, rng, PROFESSIONS.nursing), /Hôtel-Dieu|Hôpital/);
     assert.match(localEmployer('hospitality', 'DE', 'Köln', 1890, rng, PROFESSIONS.hospitality), /& Söhne|Gebrüder/);
-    assert.equal(localEmployer('nursing', 'GB', 'Leeds', 1860, rng, PROFESSIONS.nursing), null, 'Britain keeps its own lists');
+    assert.equal(localEmployer('nursing', 'US', 'Chicago', 1960, rng, PROFESSIONS.nursing), null, 'the US keeps its own lists');
+    assert.match(localEmployer('nursing', 'GB', 'Leeds', 1860, rng, PROFESSIONS.nursing), /Infirmary|Cottage Hospital|nursing home/, 'a voluntary hospital in Victorian Britain');
     assert.equal(localEmployer('swissGuard', 'CH', 'Bern', 1990, rng, PROFESSIONS.swissGuard), null, 'named institutions stay');
+  },
+  'private firms in Britain and the Dominions are named for their country and year'() {
+    const rng = new Random(5);
+    const many = (id, cc, rid, city, y, n = 60) => Array.from({ length: n }, () => localEmployer(id, cc, city, y, rng, PROFESSIONS[id], rid));
+    const law1960 = many('law', 'GB', 'manchester', 'Manchester', 1960);
+    assert.ok(law1960.every((n) => /Solicitors|Addleshaw/.test(n) && !/LLP/.test(n)), `no LLPs before 2000: ${law1960.find((n) => /LLP/.test(n))}`);
+    assert.ok(many('law', 'GB', 'manchester', 'Manchester', 2005).some((n) => /LLP$/.test(n)), 'LLPs from 2000');
+    const acc = many('accounting', 'GB', 'london', 'London', 1960);
+    assert.ok(acc.some((n) => /Chartered Accountants/.test(n)) && !acc.some((n) => /CPA|LLP/.test(n)), 'chartered accountants, not CPAs');
+    const press1960 = many('journalism', 'GB', 'manchester', 'Manchester', 1960);
+    assert.ok(press1960.includes('Granada Television') && !press1960.some((n) => /Channel|ITV /.test(n)), 'Granada in 1960, no Channel 7');
+    assert.ok(!many('journalism', 'GB', 'london', 'London', 1910).some((n) => /BBC|Television|Radio/.test(n)), 'no broadcasting before 1922');
+    assert.ok(many('retail', 'GB', 'london', 'London', 1960).some((n) => /Co-operative Society|Woolworths/.test(n)), 'the Co-op and Woolworths');
+    assert.ok(many('agriculture', 'GB', 'skipton', 'Skipton', 1960).includes('a hill farm in the Yorkshire Dales'));
+    assert.ok(many('law', 'ZA', 'johannesburg', 'Johannesburg', 1960).every((n) => !/Dlamini|Nkosi|Ndlovu|Zulu/.test(n)), 'apartheid-era firms');
+    for (const cc of ['IE', 'AU', 'NZ', 'CA', 'ZA']) for (const id of ['law', 'accounting', 'journalism', 'retail', 'manufacturing', 'agriculture', 'hospitality', 'culinary', 'trades', 'engineering', 'finance']) {
+      const rid = Object.keys(COUNTRIES[cc].cities)[0];
+      for (const y of [1900, 1960, 2010]) assert.ok(localEmployer(id, cc, COUNTRIES[cc].cities[rid].name.split(',')[0], y, rng, PROFESSIONS[id], rid), `${cc} ${id} ${y}`);
+    }
   },
   'funerals by faith'() {
     const { state } = grown('IN', 1925, 20);
