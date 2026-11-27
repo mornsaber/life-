@@ -37,7 +37,7 @@ function womanYear(ctx) {
   }
   // The bank wants your husband.
   if (married(state) && age >= 21 && creditInHusbandsName(state) && once(state, 'husbandSig')) {
-    ctx.log('The bank manager asked for your husband\'s signature before he would open the account. The hire-purchase shop wanted it too, for the washing machine.', '✍️', 'warn');
+    ctx.log(`The bank manager asked for your husband's signature before he would open the account. The hire-purchase shop wanted it too, for the ${yearNow(state) >= 1950 ? 'washing machine' : 'sewing machine'}.`, '✍️', 'warn');
     ctx.stat('happiness', -2);
   }
   // The pill.

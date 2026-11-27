@@ -13,6 +13,8 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { eraWorkBlock } from '../src/modules/world/Eras.js';
 import { nightSchoolOpen, nightSchoolName } from '../src/modules/education/SchoolingOfTheDay.js';
 import { schoolingCard } from '../src/ui/views/SchoolingCard.js';
+import { childWorkAge } from '../src/modules/world/ChildLabour.js';
+import { minimumAge } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc = 'GB', year = 1880, gender = 'male') => {
@@ -64,6 +66,33 @@ const tests = {
     state.education.degrees = state.education.degrees.filter((d) => d.type !== 'highschool');
     Object.assign((state.k12 ??= {}), { dropout: true });
     assert.ok(!nightSchoolOpen(state));
+  },
+  'child labour laws: the Factory Acts and the Mines Act by year'() {
+    const { engine, state } = life('GB', 1830);
+    grow(engine, 12);
+    // 1842: the Mines Act; 1844 is the year now.
+    assert.equal(childWorkAge(state, 'coalMining'), 10);
+    assert.equal(childWorkAge(state, 'agriculture'), 10, 'the land had no law, but nobody works before ten');
+    (state.k12 ??= {}).leftEarly = true;
+    assert.ok(minimumAge(state, getProfession('millWork')) <= 12);
+    const later = life('GB', 1895);
+    grow(later.engine, 12);
+    (later.state.k12 ??= {}).leftEarly = true;
+    assert.equal(childWorkAge(later.state, 'millWork'), 12, 'twelve from 1901');
+    assert.equal(childWorkAge(later.state, 'coalMining'), 13);
+  },
+  'a child who leaves school before ten helps at home until ten'() {
+    const { engine, state } = life('ES', 1862);
+    grow(engine, 9);
+    const ctx = engine.context();
+    (state.k12 ??= {}).leftEarly = true;
+    state.prompts = [];
+    state.k12.done = false; state.k12.leftEarly = false;
+    MODULES.find((m) => m.id === 'history').resolvers.leaveSchool(ctx, {}, 'leave');
+    assert.equal(state.k12.workAt, 10);
+    assert.ok(!state.prompts.some((p) => p.type === 'history.firstWork'), 'no work at nine');
+    state.prompts = []; state.stats.health = 90; engine.ageUp();
+    assert.ok(state.prompts.some((p) => p.type === 'history.firstWork'), 'asked at ten');
   },
   'work that needs reading is closed to those who can\'t'() {
     const { engine, state } = life('GB', 1860);

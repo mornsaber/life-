@@ -52,6 +52,7 @@ import { presidencyInEra, AUTONOMOUS } from './Eras.js';
 import { colonialEmployerName } from '../content/packs/careers-colonial.js';
 import { regionsIn } from '../life/Regions.js';
 import '../career/PlaceSize.js';
+import { childWorkAge } from './ChildLabour.js';
 import { INDENTURE_YEARS } from '../education/SchoolingOfTheDay.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
@@ -606,8 +607,13 @@ const CHILD_WORK = [
 ];
 function firstWorkPrompt(ctx) {
   const { state } = ctx;
+  // Under ten: at home until then.
+  if (state.character.age < 10) {
+    (state.k12 ??= {}).workAt = 10;
+    return void ctx.log('Too young to be sent out to work yet: you help at home until you are ten.', '🏠', 'info');
+  }
   const open = new Set(professionsFor(state).map((p) => p.id));
-  const options = CHILD_WORK.filter(([id, , , ok]) => open.has(id) && (!ok || ok(state))).map(([id, label, hint]) => ({ id, label, hint: typeof hint === 'function' ? hint(state) : hint }));
+  const options = CHILD_WORK.filter(([id, , , ok]) => open.has(id) && (!ok || ok(state)) && state.character.age >= childWorkAge(state, id)).map(([id, label, hint]) => ({ id, label, hint: typeof hint === 'function' ? hint(state) : hint }));
   ctx.prompt({ type: 'history.firstWork', icon: '🧒', title: 'Your First Work', text: `You're ${state.character.age}, and school is behind you. Children your age work: what will it be?`, data: {}, options: [
     ...options,
     { id: 'home', label: '🏠 Help at home', hint: 'The washing, the younger ones, the garden plot' },
@@ -1206,6 +1212,8 @@ export const HistoryModule = {
   onAgeUp(ctx) {
     const { state } = ctx;
     if (!state.era) HistoryModule.init(state);
+    // A child kept at home until old enough to work: the question comes now.
+    if (state.k12?.workAt && state.character.age >= state.k12.workAt && !state.career?.job) { state.k12.workAt = null; firstWorkPrompt(ctx); }
     if (state.era.freeNorth && state.character.age === 1) ctx.log('Your family are free Black Americans in the North. In the Southern states, nearly four million people are held in slavery.', '⛓️', 'info');
     const y = yearNow(state);
     const presentLife = state.era.start >= PRESENT;

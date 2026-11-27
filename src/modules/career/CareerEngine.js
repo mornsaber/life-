@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { childWorkAge } from '../world/ChildLabour.js';
 import { licensedHere } from '../credentials/CredentialRegistry.js';
 import { PHYSICAL, physicalWorkBarred } from '../health/Routine.js';
 import { shockFactor } from '../economy/Shocks.js';
@@ -228,10 +229,11 @@ const degreeGated = (req) => {
  * it takes; once you hold the degree (however early you finished) the legal adult age is
  * the floor. Abroad the US's 21-year rules (police, transit, investigators) don't apply.
  */
+/** (The child labour laws of the place and year: world/ChildLabour.js.) */
 export function minimumAge(state, profession) {
   const min = profession.minAge ?? 18;
   // A child who left school at 10 or 12 in the days of child labour can take the work children did.
-  if (state.k12?.leftEarly && profession.sector === 'private' && min <= 16 && yearNow(state) < 1945) return Math.min(min, Math.max(10, state.character.age));
+  if (state.k12?.leftEarly && profession.sector === 'private' && min <= 16 && yearNow(state) < 1945) return Math.min(min, Math.max(childWorkAge(state, profession.id), state.character.age < childWorkAge(state, profession.id) ? 0 : state.character.age));
   if (min <= 18) return min;
   if (degreeGated(profession.entry)) return 18;
   return (state.character.countryId ?? 'US') === 'US' ? min : 18;

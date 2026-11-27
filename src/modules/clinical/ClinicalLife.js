@@ -69,7 +69,7 @@ export const CLINICAL = {
     license: () => 'rn', title: 'Nurse',
   },
   pharmacy: {
-    group: 'pharmacy', noun: 'prescriptions verified', perYear: [25000, 70000], ce: 30, ladder: false,
+    group: 'pharmacy', noun: 'prescriptions dispensed', perYear: [25000, 70000], ce: 30, ladder: false,
     license: (job) => (['tech', 'intern'].includes(job.levelId) ? null : 'pharmacistLicense'),
     title: 'Pharmacist',
     settings: {

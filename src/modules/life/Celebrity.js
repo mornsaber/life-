@@ -9,6 +9,7 @@
 import { Random, clamp } from '../../core/Random.js';
 import { fameScore } from './Fame.js';
 import { priceLevel } from '../world/Countries.js';
+import { yearNow } from '../world/Eras.js';
 
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 33503 + state.character.age * 449 + 0xca7) >>> 0);
 export const cancelledOf = (state) => state.fame?.cancelled ?? null;
@@ -22,7 +23,7 @@ function maybeCancel(ctx, severity, headline) {
   f.cancelled = { since: state.character.age, headline, tried: [] };
   const lost = (f.deals ?? []).length;
   f.deals = [];
-  ctx.log(`Cancelled. After ${headline}, the internet turned on you overnight.${lost ? ` ${lost} brand deal${lost === 1 ? '' : 's'} dropped you.` : ''}`, '🚫', 'bad');
+  ctx.log(`${yearNow(state) >= 2010 ? 'Cancelled' : 'Disgraced'}. After ${headline}, ${yearNow(state) >= 1995 ? 'the internet turned on you overnight' : 'the papers turned on you overnight'}.${lost ? ` ${lost} ${yearNow(state) >= 1980 ? 'brand deal' : 'sponsor'}${lost === 1 ? '' : 's'} dropped you.` : ''}`, '🚫', 'bad');
   ctx.stat('happiness', -12);
   ctx.emit('health:trauma', { amount: 6, source: 'public shaming' });
 }

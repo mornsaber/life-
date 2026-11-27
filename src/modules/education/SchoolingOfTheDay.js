@@ -202,7 +202,7 @@ function nightSchoolYear(ctx) {
     return ctx.log(`You sat the exams for ${n.name} and didn't pass. You can enrol again.`, '📉', 'warn');
   }
   n.done = true;
-  state.education.degrees.push({ type: 'highschool', programId: 'nightSchool', major: null, year: state.character.age, nightSchool: true });
+  state.education.degrees.push({ type: 'highschool', programId: 'nightSchool', major: null, year: state.character.age, nightSchool: true, label: n.name.replace(/^(a|an|the) /, '').replace(/^./, (c) => c.toUpperCase()) });
   ctx.stat('smarts', 3);
   ctx.stat('happiness', 6);
   ctx.log(`Three years of evenings after work: you passed ${n.name}. Doors that were shut are open.`, '🎓', 'milestone');
@@ -221,7 +221,7 @@ function indentureYear(ctx) {
   const jm = p.levels.find((l) => l.id === 'journeyman');
   const at = p.levels.findIndex((l) => l.id === job.levelId);
   if (jm && at < p.levels.indexOf(jm)) promote(ctx, jm.id);
-  state.education.degrees.push({ type: 'vocational', programId: `indenture:${p.id}`, major: null, schoolId: 'apprenticeship', year: state.character.age, apprenticeship: true });
+  state.education.degrees.push({ type: 'vocational', programId: `indenture:${p.id}`, label: `Apprenticeship served (${p.id === 'blacksmith' ? 'smith' : 'carpenter'})`, major: null, schoolName: `Indentured to ${job.employer?.name ?? 'a master'}`, year: state.character.age, apprenticeship: true });
   ctx.stat('happiness', 6);
   ctx.log(`Your indenture is served: at ${state.character.age} you are out of your time, a journeyman ${p.id === 'blacksmith' ? 'smith' : 'carpenter'} free to work for wages anywhere.`, '🔨', 'milestone');
 }

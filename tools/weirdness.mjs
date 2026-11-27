@@ -137,7 +137,7 @@ const VIEW_IDS = Object.keys(VIEWS);
 function checkViews(state) {
   for (const id of VIEW_IDS) {
     let html;
-    try { html = VIEWS[id](state, {}); } catch (e) { flag(`view throws: ${id}`, e.message); continue; }
+    try { html = VIEWS[id](state, {}); } catch (e) { flag(`view throws: ${id}`, process.env.STACK ? e.stack.split('\n').slice(0, 4).join(' | ') : e.message); continue; }
     const text = strip(html);
     const m = text.match(BAD_TEXT);
     if (m) flag(`bad text in view: ${id}`, text.slice(Math.max(0, m.index - 80), m.index + 60));

@@ -486,7 +486,7 @@ export const WarModule = {
         ctx.stat('stress', 5);
         ctx.stat('happiness', 4);
         state.world.civilDefence = (state.world.civilDefence ?? 0) + 1;
-        return ctx.log('You joined a civil defence unit: digging people out of rubble, running a shelter, carrying the wounded.', '🦺', 'good');
+        return ctx.log(yearNow(ctx.state) >= 1935 ? 'You joined a civil defence unit: digging people out of rubble, running a shelter, carrying the wounded.' : 'You joined the volunteers at home: digging people out of the ruins, running the relief kitchen, carrying the wounded.', '🦺', 'good');
       }
       if (optionId === 'relocate') {
         // Somewhere in another province, away from the fighting.
