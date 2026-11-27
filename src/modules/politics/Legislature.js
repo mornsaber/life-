@@ -102,8 +102,13 @@ export const peerChamber = (state) => {
 };
 
 /** The chambers a bill passes at a level, in a place (a city, a state or province, or a country). */
+/** Places with no elected city councils of their own (Hong Kong's District Councils and Macao's are in ColonialPolitics). */
+const NO_CITY_COUNCIL = ['HK', 'MO'];
+/** Chambers whose size changed over the years: Hong Kong's LegCo 60 → 70 (2012) → 90 (2021); Macao's Assembly 23 → 33. */
+const SEATS_BY_YEAR = { lower_HK: [[1998, 60], [2012, 70], [2021, 90]], lower_MO: [[1999, 23], [2001, 27], [2005, 29], [2013, 33]] };
+const seatsInYear = (kind, y) => { const t = SEATS_BY_YEAR[kind]; if (!t) return null; let n = null; for (const [from, seats] of t) if (y >= from) n = seats; return n ?? t[0][1]; };
 export function chambersFor(level, where) {
-  if (level === 'city') return CHAMBERS.city;
+  if (level === 'city') return NO_CITY_COUNCIL.includes(REGIONS[where]?.country) ? [] : CHAMBERS.city;
   const cc = level === 'state' ? STATES[where]?.country ?? 'US' : where ?? 'US';
   if (cc === 'US') return CHAMBERS[level];
   const L = LEGISLATURES[cc];
@@ -400,6 +405,8 @@ export function ensureBodies(state) {
       if (!state.legislature.bodies[id]) state.legislature.bodies[id] = newBody(state, kind, where, legRng(state));
       // Older saves: name the members and committee chairs.
       const b = state.legislature.bodies[id];
+      const want = seatsInYear(kind, eraYear());
+      if (want && b.seats !== want) { b.labor = Math.round((b.labor * want) / b.seats); b.seats = want; b.parties = null; }
       b.modernName ??= b.name;
       b.name = periodChamber(b.modernName);
       partyBody(state, b);

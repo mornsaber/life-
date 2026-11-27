@@ -288,7 +288,9 @@ export function chamberView(state) {
 
 /** 🎗️ Party: your party, your platform, your votes. */
 export function partyTabView(state) {
-  return `${memberPartyCard(state)}${partyCard(state)}${oneParty(state) ? partyPostsCard(state) : platformCard(state)}`;
+  // Under a governor there are no voters to court on taxes and guns: the question is the colony's future.
+  const colony = regimeHere(state)?.kind === 'colony';
+  return `${memberPartyCard(state)}${partyCard(state)}${oneParty(state) ? partyPostsCard(state) : colony ? colonialStanceCard(state) : platformCard(state)}`;
 }
 
 /** 📣 Campaign: the race you're in, and the offices you could run for. */
@@ -465,4 +467,14 @@ function colonialChamberCard(state) {
   const { p } = info;
   const last = p.notes.at(-1);
   return card(p.council, `<p class="muted">${esc(p.colony)}: ${esc(info.governor)} governs${p.sar ? '' : ` for ${esc(rulerName(p.ruler))}`}. The ${esc(p.council)}: ${esc(info.voteLabel[p.vote ?? 'none'])}.${last ? ` <b>${last[0]}:</b> ${esc(last[1])}` : ''}</p>${p.nobody ? '' : '<p class="fine">Stand or be nominated from 📣 Campaign.</p>'}`, { icon: '🏛️' });
+}
+
+/** Where you stand under colonial rule: with the Governor, or with the movement. */
+function colonialStanceCard(state) {
+  const info = colonyPoliticsInfo(state);
+  if (!info) return '';
+  const { c, p } = info;
+  const lean = c.voice - c.standing;
+  const where = lean > 25 ? `With the movement: ${p.leader ? 'self-government now' : 'a say for your own people'}` : lean < -25 ? 'A loyalist: order, and the Crown\'s good opinion' : 'A moderate: reform at the pace the Governor will allow';
+  return card('Where You Stand', `<p class="muted">${esc(where)}.</p><p class="fine">Petitions and votes against the officials move you toward the movement; Government House and votes with the officials, toward loyalism. See 📣 Campaign.</p>`, { icon: '🧭' });
 }
