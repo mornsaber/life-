@@ -512,7 +512,10 @@ function colonyYear(ctx, cc) {
     if (!mine) news(ctx, `Rising against ${rulerAdj(st.ruler)} rule in ${cname(cc)}`, '✊');
   }
   let due = false;
-  if (typeof st.until === 'number') {
+  // A colony whose end came with a war's outcome (Japan's, with its defeat in 1945) ends when that war does, if it was fought.
+  const tied = st.endsWith && state.era.events?.[st.endsWith];
+  if (tied && !tied.skipped) due = tied.ended != null && y >= tied.ended;
+  else if (typeof st.until === 'number') {
     const pressure = rec.pressure ?? 0;
     // A treaty's date (Hong Kong's 1997, Macau's 1999) doesn't drift.
     if (st.fixed) due = y >= end;
