@@ -26,7 +26,7 @@ const viewed = (state) => (state?.industry?.c?.[cc(state)]?.last ?? 0) > 0 && em
 /** The jobs health of a profession's industry here (−1 … +1; 0 where it has none). */
 export function jobOutlook(state, professionId) {
   if (!viewed(state)) return 0;
-  const id = industryOfProfession(professionId);
+  const id = industryOfProfession(professionId, state);
   return id ? jobsHealth(state, id) : 0;
 }
 /** Layoff risk multiplier: a dying industry sheds its people, a booming one keeps them. */
@@ -41,7 +41,7 @@ export const deptGrowth = (state, professionId) => jobOutlook(state, professionI
 /** Jobs only where the industry is (its ground and its know-how): no pits without coal, no whalers without whales. */
 export const industryJobFilter = ((state, p) => {
   if (!viewed(state)) return true;
-  const id = industryOfProfession(p.id);
+  const id = industryOfProfession(p.id, state);
   if (!id || !INDUSTRIES[id].resource) return true;
   if (endowment(cc(state), INDUSTRIES[id].resource) <= 0) return false;
   return industryHere(state, id) || INDUSTRIES[id].kind !== 'extract';

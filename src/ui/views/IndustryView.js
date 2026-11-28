@@ -12,8 +12,11 @@ import { levelValue } from '../../modules/politics/Laws.js';
 import { statuteIn } from '../../modules/politics/StatuteBook.js';
 import { stateShare } from '../../modules/world/Ownership.js';
 import { REGIONS } from '../../modules/life/Regions.js';
+import { COUNTRIES } from '../../modules/world/Countries.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
 
+/** A city, not a pit village or a mill town. */
+const bigTown = (state) => { const r = REGIONS[state.character.regionId] ?? COUNTRIES[state.character.countryId]?.cities?.[state.character.regionId]; return ['mega', 'large', 'major'].includes(r?.size) || /metro|capital/i.test(r?.type ?? ''); };
 const trend = (h) => (h > 0.35 ? '⬆️ booming' : h > 0.08 ? '↗️ growing' : h > -0.08 ? '➡️ steady' : h > -0.35 ? '↘️ shrinking' : '⬇️ in decline');
 const CAUSE = { financial: 'a banking crisis', trade: 'a crash abroad', oil: 'the oil price', industry: 'industries closing' };
 
@@ -30,7 +33,7 @@ export function industryCard(state) {
   const town = townTrade(state);
   const where = (REGIONS[state.character.regionId]?.name ?? 'Your town').split(',')[0];
   const job = state.career?.job;
-  const jobInd = job ? industryOfProfession(job.professionId) : null;
+  const jobInd = job ? industryOfProfession(job.professionId, state) : null;
   const crisis = crisisHere(state);
   const at = (law) => levelValue(state, law, 'federal', cc === 'US' ? null : cc);
   const owned = OWN_SECTORS.filter((s) => stateShare(state, s, cc) >= 1).map((s) => SECTORS[s].label);
@@ -45,7 +48,7 @@ export function industryCard(state) {
   ];
   const oil = oilPrice(state);
   return card('Industry & Trade', `<ul class="history">${rows}</ul>
-    ${town ? `<p class="fine">🏘️ ${esc(where)} is a ${esc(town.town)}: ${esc(town.name.toLowerCase())}, ${trend(town.jobs).replace(/^\S+ /, '')}.</p>` : ''}
+    ${town ? `<p class="fine">🏘️ ${esc(where)} ${bigTown(state) ? 'lives by' : `is a ${esc(town.town)}:`} ${esc(town.name.toLowerCase())}, ${trend(town.jobs).replace(/^\S+ /, '')}.</p>` : ''}
     ${jobInd ? `<p class="fine">💼 Your trade (${esc(getProfession(job.professionId)?.name ?? '')}) works in ${esc(industryName(state, jobInd).toLowerCase())}: jobs ${trend(jobOutlook(state, job.professionId)).replace(/^\S+ /, '')}.</p>` : ''}
     ${crisis ? `<p class="fine">📉 A crisis: ${esc(CAUSE[crisis.cause] ?? 'a crash')}, since ${crisis.year}.</p>` : `<p class="fine">${growthHere(state) >= 0 ? '📈' : '📉'} Output ${growthHere(state) >= 0 ? 'grew' : 'shrank'} ${Math.abs(Math.round(growthHere(state) * 1000) / 10)}% last year.</p>`}
     ${oil > 1.5 ? `<p class="fine">🛢️ Oil costs ${Math.round(oil * 10) / 10}× what it did: the exporters' cartel.</p>` : ''}
@@ -59,7 +62,7 @@ export function concernsCard(state) {
   const mine = state.concerns ?? [];
   const options = foundable(state);
   if (!mine.length && !options.length) return '';
-  const rows = mine.map((c) => `<li>${INDUSTRIES[c.industry].icon} <b>${esc(c.name)}</b> <small>since ${c.since} · worth ${money(c.value)} · ${c.workers.toLocaleString()} workers · last year ${money(c.lastProfit ?? 0)}${c.cartel ? ' · in the cartel' : ''}${c.colonial ? ' · a concession' : ''}</small>
+  const rows = mine.map((c) => `<li>${INDUSTRIES[c.industry].icon} <b>${esc(c.name)}</b> <small>since ${c.since} · worth ${money(c.value)} · ${c.workers.toLocaleString()} workers · ${c.since >= (state.character.birthYear + state.character.age) ? 'new this year' : `last year ${(c.lastProfit ?? 0) < 0 ? 'lost ' + money(-c.lastProfit) : money(c.lastProfit ?? 0)}`}${c.cartel ? ' · in the cartel' : ''}${c.colonial ? ' · a concession' : ''}</small>
     <div class="toggle-row">${button('🏗️ Expand', 'concerns.expand', { arg: c.id, variant: 'tiny' })}${button('✂️ Cut wages', 'concerns.cutWages', { arg: c.id, variant: 'tiny' })}${button(c.cartel ? '📉 Leave the cartel' : '🤝 Join the cartel', 'concerns.cartel', { arg: c.id, variant: 'tiny' })}${button('🎩 Lobby the government', 'concerns.lobby', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly?.['concerns.lobby']) })}${button('🤝 Sell', 'concerns.sell', { arg: c.id, variant: 'tiny ghost' })}</div></li>`).join('');
   const can = options.slice(0, 40).map(([id, cost, pioneer]) => ({ value: id, label: `${INDUSTRIES[id].icon} ${industryName(state, id)} · ~${money(cost)}${pioneer ? ' · the first here' : ''}` }));
   return card('Industrial Concerns', `${rows ? `<ul class="history">${rows}</ul>` : '<p class="muted">Mills, mines, works and lines: the great fortunes of the age. You need half the money; the banks lend the rest.</p>'}

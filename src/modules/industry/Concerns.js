@@ -50,7 +50,9 @@ const FIRM = {
 const town = (state) => (REGIONS[state.character.regionId]?.name ?? 'the town').split(',')[0];
 const rngOf = (state, salt = 0) => new Random(((state.world?.seed ?? 1) * 7349 + state.character.age * 211 + salt) >>> 0);
 const concerns = (state) => (state.concerns ??= []);
-const costOf = (state, id) => Math.round(CONCERN_KINDS[id].cost * Math.min(2, priceLevel(state)));
+// Heavy industry is capital-hungry: a colliery for seven hundred men cost a fortune in its day.
+const SCALE = 5;
+const costOf = (state, id) => Math.round(CONCERN_KINDS[id].cost * SCALE * Math.min(2, priceLevel(state)));
 const kindName = (state, id) => { const k = CONCERN_KINDS[id]; return k.later && techKnown(state, k.later[0]) ? k.later[1] : k.name; };
 
 /** What you could found here and now: [id, cost, pioneer?]. */

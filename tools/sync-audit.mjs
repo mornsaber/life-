@@ -51,7 +51,7 @@ for (const [cc, born] of CELLS) for (const seed of SEEDS) {
       if (sec && share >= 1 && job.employer.ownership !== 'state' && job.yearsAtEmployer >= 1) flag('ownership', `${where}: ${job.employer.name} is private in a nationalised sector (${sec})`);
       if (sec && share <= 0 && job.employer.ownership === 'state' && job.yearsAtEmployer >= 1) flag('ownership', `${where}: ${job.employer.name} is the state's in a private sector (${sec})`);
       // A job in an industry the country hasn't got.
-      const ind = industryOfProfession(job.professionId);
+      const ind = industryOfProfession(job.professionId, state);
       if (ind && INDUSTRIES[ind].resource && endowment(cc, INDUSTRIES[ind].resource) <= 0) flag('jobs', `${where}: a ${p?.name} job with no ${INDUSTRIES[ind].resource} in the ground`);
       if (ind && INDUSTRIES[ind].kind === 'extract' && !industryHere(state, ind) && job.yearsAtEmployer === 0) flag('jobs', `${where}: hired as ${p?.name} where there is no ${INDUSTRIES[ind].name.toLowerCase()}`);
     }

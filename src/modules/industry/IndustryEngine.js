@@ -27,7 +27,7 @@
  * state.industry = { mode, variant, year, cc, c: {cc: country}, news: [] }
  */
 import { Random, clamp } from '../../core/Random.js';
-import { INDUSTRIES, TECHS, SIM, endowment, offshoreOnly, INDUSTRY_OF_PROFESSION } from './IndustryData.js';
+import { INDUSTRIES, TECHS, SIM, endowment, offshoreOnly, INDUSTRY_OF_PROFESSION, TOWN_AFFINITY } from './IndustryData.js';
 import { TECH, COLONIES, yearNow, PRESENT } from '../world/Eras.js';
 import { demographyAt } from '../world/HistoricalData.js';
 import { plannedEconomy } from '../world/OwnershipHistory.js';
@@ -371,9 +371,18 @@ export const worldShare = (state, id, cc = here(state)) => countryOf(state, cc)?
 /** Whether the industry exists here at all. */
 export const industryHere = (state, id, cc = here(state)) => (countryOf(state, cc)?.a?.[IX[id]] ?? 0) > 0.02 && (countryOf(state, cc)?.out?.[IX[id]] ?? 0) > 1e-4;
 /** The industry a profession works in, or null. */
-export const industryOfProfession = (professionId) => INDUSTRY_OF_PROFESSION[professionId] ?? null;
+/**
+ * The industry a profession works in. With a life: the town's own trade when that trade employs
+ * the profession (a welder in a shipyard town works in the yards, in a steel town at the works).
+ */
+export function industryOfProfession(professionId, state = null) {
+  const own = INDUSTRY_OF_PROFESSION[professionId] ?? null;
+  if (!own || !state?.industry?.c?.[here(state)]) return own;
+  const town = townIndustry(state, state.character?.regionId);
+  return INDUSTRIES[town]?.professions.includes(professionId) ? town : own;
+}
 /** The jobs health of the industry a profession works in (0 where it belongs to none). */
-export const professionOutlook = (state, professionId, cc = here(state)) => { const id = industryOfProfession(professionId); return id ? jobsHealth(state, id, cc) : 0; };
+export const professionOutlook = (state, professionId, cc = here(state)) => { const id = industryOfProfession(professionId, cc === here(state) ? state : null); return id ? jobsHealth(state, id, cc) : 0; };
 /** The country's crisis this year, if any: { cause, year, left, depth }. */
 export const crisisHere = (state, cc = here(state)) => countryOf(state, cc)?.crisis ?? null;
 /** The country's growth last year. */
@@ -395,6 +404,8 @@ export function industryName(state, id) {
 export function townIndustry(state, regionId, cc = here(state)) {
   const list = industriesHere(state, cc, 14).filter(([id]) => !['retail', 'construction', 'banking'].includes(id));
   if (!list.length) return 'farming';
+  // A place suited to a trade the country has: that is its trade.
+  for (const id of TOWN_AFFINITY[regionId] ?? []) if (industryShare(state, id, cc) > 0.004 && (countryOf(state, cc)?.out?.[IX[id]] ?? 0) > 1e-4) return id;
   let h = 7;
   for (const ch of String(regionId ?? cc)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const total = list.reduce((s, [, sh]) => s + sh, 0);

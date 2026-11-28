@@ -14,6 +14,8 @@ import { getProfession, professionsFor } from '../src/modules/career/JobTrees.js
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { enact } from '../src/modules/politics/Laws.js';
 import { foundable } from '../src/modules/industry/Concerns.js';
+import { townTrade } from '../src/modules/industry/Sync.js';
+import { industryOfProfession } from '../src/modules/industry/IndustryEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -62,6 +64,17 @@ const tests = {
     engine.ageUp();
     assert.equal(state.concerns.length, 0, 'nationalised');
     assert.ok(state.finances.cash > cash, 'compensated');
+  },
+  'towns live by what they are suited to, and a welder works in the town\'s trade'() {
+    const { state } = life('US', 1900, 20, 1);
+    state.character.regionId = 'pittsburgh';
+    assert.equal(townTrade(state).id, 'ironSteel');
+    const gb = life('GB', 1950, 20, 1).state;
+    gb.character.regionId = 'glasgow';
+    assert.equal(townTrade(gb).id, 'shipbuilding');
+    assert.equal(industryOfProfession('welding', gb), 'shipbuilding');
+    gb.character.regionId = 'cardiff';
+    assert.notEqual(industryOfProfession('welding', gb), 'shipbuilding');
   },
   'a strike at your works resolves'() {
     const { engine, state } = life('GB', 1900, 30, 3);

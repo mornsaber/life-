@@ -23,7 +23,7 @@ import { statuteIn } from '../politics/StatuteBook.js';
 import { leaveJob } from '../career/CareerEngine.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
-const PLACE = { coal: 'the pit', metalMining: 'the mine', textiles: 'the mill', ironSteel: 'the works', engineering: 'the works', shipbuilding: 'the yard', shipping: 'the docks', whaling: 'the whaler', fishing: 'the boats', timber: 'the camp', oilGas: 'the rig', chemicals: 'the plant', automobile: 'the plant', aerospace: 'the plant', railways: 'the line', construction: 'the site', farming: 'the farm', plantation: 'the estate' };
+const PLACE = { coal: 'the pit', metalMining: 'the mine', textiles: 'the mill', ironSteel: 'the works', engineering: 'the works', shipbuilding: 'the yard', shipping: 'the docks', whaling: 'the whaler', fishing: 'the boats', timber: 'the camp', oilGas: 'the rig', chemicals: 'the plant', automobile: 'the plant', aerospace: 'the plant', railways: 'the line', construction: 'the site', farming: 'the farm', plantation: 'the estate', electronics: 'the factory', software: 'the office', pharma: 'the lab', telecom: 'the exchange', power: 'the power station', nuclear: 'the reactor', trucking: 'the depot', airlines: 'the airport', media: 'the studio', renewables: 'the plant' };
 const DISASTER = {
   coal: 'Firedamp: an explosion underground. The cage came up with the first of the dead an hour later.',
   metalMining: 'A roof fall in the deep levels: men trapped behind tons of rock.',
@@ -45,7 +45,7 @@ const rngOf = (state) => new Random(((state.world?.seed ?? 1) * 6113 + state.cha
 function myIndustry(state) {
   const job = state.career?.job;
   if (!job || !emergent(state) || !state.industry?.c?.[cc(state)]) return null;
-  const id = industryOfProfession(job.professionId);
+  const id = industryOfProfession(job.professionId, state);
   return id ? { job, id, I: INDUSTRIES[id], place: PLACE[id] ?? 'work', jobs: jobsHealth(state, id) } : null;
 }
 
