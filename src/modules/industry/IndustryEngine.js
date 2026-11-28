@@ -41,7 +41,7 @@ const START = 1800;
 const US_NOW = 52591;
 const VARIANTS = 2;
 const r3 = (x) => Math.round(x * 1000) / 1000 + 0;
-const p4 = (x) => (x === 0 ? 0 : Math.round(x * 1e4) / 1e4);
+const p4 = (x) => (x === 0 ? 0 : Math.round(x * 1e4) / 1e4 + 0);
 const zeros = () => new Array(N).fill(0);
 
 /** Whether the world model runs this life ('emergent', the default) or history's dates do ('historical'). */
@@ -383,6 +383,13 @@ export function industriesHere(state, cc = here(state), n = 99) {
   const c = countryOf(state, cc);
   if (!c?.out) return [];
   return IDS.filter((id) => industryHere(state, id, cc)).map((id) => [id, industryShare(state, id, cc), c.health[IX[id]], c.jobsHealth[IX[id]]]).sort((p, q) => q[1] - p[1]).slice(0, n);
+}
+/** An industry's name in its day: software before the internet, the telegraph before the telephone. */
+const NAME_THEN = { software: [['internet', 'Software and the internet'], [null, 'Software']], telecom: [['telephone', 'Telegraph and telephones'], [null, 'The telegraph']], media: [['radio', 'Press, film and broadcasting'], [null, 'The press']], electronics: [['radio', 'Electrical goods and electronics'], [null, 'Electrical goods']] };
+export function industryName(state, id) {
+  const rows = NAME_THEN[id];
+  if (!rows) return INDUSTRIES[id].name;
+  return rows.find(([t]) => !t || techKnown(state, t))[1];
 }
 /** The town's trade: the industry a region lives by (steady for a region, from what the country has). */
 export function townIndustry(state, regionId, cc = here(state)) {

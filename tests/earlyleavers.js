@@ -19,7 +19,7 @@ import { minimumAge } from '../src/modules/career/CareerEngine.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc = 'GB', year = 1880, gender = 'male') => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: year, gender });
+  const state = engine.newLife({ countryId: cc, startYear: year, gender, economy: 'historical' });
   return { engine, state };
 };
 const grow = (engine, age) => { const s = engine.state; while (s.character.age < age && s.character.alive !== false) { s.prompts = []; s.stats.health = 90; engine.ageUp(); } s.prompts = []; };

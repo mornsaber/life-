@@ -8,7 +8,7 @@
 import { Random } from '../../core/Random.js';
 import { yearNow, TECH } from '../world/Eras.js';
 import { COUNTRIES } from '../world/Countries.js';
-import { ensureIndustry, catchUp, emergent, crisisHere, INDUSTRIES, IX, industryShare, worldOf, industriesHere } from './IndustryEngine.js';
+import { ensureIndustry, catchUp, emergent, crisisHere, INDUSTRIES, IX, industryShare, worldOf, industriesHere, industryName } from './IndustryEngine.js';
 import { townTrade } from './Sync.js';
 import { TECHS } from './IndustryData.js';
 import { settleBook, bindState, policyLabel } from './IndustryPolicy.js';
@@ -52,6 +52,8 @@ export const IndustryModule = {
       if (emergent(state)) settleBook(state, here(state), yearNow(state));
     }
     const events = catchUp(state, yearNow(state));
+    // This year's events, for the working life that reads them (IndustrialLife.js).
+    state.industry.yearEvents = events.filter((e) => e.kind === 'disaster' || e.kind === 'crisis').map((e) => ({ kind: e.kind, cc: e.cc, ...(e.industry ? { industry: e.industry } : {}), ...(e.cause ? { cause: e.cause } : {}) }));
     const y = yearNow(state);
     const cc = here(state);
     const news = (headline, icon, tier = 'world', weight = 5) => ctx.emit('news:story', { tier, headline, weight, icon });
@@ -61,8 +63,8 @@ export const IndustryModule = {
     for (const [id, share, , jobs] of industriesHere(state, cc, 8)) {
       if (share < 0.03 || y - (c.said[id] ?? -99) < 8) continue;
       const I = INDUSTRIES[id];
-      if (jobs < -0.4) { c.said[id] = y; news(`${I.name} in decline: closures and layoffs across the country`, I.icon, 'national', 6); }
-      else if (jobs > 0.45) { c.said[id] = y; news(`Boom in ${I.name.toLowerCase()}: it can't hire fast enough`, I.icon, 'national', 4); }
+      if (jobs < -0.4) { c.said[id] = y; news(`${industryName(state, id)} in decline: closures and layoffs across the country`, I.icon, 'national', 6); }
+      else if (jobs > 0.45) { c.said[id] = y; news(`Boom in ${industryName(state, id).toLowerCase()}: it can't hire fast enough`, I.icon, 'national', 4); }
     }
     // Your own town's trade.
     const t = townTrade(state);
@@ -71,7 +73,8 @@ export const IndustryModule = {
       ctx.log(`${t.icon} ${t.name} is closing down here: in this ${t.town}, shops are boarded up and families are leaving to find work elsewhere.`, t.icon, 'warn');
     }
     for (const ev of events) {
-      if (ev.kind === 'tech') news(`A new age of industry: ${TECHS[ev.id].name}`, '💡', 'world', 4);
+      if (ev.kind === 'disaster' && ev.cc === cc) news(`Disaster in ${INDUSTRIES[ev.industry]?.name.toLowerCase() ?? 'industry'}: many dead`, '🚨', 'national', 7);
+      else if (ev.kind === 'tech') news(`A new age of industry: ${TECHS[ev.id].name}`, '💡', 'world', 4);
       else if (ev.kind === 'cartel') news('The oil exporters have banded together: the price of oil has tripled', '🛢️', 'world', 8);
       else if (ev.kind === 'oilEnd') news('The oil exporters\' cartel has cracked; prices are falling', '🛢️', 'world', 4);
       else if (ev.kind === 'crisis' && ev.cc !== cc) news(`Crash in ${nameOf(ev.cc)}: banks and firms are failing`, '📉', 'world', 6);

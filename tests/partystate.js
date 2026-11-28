@@ -23,7 +23,7 @@ const allPolitics = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign'
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ countryId: 'CN', ...opts });
+  const state = engine.newLife({ countryId: 'CN', economy: 'historical', ...opts });
   state.legal.record = [];
   if (state.community) state.community.faith = null;
   return { engine, state, ctx: engine.context() };

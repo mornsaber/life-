@@ -532,6 +532,8 @@ export function adjustStat(state, key, delta) {
  * Military honours come from the armed forces you serve in; everything else from where you live.
  */
 export function addHonor(state, honor) {
+  // (A field left undefined would not survive a save.)
+  honor = Object.fromEntries(Object.entries(honor).filter(([, v]) => v !== undefined));
   // Grades of one order: a higher grade replaces a lower one; a lower one is not added beside a higher.
   if (honor.order && honor.grade != null) {
     const same = state.honors.filter((h) => h.order === honor.order && h.grade != null && h.id !== honor.id);
@@ -542,7 +544,7 @@ export function addHonor(state, honor) {
   const country = honor.country ?? (honor.source === 'military' && svc ? svc.nation ?? 'US' : state.character.countryId ?? 'US');
   const name = country === 'US' ? honor.name : localizeTerms(honor.name, COUNTRIES[country]);
   const citation = honor.citation && country !== 'US' ? localizeTerms(honor.citation, COUNTRIES[country]) : honor.citation;
-  state.honors.push({ ...honor, name, citation, country, ...(name !== honor.name ? { baseName: honor.name } : {}), age: state.character.age, year: currentYear(state) });
+  state.honors.push({ ...honor, name, ...(citation !== undefined ? { citation } : {}), country, ...(name !== honor.name ? { baseName: honor.name } : {}), age: state.character.age, year: currentYear(state) });
 }
 
 /** Per-year counters (reset every age-up) used for diminishing returns. */
@@ -608,7 +610,7 @@ export function vehicleEquity(state) {
 /** Your share of every business you own (valuation is already net of business debt), plus a holding company's treasury. */
 export function businessEquity(state) {
   const bs = [state.business?.current, ...(state.business?.holdings ?? [])].filter(Boolean);
-  const stakes = bs.reduce((s, b) => s + Math.max(0, (b.valuation ?? 0) * b.ownerPct), 0);
+  const stakes = bs.reduce((s, b) => s + Math.max(0, (b.valuation ?? 0) * b.ownerPct), 0) + (state.concerns ?? []).reduce((s, c) => s + Math.max(0, (c.value ?? 0) - (c.debt ?? 0)), 0);
   return Math.round(stakes + Math.max(0, state.business?.conglomerate?.treasury ?? 0) + Math.max(0, state.club?.value ?? 0) + (state.society?.art ?? []).reduce((t, a) => t + (a.value ?? 0), 0) + (state.estate?.villas ?? []).reduce((t, v) => t + (v.value ?? 0), 0) + (state.estate?.collection ?? []).reduce((t, x) => t + (x.value ?? 0), 0));
 }
 

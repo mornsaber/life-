@@ -14,7 +14,7 @@
  *   towns       a town lives by its industry: house prices and the people around you follow it
  */
 import { clamp } from '../../core/Random.js';
-import { industryOfProfession, jobsHealth, industryHealth, industryHere, emergent, INDUSTRIES, townIndustry, industriesHere } from './IndustryEngine.js';
+import { industryOfProfession, jobsHealth, industryHealth, industryHere, emergent, INDUSTRIES, townIndustry, industriesHere, industryName } from './IndustryEngine.js';
 import { endowment } from './IndustryData.js';
 import { statuteIn } from '../politics/StatuteBook.js';
 
@@ -93,7 +93,7 @@ export function townTrade(state, regionId = state.character?.regionId) {
   if (!viewed(state)) return null;
   const id = townIndustry(state, regionId);
   const I = INDUSTRIES[id];
-  return { id, name: I.name, town: I.town, icon: I.icon, health: industryHealth(state, id), jobs: jobsHealth(state, id) };
+  return { id, name: industryName(state, id), town: I.town, icon: I.icon, health: industryHealth(state, id), jobs: jobsHealth(state, id) };
 }
 /** House prices drift with the town's trade. */
 export const housingDrift = (state, regionId) => { const t = townTrade(state, regionId); return t ? clamp(t.jobs * 0.04, -0.04, 0.03) : 0; };

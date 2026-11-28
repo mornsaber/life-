@@ -3,6 +3,7 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
+import { concernsCard } from './IndustryView.js';
 import { yearNow } from '../../modules/world/Eras.js';
 import { firmCard, masterCard } from '../../modules/business/FirmLife.js';
 import { groupBoardSize, groupDirectorFee } from '../../modules/business/GroupBoard.js';
@@ -779,12 +780,12 @@ export function businessView(state, ui = {}) {
   const biz = currentBusiness(state);
   if (biz) {
     const page = ownedView(state, biz, ui);
-    if (!BIZ_TABS[ui.bizTab]) return `${conglomerateCard(state)}${page}${holdingsCard(state)}${rivalGroupsCard(state)}${inventionsCard(state)}${historyCard(state)}`;
+    if (!BIZ_TABS[ui.bizTab]) return `${concernsCard(state)}${conglomerateCard(state)}${page}${holdingsCard(state)}${rivalGroupsCard(state)}${inventionsCard(state)}${historyCard(state)}`;
     // The group-level cards sit with the section they belong to.
     return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${inventionsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
   }
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' }) + inventionsCard(state);
-  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${masterCard(state)}${startCard(state, ui)}${inventionsCard(state)}${franchisePicker(state, ui)}${listingsCard(state)}${historyCard(state)}`;
+  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${masterCard(state)}${concernsCard(state)}${startCard(state, ui)}${inventionsCard(state)}${franchisePicker(state, ui)}${listingsCard(state)}${historyCard(state)}`;
 }
 
 /** Regulators: your share of each market, antitrust exposure, open cases and recent findings. */

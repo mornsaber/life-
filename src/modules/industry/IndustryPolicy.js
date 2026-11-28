@@ -32,7 +32,7 @@ import { levelValue, enact } from '../politics/Laws.js';
 import { statuteIn, statuteOverride } from '../politics/StatuteBook.js';
 
 /** Laws the industry model reads and governments here may change, and their reactive defaults. */
-export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false, workmensCompensation: false, fortyEightHourWeek: false, holidaysWithPay: false, dockDecasualisation: false };
+export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false, workmensCompensation: false, fortyEightHourWeek: false, holidaysWithPay: false, dockDecasualisation: false, workplaceSafety: 'lax', antitrust: 'standard' };
 const FLAGS = ['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation'];
 export const OWN_SECTORS = Object.keys(SECTORS).filter((s) => ['coal', 'rail', 'power', 'telecom', 'airline', 'banking', 'industry'].includes(s));
 
@@ -132,7 +132,9 @@ function decide(sim, cc, y, rng, gov) {
   const tariff = current(sim, cc, 'tariff');
   const press = importPressure(c);
   const lead = leadership(c);
-  if (tariff !== 'protective' && ((fresh && crisis.cause !== 'oil' && roll(0.35)) || (press > 0.08 && roll(0.2)))) set('tariff', 'protective', fresh ? 'the crash' : 'the flood of cheap imports');
+  // Industrialists' lobbying counts (Concerns.js): a dinner with ministers is worth something.
+  const lobbied = c.lobby && y - c.lobby.year <= 1;
+  if (tariff !== 'protective' && ((fresh && crisis.cause !== 'oil' && roll(0.35)) || (press > 0.08 && roll(0.2)) || (lobbied && gov === 'business' && roll(0.25)))) set('tariff', 'protective', fresh ? 'the crash' : lobbied ? 'the manufacturers\' lobby' : 'the flood of cheap imports');
   else if (tariff !== 'free' && !crisis && lead > 0.12 && roll(gov === 'business' ? 0.15 : 0.08)) set('tariff', 'free', 'its lead in the world\'s trade');
   else if (tariff === 'protective' && !crisis && press < 0.02 && c.growth > 0.02 && roll(0.06)) set('tariff', 'revenue', 'a run of good years');
 
@@ -149,7 +151,11 @@ function decide(sim, cc, y, rng, gov) {
 
   // Industrial policy and subsidies.
   const ip = current(sim, cc, 'industrialPolicy');
-  if (ip === 'laissezFaire' && ((labor && press > 0.05) || (crisis?.cause === 'industry')) && roll(0.25)) set('industrialPolicy', 'support', 'industries in trouble');
+  if (ip === 'laissezFaire' && ((labor && press > 0.05) || (crisis?.cause === 'industry') || (lobbied && roll(0.4))) && roll(0.25)) set('industrialPolicy', 'support', lobbied ? 'the industry\'s lobbying' : 'industries in trouble');
+  // The trusts: a labour government goes after cartels; a long business government relaxes.
+  const at = current(sim, cc, 'antitrust');
+  if ((c.cartels ?? 0) > 0 && labor && at !== 'aggressive' && roll(0.15)) set('antitrust', 'aggressive', 'the trusts and cartels');
+  else if (at === 'aggressive' && gov === 'business' && (c.calm ?? 0) > 8 && roll(0.06)) set('antitrust', 'standard', 'the case for big business');
   else if (ip !== 'laissezFaire' && gov === 'business' && !crisis && (c.calm ?? 0) > 6 && roll(0.08)) set('industrialPolicy', 'laissezFaire', 'the call to leave industry to the market');
   const support = current(sim, cc, 'industrialPolicy') !== 'laissezFaire';
   const subs = {};
@@ -163,7 +169,22 @@ function decide(sim, cc, y, rng, gov) {
   // Labour law: what organised workers win from a government that needs their votes.
   const unions = current(sim, cc, 'tradeUnionsLegal');
   const hazard = INDUSTRY_IDS.reduce((s, id) => s + share(c, id) * INDUSTRIES[id].hazard, 0);
+  // Disasters: the more dangerous the work and the laxer the rules, the more often; fewer as
+  // the country gets richer (better gear, ventilation, inspectors).
+  const safety = current(sim, cc, 'workplaceSafety') ?? 'lax';
+  const sf = { lax: 1.3, standard: 0.6, strict: 0.35 }[safety] ?? 1;
+  if (roll(hazard * 0.35 * sf * (1 - 0.6 * clamp(income(cc, y), 0, 1)))) {
+    const pool = INDUSTRY_IDS.filter((id) => INDUSTRIES[id].hazard >= 0.5 && share(c, id) > 0.005);
+    const total = pool.reduce((s, id) => s + share(c, id) * INDUSTRIES[id].hazard, 0);
+    let x = rng.next() * total;
+    const id = pool.find((i) => (x -= share(c, i) * INDUSTRIES[i].hazard) <= 0) ?? pool[0];
+    if (id) { c.disasters = [...(c.disasters ?? []).slice(-4), y]; out.push({ kind: 'disaster', cc, y, industry: id }); }
+  }
   const disaster = (c.disasters ?? []).some((d) => y - d <= 1);
+  if (disaster && safety === 'lax' && mass && roll(0.4)) set('workplaceSafety', 'standard', 'the disaster');
+  else if (disaster && safety === 'standard' && labor && roll(0.2)) set('workplaceSafety', 'strict', 'another disaster');
+  // And loosened again when memories fade: a business government, fifteen quiet years.
+  else if (safety === 'strict' && gov === 'business' && !(c.disasters ?? []).some((d) => y - d < 15) && roll(0.08)) set('workplaceSafety', 'standard', 'the burden of red tape');
   if (!current(sim, cc, 'workmensCompensation') && mass && (disaster ? roll(0.5) : unions && hazard > 0.1 && roll(labor ? 0.15 : 0.04))) set('workmensCompensation', true, disaster ? 'the disaster' : 'the toll of accidents at work');
   if (!current(sim, cc, 'fortyEightHourWeek') && mass && unions && income(cc, y) > 0.08 && roll(labor ? 0.1 : 0.02)) set('fortyEightHourWeek', true, 'the campaign for shorter hours');
   if (!current(sim, cc, 'holidaysWithPay') && mass && unions && current(sim, cc, 'fortyEightHourWeek') && income(cc, y) > 0.12 && roll(labor ? 0.08 : 0.02)) set('holidaysWithPay', true, 'the unions\' demand for a week by the sea');

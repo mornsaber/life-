@@ -19,7 +19,7 @@ import { businessRoster, syncBusinessOrg } from '../src/modules/org/Businesses.j
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed, { profession = 'trucking', creds = ['cdlA', 'driverLicense'] } = {}) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ firstName: 'Fleet', lastName: 'Owner' });
+  const state = engine.newLife({ firstName: 'Fleet', lastName: 'Owner', economy: 'historical' });
   state.character.age = 38;
   Object.assign(state.stats, { health: 90, smarts: 70, happiness: 70 });
   state.finances.cash = 4000000;

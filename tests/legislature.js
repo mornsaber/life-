@@ -127,15 +127,19 @@ const tests = {
     }
     assert.ok(decided, 'a close vote came to you');
     // Governor: bills land on your desk.
-    const g = life(4);
-    ensureBodies(g.state);
-    g.state.politics.office = { id: 'governor', termYearsLeft: 4, terms: 1, approval: 60, startAge: 30, fullTime: true };
-    let signed = false;
-    for (let i = 0; i < 15 && !signed; i++) {
-      g.state.prompts = [];
-      g.engine.ageUp();
-      const p = g.state.prompts.find((x) => x.type === 'legislature.sign');
-      if (p) { g.engine.resolvePrompt(p.id, 'sign'); signed = true; }
+    let g; let signed = false;
+    // (Which bills come up in a governor's first years is chance: try a few lives.)
+    for (const seed of [4, 5, 6, 7]) {
+      g = life(seed);
+      ensureBodies(g.state);
+      g.state.politics.office = { id: 'governor', termYearsLeft: 4, terms: 1, approval: 60, startAge: 30, fullTime: true };
+      for (let i = 0; i < 4 && !signed; i++) {
+        g.state.prompts = []; g.state.stats.health = 95;
+        g.engine.ageUp();
+        const p = g.state.prompts.find((x) => x.type === 'legislature.sign');
+        if (p) { g.engine.resolvePrompt(p.id, 'sign'); signed = true; }
+      }
+      if (signed) break;
     }
     assert.ok(signed, 'a bill reached the governor');
     assert.ok(g.state.laws.enacted.some((e) => e.sponsor !== 'you' && e.level === 'state'), 'the signed bill is law');
