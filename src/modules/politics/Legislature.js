@@ -21,6 +21,7 @@
  *          nextElection, bills: [bill], history: [{ age, text }] }
  * bill = { id, lawId, direction, value, sponsor, stage, yes, no, push, outcome }
  */
+import { organisedVote } from '../industry/Sync.js';
 import { Random, clamp } from '../../core/Random.js';
 import { randomName, yearlyCount, bumpYearly, currentYear } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
@@ -761,6 +762,10 @@ function electionYear(ctx, body, rng) {
   const st = body.level === 'federal' ? null : body.level === 'state' ? body.where : REGIONS[body.where]?.state;
   const unions = st ? unionsInState(state, st) : [];
   if (unions.length) swing += (unions.reduce((s, u) => s + u.clout, 0) / unions.length - 30) / 800;
+  // The organised vote: a country of pits and mills with lawful unions pulls a parliament toward
+  // labour over the years (toward a level, not a ratchet).
+  const organised = organisedVote(state, body.level === 'federal' ? { national: true } : { regionId: body.where && REGIONS[body.where] ? body.where : state.character.regionId });
+  if (organised) swing += (0.5 + organised - body.labor / body.seats) * 0.2;
   // Your vote (and your doorknocking) for the national parliament.
   swing += ballotSwing(state, body);
   const before = body.labor;

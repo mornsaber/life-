@@ -21,7 +21,7 @@ import { sovereignIn } from './HistoricalData.js';
 import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
 import { PACKS } from './packs/index.js';
 import { statuteIn } from '../politics/StatuteBook.js';
-import { statuteOverride, INCOME_TAX_FROM } from '../politics/StatuteBook.js';
+import { statuteOverride, INCOME_TAX_FROM, REACTIVE } from '../politics/StatuteBook.js';
 
 export const PRESENT = 2026;
 /** The eras the start screen offers; each spans [from, to] and a life can start in any year of one. */
@@ -1405,6 +1405,8 @@ export function eraTaxShare(state) {
   // Income tax is a law (StatuteBook): a bill can bring it in early or abolish it.
   const law = statuteOverride(state, 'incomeTax');
   if (law === false) return 0;
+  // Where the economy runs itself, income tax exists only once a government here passed it.
+  if (law == null && REACTIVE.has('incomeTax') && (state.industry?.mode ?? 'emergent') === 'emergent' && state.industry) return 0;
   const share = historyTaxShare(state);
   return law === true && share === 0 ? (yearNow(state) < 1914 ? 0.25 : 0.6) : share;
 }

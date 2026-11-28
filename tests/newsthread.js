@@ -14,7 +14,7 @@ import { newsThreadCard } from '../src/ui/views/CirclesView.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, birth, age, seed = 5) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  engine.newLife({ countryId: cc, startYear: birth });
+  engine.newLife({ countryId: cc, startYear: birth, economy: 'historical' });
   for (let i = 0; i < age; i++) { engine.state.prompts = []; engine.state.stats.health = 90; engine.ageUp(); }
   return { engine, state: engine.state };
 }

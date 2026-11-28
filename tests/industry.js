@@ -13,6 +13,7 @@ import { ensureIndustry, catchUp, industryShare, industryHere, worldAt, IX, name
 import { statuteIn } from '../src/modules/politics/StatuteBook.js';
 import { stateShare } from '../src/modules/world/Ownership.js';
 import { enact, levelValue } from '../src/modules/politics/Laws.js';
+import { organisedVote } from '../src/modules/industry/Sync.js';
 import { setEraYear } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -105,6 +106,26 @@ const tests = {
   'a planned economy owns its industry, and selling it is a law'() {
     const { state } = life('PL', 1960);
     assert.equal(stateShare(state, 'industry', 'PL'), 1);
+  },
+  'welfare comes from governments, not dates: in force only where a government here passed it'() {
+    for (const seed of [1, 2, 3]) {
+      const { state } = life('GB', 1960, seed);
+      const book = state.laws?.nations?.GB ?? {};
+      for (const id of ['statePension', 'nationalInsurance', 'incomeTax', 'sicknessInsurance']) assert.equal(statuteIn(state, id, 'GB'), book[id] === true, `${id} #${seed}`);
+    }
+    // An absolute monarchy's state does not hand out sickness insurance; a planned economy does.
+    const ru = life('RU', 1960, 2).state;
+    assert.ok(statuteIn(ru, 'statePension', 'RU'), 'the Soviet pension');
+    const hist = life('GB', 1960, 1, 'historical').state;
+    assert.ok(statuteIn(hist, 'statePension', 'GB') && statuteIn(hist, 'incomeTax', 'GB'), 'history\'s dates');
+  },
+  'mining seats vote labour where unions are lawful'() {
+    const { state } = life('GB', 1950, 2);
+    state.laws.nations.GB.tradeUnionsLegal = true;
+    const lean = organisedVote(state, { national: true });
+    assert.ok(lean > 0, `national ${lean}`);
+    state.laws.nations.GB.tradeUnionsLegal = false;
+    assert.equal(organisedVote(state, { national: true }), 0, 'no union vote without lawful unions');
   },
   'the save stays small'() {
     const { state } = life('GB', 1900);

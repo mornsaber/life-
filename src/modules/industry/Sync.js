@@ -88,6 +88,23 @@ export function unionPressure(state, professions = []) {
   return { drift: o * 0.03, militancy: o < -0.2 ? 6 : o > 0.3 ? 2 : 0 };
 }
 
+/**
+ * The organised vote: how far a seat leans to labour because its people work in pits, mills and
+ * yards where the unions are lawful (a closing works turns it further). A town's seat, or with
+ * national true the whole country's weight of organised industry. Labour's lean, about −0.03…+0.08.
+ */
+export function organisedVote(state, { regionId = state.character?.regionId, national = false } = {}) {
+  if (!viewed(state) || !unionsLawful(state)) return 0;
+  if (national) {
+    const org = industriesHere(state, cc(state), 40).filter(([id]) => !['farming', 'plantation', 'retail', 'tourism', 'banking'].includes(id)).reduce((s, [id, share]) => s + share * INDUSTRIES[id].union, 0);
+    return clamp((org - 0.15) * 0.25, -0.03, 0.05);
+  }
+  const t = townTrade(state, regionId);
+  if (!t) return 0;
+  const u = INDUSTRIES[t.id].union;
+  return clamp((u - 0.45) * 0.12 + (u >= 0.6 && t.jobs < -0.3 ? 0.02 : 0), -0.03, 0.08);
+}
+
 /** A town's trade and how it is doing: { id, name, town, health, jobs }. */
 export function townTrade(state, regionId = state.character?.regionId) {
   if (!viewed(state)) return null;

@@ -20,7 +20,7 @@ const solve = (engine, state) => { for (let g = 0; g < 30 && state.prompts.lengt
 /** A working adult. */
 function worker(seed = 3, prefer = null) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ countryId: 'US' });
+  const state = engine.newLife({ countryId: 'US', economy: 'historical' });
   for (let i = 0; i < 24; i++) { state.prompts = []; state.stats.health = 90; engine.ageUp(); }
   state.prompts = [];
   Object.assign(state.stats, { smarts: 80, health: 90 });

@@ -27,13 +27,13 @@ import { clamp } from '../../core/Random.js';
 import { setLawReader, setPolicyStep, rulerAt, INDUSTRIES, INDUSTRY_IDS, IX } from './IndustryEngine.js';
 import { SECTORS } from '../world/OwnershipHistory.js';
 import { plannedEconomy } from '../world/OwnershipHistory.js';
-import { demographyAt } from '../world/HistoricalData.js';
+import { demographyAt, dataRegime } from '../world/HistoricalData.js';
 import { levelValue, enact } from '../politics/Laws.js';
 import { statuteIn, statuteOverride } from '../politics/StatuteBook.js';
 
 /** Laws the industry model reads and governments here may change, and their reactive defaults. */
-export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false, workmensCompensation: false, fortyEightHourWeek: false, holidaysWithPay: false, dockDecasualisation: false, workplaceSafety: 'lax', antitrust: 'standard' };
-const FLAGS = ['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation'];
+export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false, workmensCompensation: false, fortyEightHourWeek: false, holidaysWithPay: false, dockDecasualisation: false, incomeTax: false, sicknessInsurance: false, statePension: false, nationalInsurance: false, workplaceSafety: 'lax', antitrust: 'standard' };
+const FLAGS = ['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation', 'incomeTax', 'sicknessInsurance', 'statePension', 'nationalInsurance'];
 export const OWN_SECTORS = Object.keys(SECTORS).filter((s) => ['coal', 'rail', 'power', 'telecom', 'airline', 'banking', 'industry'].includes(s));
 
 /* ---- Reading the law: your country's book, the world's own ---- */
@@ -89,6 +89,15 @@ function governing(sim, cc, y, rng) {
   return c.gov;
 }
 
+/** How much the people's voice counts: a democracy, a limited franchise, or none. */
+function regimeVoice(cc, y) {
+  const r = dataRegime(cc, y);
+  if (!r) return 'limited';
+  if (r.democracy) return 'democracy';
+  return ['monolig', 'semimon', 'parl', 'pres'].includes(r.cat) ? 'limited' : 'autocracy';
+}
+const UNORGANISED = new Set(['farming', 'plantation', 'construction', 'retail', 'tourism', 'banking']);
+
 /* ---- Deciding ---- */
 const share = (c, id) => { const t = c.out.reduce((s, v) => s + v, 0); return t > 0 ? c.out[IX[id]] / t : 0; };
 const MAKE = INDUSTRY_IDS.filter((id) => INDUSTRIES[id].tradable);
@@ -108,13 +117,26 @@ export const policyLabel = (law, value) => LABEL[law]?.[value] ?? value;
 function decide(sim, cc, y, rng, gov) {
   const c = sim.c[cc];
   const out = [];
-  if (plannedEconomy(cc, y)) { c.wasPlanned = true; return out; }
+  if (plannedEconomy(cc, y)) {
+    // The plan provides: a state pension, sick pay and social insurance, paid for out of wages.
+    if (!c.wasPlanned) for (const law of ['incomeTax', 'sicknessInsurance', 'statePension', 'nationalInsurance']) if (!current(sim, cc, law)) out.push(pass(sim, cc, law, true, y, 'the new order'));
+    c.wasPlanned = true;
+    return out;
+  }
   // Out of a planned economy: the state still owns everything until someone sells it.
   if (c.wasPlanned) {
     c.wasPlanned = false;
     for (const sector of OWN_SECTORS) out.push(pass(sim, cc, `ownership_${sector}`, true, y, 'the end of the planned economy'));
   }
-  if (rulerAt(cc, y)) return out; // a colony's economic laws are made by its masters
+  if (rulerAt(cc, y)) {
+    // A colony's economic laws are made by its masters: a revenue tax for the administration,
+    // and in time a compensation ordinance for the mines and railways.
+    const roll = (p) => rng.next() < p;
+    c.colonialSince ??= y;
+    if (!current(sim, cc, 'incomeTax') && income(cc, y) > 0.015 && roll(0.012)) out.push(pass(sim, cc, 'incomeTax', true, y, 'the colonial treasury'));
+    if (!current(sim, cc, 'workmensCompensation') && income(cc, y) > 0.02 && y > c.colonialSince + 30 && roll(0.015)) out.push(pass(sim, cc, 'workmensCompensation', true, y, 'an ordinance from the colonial office'));
+    return out;
+  }
   const labor = gov === 'labor';
   const mass = massPolitics(sim, cc, y);
   const crisis = c.crisis;
@@ -163,8 +185,10 @@ function decide(sim, cc, y, rng, gov) {
   if (sim.world) (sim.laws[cc] ??= {}).subsidies = subs; else c.subsidies = subs;
 
   // Combinations: unions made lawful once mines and mills employ enough people and they vote.
-  const organised = INDUSTRY_IDS.reduce((s, id) => s + share(c, id) * INDUSTRIES[id].union, 0);
-  if (!current(sim, cc, 'tradeUnionsLegal') && organised > 0.25 && (mass ? roll(labor ? 0.3 : 0.08) : roll(0.02))) set('tradeUnionsLegal', true, 'the unions\' long campaign');
+  // Organised labour: the mines, mills, works, docks and railways (not the fields or the shops).
+  const organised = INDUSTRY_IDS.filter((id) => !UNORGANISED.has(id)).reduce((s, id) => s + share(c, id) * INDUSTRIES[id].union, 0);
+  const voice = regimeVoice(cc, y);
+  if (!current(sim, cc, 'tradeUnionsLegal') && organised > 0.12 && voice !== 'autocracy' && (mass ? roll(labor ? 0.3 : 0.08) : roll(0.012))) set('tradeUnionsLegal', true, 'the unions\' long campaign');
 
   // Labour law: what organised workers win from a government that needs their votes.
   const unions = current(sim, cc, 'tradeUnionsLegal');
@@ -189,6 +213,18 @@ function decide(sim, cc, y, rng, gov) {
   if (!current(sim, cc, 'fortyEightHourWeek') && mass && unions && income(cc, y) > 0.08 && roll(labor ? 0.1 : 0.02)) set('fortyEightHourWeek', true, 'the campaign for shorter hours');
   if (!current(sim, cc, 'holidaysWithPay') && mass && unions && current(sim, cc, 'fortyEightHourWeek') && income(cc, y) > 0.12 && roll(labor ? 0.08 : 0.02)) set('holidaysWithPay', true, 'the unions\' demand for a week by the sea');
   if (!current(sim, cc, 'dockDecasualisation') && mass && unions && share(c, 'shipping') > 0.008 && roll(labor ? 0.06 : 0.01)) set('dockDecasualisation', true, 'the dockers\' strikes against the call-on');
+
+  // The state's purse and the welfare it pays for. Income tax when customs no longer pay the
+  // bills (free trade, a crisis) or a richer state wants more; sickness insurance to take the wind
+  // out of organised labour's sails (either side passes it); pensions and then the welfare state
+  // once organised labour has had time to grow and working people vote, sooner after a slump.
+  const rich = income(cc, y);
+  const unionYears = unions ? y - (c.changed.tradeUnionsLegal ?? 1800) : 0;
+  if (!current(sim, cc, 'incomeTax') && rich > 0.03 && roll(tariff === 'free' ? 0.08 : crisis ? 0.02 : mass && labor ? 0.03 : 0.004)) set('incomeTax', true, tariff === 'free' ? 'the revenue lost with the tariff' : crisis ? 'a state short of money' : 'the cost of government');
+  if (!current(sim, cc, 'sicknessInsurance') && organised > 0.12 && rich > 0.07 && voice !== 'autocracy' && roll(labor ? 0.05 : 0.025)) set('sicknessInsurance', true, labor ? 'the unions\' friendly societies made national' : 'the need to take the wind out of the socialists\' sails');
+  if (!current(sim, cc, 'statePension') && rich > 0.09 && organised > 0.1 && unionYears > 10 && roll(mass ? (labor ? 0.06 : 0.015) : 0.005)) set('statePension', true, 'old age without the workhouse');
+  if (!current(sim, cc, 'nationalInsurance') && mass && current(sim, cc, 'statePension') && unionYears > 20 && rich > 0.14 && roll((labor ? 0.06 : 0.008) * (crisis ? 3 : 1))) set('nationalInsurance', true, crisis ? 'the slump and the dole queues' : 'cradle to grave');
+  else if (current(sim, cc, 'nationalInsurance') && gov === 'business' && crisis && c.growth < -0.03 && roll(0.01)) set('nationalInsurance', false, 'a state that cannot pay');
 
   // Nationalisation and privatisation.
   if (mass) for (const sector of OWN_SECTORS) {

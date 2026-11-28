@@ -22,6 +22,7 @@
  *   partisan, primary, funds, endorsements[], opponent, rivals[], focus{}, polls[],
  *   incumbent, attacks, ads, momentum }
  */
+import { organisedVote, townTrade } from '../industry/Sync.js';
 import { raceCost } from './PoliticsOfTheDay.js';
 import { regimeOf } from '../world/Regimes.js';
 import { clamp, Random } from '../../core/Random.js';
@@ -256,6 +257,9 @@ export function generalShare(state, officeId, c, { incumbent = false } = {}) {
     const mood = nationalMood(state, officeId);
     if (mine && mood.swing) share += add(`National mood (${mood.why.join(', ')})`, mood.inParty === mine ? mood.swing : -mood.swing * 0.6);
     share += add('Your standing in the party', partyBonus(state));
+    // An industrial seat: the union vote, for labour.
+    const org = !office.statewide && (office.level ?? 9) <= 4 ? organisedVote(state) : 0;
+    if (org && dir) share += add(org > 0 ? `${(townTrade(state)?.town ?? 'industrial town').replace(/^./, (x) => x.toUpperCase())} seat: the union vote` : 'Few union men here', -dir * org);
   }
   // The platforms against what voters want.
   // Pivoting to the middle for the general moves you a third of the way to the voters.

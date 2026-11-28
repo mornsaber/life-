@@ -40,6 +40,7 @@ export function industryCard(state) {
     ['Banks', policyLabel('bankRegulation', at('bankRegulation') ?? 'standard')],
     ['Industry', policyLabel('industrialPolicy', at('industrialPolicy') ?? 'laissezFaire')],
     ['Unions', statuteIn(state, 'tradeUnionsLegal', cc) ? 'lawful' : 'unlawful: combinations are conspiracy'],
+    ['Tax & welfare', [statuteIn(state, 'incomeTax', cc) ? 'income tax' : 'no income tax', statuteIn(state, 'sicknessInsurance', cc) && 'sickness insurance', statuteIn(state, 'statePension', cc) && 'a state pension', statuteIn(state, 'nationalInsurance', cc) && 'national insurance'].filter(Boolean).join(' · ')],
     ['In public hands', owned.length ? owned.join(', ') : 'nothing'],
   ];
   const oil = oilPrice(state);

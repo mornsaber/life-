@@ -184,7 +184,7 @@ Object.assign(STATUTES, {
     effect: 'Workers may combine in unions and strike; without it, organising is conspiracy.' },
 });
 /** Laws that, in a life whose economy runs itself, only a government in this world changes. */
-export const REACTIVE = new Set(['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation', ...Object.keys(STATUTES).filter((id) => id.startsWith('ownership_'))]);
+export const REACTIVE = new Set(['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation', 'incomeTax', 'sicknessInsurance', 'statePension', 'nationalInsurance', ...Object.keys(STATUTES).filter((id) => id.startsWith('ownership_'))]);
 const reactiveWorld = (state) => Boolean(state?.industry) && (state.industry.mode ?? 'emergent') === 'emergent';
 
 /** The book of national laws for a country in this life (enacted bills). */
