@@ -24,7 +24,8 @@ const t = (name, fn) => { fn(); pass += 1; console.log(`  ✔ ${name}`); };
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, y) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: y - 30, firstName: 'Ada', lastName: 'Kova', gender: 'male' });
+  // History's own nationalisations and sales (the reactive economy has its own tests: tests/industry.js).
+  const state = engine.newLife({ countryId: cc, startYear: y - 30, firstName: 'Ada', lastName: 'Kova', gender: 'male', economy: 'historical' });
   state.character.age = 10; state.prompts = []; sync(state);
   for (let i = 0; i < 20; i++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
   state.prompts = [];

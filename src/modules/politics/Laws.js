@@ -65,6 +65,24 @@ export const LAWS = {
     base: { state: () => 'standard' },
     effect: 'Reform cuts what staff certifications and licensed managers cost; strict raises it.',
   },
+  tariff: {
+    name: 'Tariffs on imports', icon: '🛃', kind: 'choice', levels: ['federal'], choices: ['free', 'revenue', 'protective'], lean: 'business', combine: 'federal',
+    labels: { free: 'Free trade', revenue: 'Revenue tariff', protective: 'Protective tariffs' },
+    base: { federal: 'revenue' },
+    effect: 'Protection keeps the home market for home industry (and dearer goods); free trade lets the cheapest maker win.',
+  },
+  industrialPolicy: {
+    name: 'Industrial policy', icon: '🏭', kind: 'choice', levels: ['federal'], choices: ['laissezFaire', 'support', 'planning'], lean: 'labor', combine: 'federal',
+    labels: { laissezFaire: 'Laissez-faire', support: 'Support for industries in trouble', planning: 'State planning and science' },
+    base: { federal: 'laissezFaire' },
+    effect: 'Whether the state subsidises struggling industries (and funds research), or leaves it to the market.',
+  },
+  bankRegulation: {
+    name: 'Banking rules', icon: '🏦', kind: 'choice', levels: ['federal'], choices: ['light', 'standard', 'strict'], lean: 'labor', combine: 'federal',
+    labels: { light: 'Light touch', standard: 'Standard', strict: 'Strict' },
+    base: { federal: 'standard' },
+    effect: 'Light rules let credit (and the next crash) build faster; strict rules slow both.',
+  },
   antitrust: {
     name: 'Antitrust enforcement', icon: '⚖️', kind: 'choice', levels: ['federal'], choices: ['lax', 'standard', 'aggressive'], lean: 'labor', combine: 'federal',
     labels: { lax: 'Lax', standard: 'Standard', aggressive: 'Aggressive' },

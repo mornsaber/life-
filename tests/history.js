@@ -117,7 +117,8 @@ const tests = {
   'a life started today has all of history behind it and nothing changes'() {
     const { engine, state } = life({ countryId: 'RU' });
     assert.equal(state.character.birthYear, PRESENT);
-    assert.ok(Object.keys(EVENTS).filter((id) => !EVENTS[id].future).every((id) => state.era.events[id]), 'every past event is behind it');
+    // (The economy's crashes are the world model's: some worlds never have a tech bust.)
+    assert.ok(Object.keys(EVENTS).filter((id) => !EVENTS[id].future && !EVENTS[id].econ).every((id) => state.era.events[id]), 'every past event is behind it');
     assert.ok(Object.keys(EVENTS).filter((id) => EVENTS[id].future).every((id) => !state.era.events[id]), 'the future is ahead');
     assert.deepEqual(eraLayer(state), {});
     assert.doesNotMatch(regimeHere(state).name ?? '', /Soviet|Tsar/);
@@ -127,7 +128,7 @@ const tests = {
     assert.ok(hasTech(state, 'crypto'));
   },
   'a 1930 start: the past is seeded, the Depression still ahead'() {
-    const { state } = life({ countryId: 'US', startYear: 1930 });
+    const { state } = life({ countryId: 'US', startYear: 1930, economy: 'historical' });
     assert.equal(yearNow(state), 1930);
     assert.ok(state.era.events.ww1?.ended, 'the Great War is over');
     assert.ok(state.era.events.fascismIT, 'Mussolini is in power');
@@ -179,7 +180,8 @@ const tests = {
       const { engine, state } = life({ countryId: 'GB', startYear: 1910 }, seed);
       live(engine, state, 75);
       for (const [id, e] of Object.entries(state.era.events)) {
-        if (e.past) continue;
+        // (The economy's crashes come when the world model has them, not in a window.)
+        if (e.past || e.emergent) continue;
         const [a, b] = EVENTS[id].window;
         assert.ok(e.year >= a && e.year <= b, `${id} in ${e.year}`);
       }

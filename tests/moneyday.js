@@ -17,7 +17,7 @@ import { localWage, priceLevel, countryPriceLevel } from '../src/modules/world/C
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (opts, seed = 1) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ gender: 'male', ...opts });
+  const state = engine.newLife({ gender: 'male', economy: 'historical', ...opts });
   return { engine, state, ctx: engine.context() };
 };
 const years = (engine, state, n, each) => {

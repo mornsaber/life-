@@ -18,7 +18,8 @@ import { VIEWS } from '../src/ui/Renderer.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function owner(seed, typeId) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({});
+  // (Business plans, not the business cycle: the economy on its usual random cycle.)
+  const state = engine.newLife({ economy: 'historical' });
   state.character.age = 35;
   Object.assign(state.stats, { smarts: 80, health: 95 });
   state.finances.cash = 3_000_000;

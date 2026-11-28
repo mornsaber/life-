@@ -17,6 +17,7 @@
  * state.moneyDay = { seed, done: { [id]: year }, hyper: { id, choice } }
  * Its own random stream, so the rest of the year rolls as it always did.
  */
+import { emergent } from '../industry/IndustryEngine.js';
 import { Random, clamp } from '../../core/Random.js';
 import { yearNow, PRESENT, priceIndex } from '../world/Eras.js';
 import { demographyAt } from '../world/HistoricalData.js';
@@ -136,6 +137,7 @@ export function priceThen(state, item) {
 
 function crashYear(ctx, rng) {
   const { state } = ctx;
+  if (emergent(state)) return;
   const e = state.economy;
   const y = yearNow(state);
   const md = state.moneyDay;

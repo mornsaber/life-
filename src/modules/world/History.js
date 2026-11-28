@@ -13,6 +13,7 @@
  *
  * A life started today has all of this behind it: nothing here runs for it.
  */
+import { emergent, namedCrashes, crashedBetween } from '../industry/IndustryEngine.js';
 import { Random, clamp } from '../../core/Random.js';
 import { BREAKUPS, setBreakups, setMembershipShift, SATELLITES } from './NewStates.js';
 import { addHonor } from '../../core/State.js';
@@ -248,7 +249,7 @@ export const EVENTS = {
     end(ctx) { endAll(ctx, 'francoPrussianWar', (cc) => (cc === 'FR' ? 'ended in defeat and the loss of Alsace-Lorraine' : 'ended in victory')); if (hereIs(ctx, 'FR')) ctx.log('The Emperor has been captured at Sedan. France is a republic again.', '🏛️', 'milestone'); },
   },
   germanUnification: { at: 1871, window: [1866, 1872], start(ctx) { news(ctx, 'The German Empire is proclaimed at Versailles', '🦅', 'world', 8); if (hereIs(ctx, 'DE')) ctx.log('The King of Prussia is German Emperor now. There is one Germany.', '🦅', 'milestone'); } },
-  longDepression: { at: 1873, window: [1873, 1874], lasts: [6, 8], start(ctx) { news(ctx, 'Panic: banks fail from Vienna to New York', '📉', 'world', 8); recession(ctx, 'financial', 4, '📉 The Long Depression: since the Panic of 1873 banks have failed, railways gone bankrupt and wages fallen.'); } },
+  longDepression: { econ: true, at: 1873, window: [1873, 1874], lasts: [6, 8], start(ctx) { news(ctx, 'Panic: banks fail from Vienna to New York', '📉', 'world', 8); recession(ctx, 'financial', 4, '📉 The Long Depression: since the Panic of 1873 banks have failed, railways gone bankrupt and wages fallen.'); } },
   scrambleForAfrica: { at: 1884, window: [1883, 1886], start(ctx) { news(ctx, 'The powers carve up Africa at Berlin', '🗺️', 'world', 8); } },
   brazilRepublic: { at: 1889, window: [1886, 1891], start(ctx) { fallThrone(ctx, 'BR', 'The Emperor of Brazil is deposed; a republic is proclaimed'); } },
   spanishAmericanWar: {
@@ -306,12 +307,12 @@ export const EVENTS = {
     },
   },
   fascismIT: { at: 1922, window: [1920, 1925], odds: 0.9, start(ctx) { news(ctx, 'Mussolini\'s Blackshirts march on Rome', '⚫'); if (hereIs(ctx, 'IT')) ctx.log('Mussolini is in power. The Blackshirts are on every street corner.', '⚫', 'warn'); } },
-  depression: {
+  depression: { econ: true,
     at: 1929, window: [1927, 1932], lasts: [6, 10],
     start(ctx) { news(ctx, 'Wall Street crashes; banks fail across the world', '📉', 'world', 9); if (regimeHere(ctx.state).business === 'state') ctx.log('In the West the banks are failing and the factories are closing. Here the papers say it proves capitalism is dying; the Five-Year Plan goes on.', '📉', 'info'); else recession(ctx, 'financial', 5, '📉 The stock market crashed and the banks followed. The Great Depression has begun: breadlines, shuttered factories, families on the road.'); },
     end(ctx) { ctx.log('The Depression is lifting at last.', '🌱', 'info'); },
   },
-  fascismDE: { at: 1933, window: [1930, 1935], odds: 0.85, needs: (s) => hap(s, 'depression'), start(ctx) { news(ctx, 'Hitler becomes Chancellor of Germany', '⚫', 'world', 8); if (hereIs(ctx, 'DE', 'AT')) ctx.log('The Nazis have taken power. Opponents are being arrested; Jewish families are being driven out of their jobs, and many are leaving while they can.', '⚫', 'bad'); } },
+  fascismDE: { at: 1933, window: [1930, 1935], odds: 0.85, needs: (s) => hap(s, 'depression') || (emergent(s) && crashedBetween(s, 'DE', 1919, Math.min(1935, yearNow(s)))), start(ctx) { news(ctx, 'Hitler becomes Chancellor of Germany', '⚫', 'world', 8); if (hereIs(ctx, 'DE', 'AT')) ctx.log('The Nazis have taken power. Opponents are being arrested; Jewish families are being driven out of their jobs, and many are leaving while they can.', '⚫', 'bad'); } },
   militarismJP: { at: 1932, window: [1930, 1937], odds: 0.85, start(ctx) { news(ctx, 'Japan\'s army seizes Manchuria; the generals rule in Tokyo', '🎌'); } },
   spanishCivilWar: {
     at: 1936, window: [1933, 1939], odds: 0.85, lasts: [2, 4],
@@ -364,7 +365,7 @@ export const EVENTS = {
     },
     end(ctx) { endAll(ctx, 'vietnamWar', (cc) => (cc === 'VN' ? 'ended with the North taking Saigon' : 'ended in withdrawal')); },
   },
-  oilShock: { at: 1973, window: [1971, 1976], start(ctx) { news(ctx, 'Oil embargo: queues at every petrol station', '🛢️', 'world', 7); recession(ctx, 'oil', 1, '🛢️ An oil embargo has quadrupled the price of oil. Queues at the pumps; prices rising every month.'); } },
+  oilShock: { econ: true, at: 1973, window: [1971, 1976], start(ctx) { news(ctx, 'Oil embargo: queues at every petrol station', '🛢️', 'world', 7); recession(ctx, 'oil', 1, '🛢️ An oil embargo has quadrupled the price of oil. Queues at the pumps; prices rising every month.'); } },
   carnationRevolution: { at: 1974, window: [1972, 1976], start(ctx) { news(ctx, 'Carnation Revolution: Portugal\'s dictatorship falls without a shot', '🌺'); if (hereIs(ctx, 'PT')) { ctx.log('Soldiers with carnations in their rifles ended the dictatorship. Portugal will be a democracy.', '🌺', 'milestone'); ctx.stat('happiness', 5); } } },
   francoDies: { at: 1975, window: [1973, 1977], needs: (s) => over(s, 'spanishCivilWar'), start(ctx) { news(ctx, 'Franco is dead; Spain turns to democracy', '🇪🇸'); if (hereIs(ctx, 'ES')) { ctx.log('Franco is dead. A king and a constitution will take Spain back to democracy.', '🗳️', 'milestone'); ctx.stat('happiness', 4); } } },
   reformOpening: { at: 1978, window: [1975, 1982], needs: (s) => hap(s, 'prc'), start(ctx) { news(ctx, 'China opens to the world: "to get rich is glorious"', '🏭'); if (hereIs(ctx, 'CN')) ctx.log('Mao is gone. The new leaders are letting people farm for themselves and start businesses.', '🏭', 'milestone'); } },
@@ -394,9 +395,9 @@ export const EVENTS = {
     },
   },
   apartheidEnds: { at: 1994, window: [1986, 2000], odds: 0.92, fixed: true, needs: (s) => hap(s, 'apartheid'), start(ctx) { news(ctx, 'Mandela is free; South Africa votes as one nation', '🗳️', 'world', 9); if (hereIs(ctx, 'ZA')) { ctx.log('Apartheid is over. Everyone queued together to vote, for hours, and nobody minded.', '🗳️', 'milestone'); ctx.stat('happiness', 6); } } },
-  dotcom: { at: 2000, window: [1999, 2002], start(ctx) { news(ctx, 'The dot-com bubble bursts', '💻'); recession(ctx, 'tech', 1, '💻 The dot-com bubble has burst. Start-ups are folding by the hundred.'); } },
+  dotcom: { econ: true, at: 2000, window: [1999, 2002], start(ctx) { news(ctx, 'The dot-com bubble bursts', '💻'); recession(ctx, 'tech', 1, '💻 The dot-com bubble has burst. Start-ups are folding by the hundred.'); } },
   afghanistan: { at: 2001, window: [2000, 2003], odds: 0.9, start(ctx) { for (const cc of only(['US', 'GB', 'CA', 'AU'])) declareWarWith(ctx, cc, { id: 'afghanistan', name: 'the war in Afghanistan', adversary: 'the Taliban and al-Qaeda', intensity: cc === 'US' ? 2 : 1, home: 0 }); news(ctx, 'Attacks on America; war in Afghanistan', '🏙️', 'world', 10); } },
-  gfc: { at: 2008, window: [2006, 2010], start(ctx) { news(ctx, 'Banks collapse: the worst crash since the Depression', '🏦', 'world', 9); recession(ctx, 'financial', 1, '🏦 The banks have collapsed. The worst crash since the Depression.'); } },
+  gfc: { econ: true, at: 2008, window: [2006, 2010], start(ctx) { news(ctx, 'Banks collapse: the worst crash since the Depression', '🏦', 'world', 9); recession(ctx, 'financial', 1, '🏦 The banks have collapsed. The worst crash since the Depression.'); } },
   brownVBoard: { at: 1954, window: [1952, 1956], start(ctx) { news(ctx, 'Supreme Court: segregated schools are unconstitutional', '⚖️', 'national', 8); if (jimCrowHere(ctx.state)) ctx.log('The Supreme Court has ruled school segregation unconstitutional. The state government says it will never comply.', '⚖️', 'milestone'); } },
   civilRights: {
     at: 1964, window: [1961, 1967], boost: (s) => (s.era.civilRights?.pressure ?? 0) * 0.04,
@@ -652,10 +653,13 @@ function movementPrompt(ctx) {
 function seedPast(state) {
   const era = state.era;
   for (const [id, ev] of Object.entries(EVENTS)) {
-    if (era.events[id] || (ev.window[1] >= era.start && !(ev.fixed && ev.at < era.start))) continue;
+    // The economy's crashes, where the economy runs itself: when the model had them, if before this life.
+    const at = ev.econ && emergent(state) ? namedCrashes(state)[id] : ev.at;
+    if (ev.econ && emergent(state)) { if (era.events[id] || at == null || at >= era.start) continue; }
+    else if (era.events[id] || (ev.window[1] >= era.start && !(ev.fixed && ev.at < era.start))) continue;
     const lasts = ev.lasts ? Math.round((ev.lasts[0] + ev.lasts[1]) / 2) : null;
-    const rec = (era.events[id] = { year: ev.at, past: true });
-    if (lasts != null) { rec.lasts = lasts; if (ev.at + lasts <= era.start) rec.ended = ev.at + lasts; else rec.resume = true; }
+    const rec = (era.events[id] = { year: at, past: true });
+    if (lasts != null) { rec.lasts = lasts; if (at + lasts <= era.start) rec.ended = at + lasts; else rec.resume = true; }
   }
   for (const [cc, stages] of Object.entries(COLONIES)) {
     const rec = (era.colonies[cc] ??= { done: [], pressure: 0 });
@@ -1236,6 +1240,16 @@ export const HistoryModule = {
         if (rec.lasts != null && y >= rec.year + rec.lasts) { rec.ended = y; ev.end?.(ctx, rec, rng); }
         continue;
       }
+      // The economy's crashes, where the economy runs itself: they come when the world model has them.
+      if (ev.econ && emergent(state)) {
+        const at = namedCrashes(state)[id];
+        if (at == null || y < at) continue;
+        const lasts = ev.lasts ? rng.int(...ev.lasts) : null;
+        if (y > at + 2) { era.events[id] = { year: at, past: true, quiet: true, emergent: true, ...(lasts != null ? { lasts, ended: at + lasts } : {}) }; continue; }
+        const r = (era.events[id] = { year: y, emergent: true, ...(lasts != null ? { lasts } : {}) });
+        ev.start?.(ctx, r, rng);
+        continue;
+      }
       const [from, to] = ev.window;
       if (y < from || (era.skipped ?? []).includes(id)) continue;
       if (ev.needs && !ev.needs(state)) {
@@ -1254,7 +1268,8 @@ export const HistoryModule = {
       }
       const fire = y >= to || rng.chance(Math.min(1, 1 / Math.max(1, to - y + 1) + (ev.boost?.(state) ?? 0)));
       if (!fire) continue;
-      const r = (era.events[id] = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) });
+      const r = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) };
+      era.events[id] = r;
       ev.start?.(ctx, r, rng);
     }
     setEraYear(yearNow(state));

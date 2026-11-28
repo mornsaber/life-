@@ -175,6 +175,8 @@ export class Engine {
   newLife(options = {}) {
     if (this.saveTimer) this.flushSave();
     const state = createInitialState(this.rng, options);
+    // 'historical': the economy follows history's dates instead of running itself (industry/IndustryEngine.js).
+    if (options.economy) state.industry = { mode: options.economy };
     this.undoStack = [];
     this.store.state = state;
     this.modules.forEach((m) => m.init?.(state, this.rng));

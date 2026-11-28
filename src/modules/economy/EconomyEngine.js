@@ -14,6 +14,7 @@
  * 1–2 year recovery — about one recession every 8–12 years — plus rare
  * black-swan shocks that cut an expansion short.
  */
+import { emergent, crisisHere } from '../industry/IndustryEngine.js';
 import { clamp } from '../../core/Random.js';
 import { knob } from '../../core/Difficulty.js';
 import { hasTech } from '../world/Eras.js';
@@ -62,13 +63,19 @@ export function demandFactor(state) {
   return { expansion: 1.04, peak: 1.07, recession: 0.82, recovery: 0.95 }[state.economy.phase];
 }
 
+/** The model's crisis this year, in a life whose economy runs itself (undefined otherwise). */
+const modelSays = (state) => (emergent(state) && state.industry ? crisisHere(state) : undefined);
 function nextPhase(e, rng, state) {
+  const crisis = modelSays(state);
   if (e.phase === 'expansion') {
     if (e.phaseYears >= e.expansionLength) return 'peak';
-    if (rng.chance(0.02 * knob(state, 'recessions'))) return 'recession'; // black swan
-    return null;
+    const swan = rng.chance(0.02 * knob(state, 'recessions')); // black swan
+    if (crisis !== undefined) return crisis ? 'recession' : null;
+    return swan ? 'recession' : null;
   }
-  if (e.phase === 'peak') return 'recession';
+  // A boom that ends in a crash, or a soft landing when nothing breaks.
+  if (e.phase === 'peak') return crisis === undefined || crisis ? 'recession' : e.phaseYears >= 2 ? 'expansion' : null;
+  if (e.phase === 'recession' && crisis !== undefined) { if (e.phaseYears === 1) rng.chance(0.5); return crisis || e.phaseYears < 1 ? null : 'recovery'; }
   if (e.phase === 'recession') return e.phaseYears >= 1 && (e.phaseYears >= 2 || rng.chance(0.5)) ? 'recovery' : null;
   if (e.phase === 'recovery') return e.phaseYears >= 1 && (e.phaseYears >= 2 || rng.chance(0.5)) ? 'expansion' : null;
   return null;
@@ -104,6 +111,9 @@ export const EconomyEngine = {
     if (next) {
       e.phase = next;
       e.phaseYears = 0;
+      // The model says why: a banking crisis, a crash abroad, the oil price, the industries closing.
+      const why = modelSays(state);
+      if (next === 'recession' && why) e.cause = { id: { financial: 'financial', trade: 'trade', oil: 'oil', industry: 'industrial' }[why.cause] ?? 'financial', since: state.character.age };
       if (next === 'expansion') e.expansionLength = rng.int(5, 9);
       const label = PHASES[next];
       const lines = {

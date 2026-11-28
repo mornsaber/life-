@@ -184,8 +184,9 @@ const tests = {
     assert.equal(crownOf(state, 'SE'), null);
     assert.equal(state.royal, null);
     assert.ok(state.house, 'a former ruling house');
-    assert.equal(state.house.rank, 'heir');
-    assert.match(styledName(state), /^Princess /);
+    // (The heir may have come to the throne in those twenty years: then she heads the house.)
+    assert.ok(['heir', 'head'].includes(state.house.rank), state.house.rank);
+    if (state.house.rank === 'heir') assert.match(styledName(state), /^Princess /);
   },
 };
 

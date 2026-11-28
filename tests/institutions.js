@@ -15,7 +15,7 @@ import { racketOpen } from '../src/modules/legal/Underworld.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (year, cc = 'US', ageNow = 40) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(11), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: year - ageNow });
+  const state = engine.newLife({ countryId: cc, startYear: year - ageNow, economy: 'historical' });
   state.character.age = ageNow;
   state.prompts = [];
   return { engine, state, ctx: engine.context() };

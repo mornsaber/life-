@@ -173,6 +173,20 @@ for (const [id, sec] of Object.entries(SECTORS)) {
     effect: `Puts ${sec.label} in state hands (a vote against sells them to private owners).` };
 }
 
+// Money and labour laws the industry model can pass (IndustryPolicy.js). Their history here is only
+// used when a life runs on history's dates (state.industry.mode 'historical').
+Object.assign(STATUTES, {
+  goldStandard: { name: 'The gold standard', icon: '🪙', lean: 'business', from: 1800, history: (cc, y) => y >= 1873 && y < 1914,
+    effect: 'The currency is backed by gold: steady prices in good times, and a crash abroad comes home harder.' },
+  lenderOfLastResort: { name: 'A central bank as lender of last resort', icon: '🏛️', lean: 'business', from: 1800, history: (cc, y) => y >= 1870,
+    effect: 'In a panic the central bank lends to sound banks freely: crashes end sooner.' },
+  tradeUnionsLegal: { name: 'Lawful trade unions', icon: '✊', lean: 'labor', from: 1800, history: (cc, y) => y >= 1875,
+    effect: 'Workers may combine in unions and strike; without it, organising is conspiracy.' },
+});
+/** Laws that, in a life whose economy runs itself, only a government in this world changes. */
+export const REACTIVE = new Set(['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', ...Object.keys(STATUTES).filter((id) => id.startsWith('ownership_'))]);
+const reactiveWorld = (state) => Boolean(state?.industry) && (state.industry.mode ?? 'emergent') === 'emergent';
+
 /** The book of national laws for a country in this life (enacted bills). */
 const bookOf = (state, cc) => (cc === 'US' ? state.laws?.federal : state.laws?.nations?.[cc]);
 /** Whether a bill in this world has set the statute (and to what): undefined when history still rules. */
@@ -184,6 +198,7 @@ export function statuteOverride(state, id, cc = state.character?.countryId ?? 'U
 export function statuteIn(state, id, cc = state.character?.countryId ?? 'US', y = yearNow(state)) {
   const o = statuteOverride(state, id, cc);
   if (o !== undefined && o !== null) return Boolean(o);
+  if (REACTIVE.has(id) && reactiveWorld(state)) return false;
   return Boolean(STATUTES[id]?.history(cc, y));
 }
 

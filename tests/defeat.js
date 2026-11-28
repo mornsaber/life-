@@ -59,7 +59,7 @@ const tests = {
     assert.ok(s.military.hunted || s.prompts.some((x) => x.type === 'legal.court') || s.legal.record.length || s.legal.incarceration || /arrested|charged/.test(said), 'hunted or before the court');
   },
   'it happens once per war'() {
-    const { engine, state, entry } = [2, 3, 4].map(general).find(Boolean);
+    const { engine, state, entry } = [2, 3, 4, 5, 6, 7, 8, 9].map(general).find(Boolean);
     defeatAftermath(engine.context(), entry);
     const n = state.military.defeats.length;
     defeatAftermath(engine.context(), entry);

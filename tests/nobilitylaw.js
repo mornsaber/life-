@@ -12,8 +12,8 @@ import { nobilityLaw, nobleHouse, peerTitle } from '../src/modules/world/Peerage
 import { estateOf } from '../src/modules/world/Nobility.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-function noble(countryId, startYear, rank = 'earl') {
-  const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+function noble(countryId, startYear, rank = 'earl', seed = 4) {
+  const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({ countryId, startYear, nobleRank: rank, nobleHeir: true });
   return { engine, state };
 }
@@ -45,9 +45,16 @@ const tests = {
     assert.ok(state.noble.estate.value === 0 || state.noble.estate.owner === null);
   },
   'an Austrian count in 1919 may not use the title'() {
-    const { engine, state } = noble('AT', 1890);
-    if (!state.noble) return;
-    ageTo(engine, state, 1920);
+    // (Whoever lives to see the republic: a young count can die in the war.)
+    let life = null;
+    for (const seed of [4, 5, 6, 7, 8]) {
+      const l = noble('AT', 1890, 'earl', seed);
+      if (!l.state.noble) continue;
+      ageTo(l.engine, l.state, 1920);
+      if (l.state.character.alive) { life = l; break; }
+    }
+    if (!life) return;
+    const { state } = life;
     assert.equal(state.noble.law, 'banned');
     assert.equal(state.character.style?.prefix ?? null, null);
   },

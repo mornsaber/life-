@@ -21,6 +21,7 @@
  * state.press = { outlet, kind, scale, line, since, readers, influence, writs }
  * state.landmarks = [{ year, name, point }]
  */
+import { emergent, crisisHere } from '../industry/IndustryEngine.js';
 import { Random, clamp } from '../../core/Random.js';
 import { yearNow } from './Eras.js';
 import { statuteIn } from '../politics/StatuteBook.js';
@@ -53,7 +54,16 @@ export const BANK_PANICS = [
 /** When deposit insurance began. */
 /** Insured from history's date, or from the year a bill in this world brought it in (politics/StatuteBook.js). */
 export const depositsInsured = (state) => statuteIn(state, 'depositInsurance', cc(state));
-export const panicNow = (state) => { const y = yearNow(state); return BANK_PANICS.find((p) => y >= p.years[0] && y <= p.years[1] && p.where.includes(cc(state))) ?? null; };
+export const panicNow = (state) => {
+  const y = yearNow(state);
+  // Where the economy runs itself, the runs come with its banking crises (industry/IndustryEngine.js).
+  if (emergent(state)) {
+    const c = crisisHere(state);
+    if (!c || c.cause !== 'financial' || c.year < y - 1) return null;
+    return { id: `run${c.year}`, years: [c.year, c.year + 1], where: [cc(state)], name: 'the run on the banks', fail: statuteIn(state, 'lenderOfLastResort', cc(state)) ? 0.12 : 0.3 };
+  }
+  return BANK_PANICS.find((p) => y >= p.years[0] && y <= p.years[1] && p.where.includes(cc(state))) ?? null;
+};
 
 function bankTick(ctx) {
   const { state } = ctx;

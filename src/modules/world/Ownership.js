@@ -48,6 +48,8 @@ export function stateShare(state, sector, cc = state.character.countryId ?? 'US'
     return ex ? ex[2] : 1;
   }
   if (!sector) return 0;
+  // In a life whose economy runs itself, only this world's governments nationalise (industry/IndustryPolicy.js).
+  if (state.industry && (state.industry.mode ?? 'emergent') === 'emergent') return 0;
   const t = OWNERSHIP[sector] ?? {};
   return rowAt(t[cc] ?? t['*'], y)?.[2] ?? 0;
 }

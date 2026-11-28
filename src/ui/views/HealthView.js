@@ -120,7 +120,7 @@ function conditionRow(state, c) {
   const addiction = def.kind === 'addiction';
   const risk = conditionMortality(c, state);
   const action = c.remission ? '' : addiction
-    ? button('🏥 Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']), hint: `~${money(estimateOutOfPocket(state, REHAB_COST, c))}` })
+    ? button(state.era && yearNow(state) < 1950 ? '🏥 Take the cure' : '🏥 Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']), hint: `~${money(estimateOutOfPocket(state, REHAB_COST, c))}` })
     : c.waitUntil != null ? button('🏥 Go private', 'health.goPrivate', { arg: c.id, variant: 'tiny', hint: money(goPrivateCost(state, def)) })
       : isMental(c) ? '' : button(c.treated ? 'Stop treatment' : 'Treat', 'health.treat', { arg: c.id, variant: 'tiny' });
   const status = c.remission ? chip('Remission', 'good') : c.waitUntil != null ? chip(`⏳ Waiting list to ${c.waitUntil}`, 'warn') : c.treated || (isMental(c) && (c.care?.therapy || c.care?.meds)) ? chip(isMental(c) ? 'In care' : 'Treated', 'good') : chip(addiction ? 'Active' : 'Untreated', 'bad');
@@ -246,7 +246,7 @@ function doctorCard(state) {
   const steps = [];
   for (const c of untreated.slice(0, 2)) {
     const def = CONDITIONS[c.id];
-    if (def.kind === 'addiction') steps.push(['🏥', `Get help for ${def.name.toLowerCase()}`, button('Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']) }), 'Conditions']);
+    if (def.kind === 'addiction') steps.push(['🏥', `Get help for ${def.name.toLowerCase()}`, button(state.era && yearNow(state) < 1950 ? 'Take the cure' : 'Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']) }), 'Conditions']);
     else if (isMental(c)) steps.push(['🧠', `Start care for ${def.name.toLowerCase()}`, button('See the options', 'ui.tab', { arg: 'conditions', variant: 'tiny' }), 'Conditions']);
     else steps.push(['💊', `Treat your ${def.name.toLowerCase()} (${(conditionMortality({ ...c, treated: false }, state) * 100).toFixed(1)}%/yr risk untreated)`, button('Treat', 'health.treat', { arg: c.id, variant: 'tiny' }), 'Conditions']);
   }
