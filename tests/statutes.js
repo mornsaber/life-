@@ -24,7 +24,8 @@ import { successionLaw } from '../src/modules/world/SuccessionLaw.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (year, cc, ageNow = 40) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(year), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: year - ageNow, gender: 'male' });
+  // History's statute book (the self-running economy's laws: tests/industry.js).
+  const state = engine.newLife({ countryId: cc, startYear: year - ageNow, gender: 'male', economy: 'historical' });
   state.character.age = ageNow;
   state.prompts = [];
   setEraYear?.(year);

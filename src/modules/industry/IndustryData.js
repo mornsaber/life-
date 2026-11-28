@@ -115,6 +115,8 @@ export function endowment(cc, res) {
   if (!res) return 1;
   if (res === 'coast') return LANDLOCKED.includes(cc) ? 0 : 1;
   if (res === 'land') return RES.land[cc] ?? 0.6;
+  // Every coast has its fishermen, even where the great fleets don't sail from.
+  if (res === 'fish') return RES.fish[cc] ?? (LANDLOCKED.includes(cc) ? 0 : 0.3);
   if (res === 'oil') return Math.max(RES.oil[cc] ?? 0, RES.offshoreOil[cc] ?? 0);
   return RES[res]?.[cc] ?? 0;
 }

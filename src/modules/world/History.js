@@ -13,7 +13,7 @@
  *
  * A life started today has all of this behind it: nothing here runs for it.
  */
-import { emergent, namedCrashes, crashedBetween } from '../industry/IndustryEngine.js';
+import { emergent, namedCrashes, crashedBetween, crisisHere } from '../industry/IndustryEngine.js';
 import { Random, clamp } from '../../core/Random.js';
 import { BREAKUPS, setBreakups, setMembershipShift, SATELLITES } from './NewStates.js';
 import { addHonor } from '../../core/State.js';
@@ -87,6 +87,9 @@ function endAll(ctx, id, outcomeOf) {
 function recession(ctx, causeId, years, text) {
   const e = ctx.state.economy;
   if (!e) return;
+  // Where the economy runs itself, a world crash is your recession only if your own economy broke
+  // (industry/IndustryEngine.js): a pandemic is the exception, it closes everything.
+  if (causeId !== 'pandemic' && emergent(ctx.state) && !crisisHere(ctx.state)) return;
   e.phase = 'recession';
   e.phaseYears = -years;
   e.cause = { id: causeId, since: ctx.state.character.age };

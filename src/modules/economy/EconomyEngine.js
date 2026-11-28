@@ -14,7 +14,7 @@
  * 1–2 year recovery — about one recession every 8–12 years — plus rare
  * black-swan shocks that cut an expansion short.
  */
-import { emergent, crisisHere } from '../industry/IndustryEngine.js';
+import { emergent, crisisHere, sectorTilt } from '../industry/IndustryEngine.js';
 import { clamp } from '../../core/Random.js';
 import { knob } from '../../core/Difficulty.js';
 import { hasTech } from '../world/Eras.js';
@@ -152,7 +152,7 @@ export const EconomyEngine = {
     } else crypto = e.cryptoMania ? rng.float(0.2, 1.2) : clamp(index * 1.5 + rng.float(-0.45, 0.35), -0.8, 1.2);
     const sectors = {};
     for (const [id, s] of Object.entries(SECTORS)) {
-      sectors[id] = rnd(clamp(0.02 + (index - 0.02) * s.beta + (s.inflationHedge ? (e.inflation - 0.025) * 4 : 0) + rng.float(-s.vol, s.vol), -0.7, 1.2));
+      sectors[id] = rnd(clamp(0.02 + (index - 0.02) * s.beta + (s.inflationHedge ? (e.inflation - 0.025) * 4 : 0) + rng.float(-s.vol, s.vol) + sectorTilt(state, id), -0.7, 1.2));
     }
     e.returns = { index: rnd(index ), bonds: rnd(bonds ), treasuries: e.interestRate, crypto: rnd(crypto ), sectors };
     e.marketIndex = rnd(e.marketIndex * (1 + index), 100);

@@ -8,6 +8,7 @@
  * job.nonCompete: { years } — signed with this employer
  * state.career.nonCompete: { professionId, untilAge, employer, stateId } — binding you after you leave
  */
+import { hiringShift } from '../industry/Sync.js';
 import { yearNow as yearNowJM } from '../world/Eras.js';
 import { eraYear, yearlyPayNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
@@ -199,7 +200,7 @@ function headhunterTick(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   if (!job || job.sector !== 'private' || job.probationLeft > 0 || getProfession(job.professionId).church || state.prompts.some((p) => p.type === 'jobMarket.headhunter')) return;
-  const odds = clamp(0.02 + (job.performance - 60) / 400 + job.grade * 0.008 + prestige(state) / 4000 + reputationOf(state) / 800 - (state.economy.phase === 'recession' ? 0.04 : 0), 0, 0.3);
+  const odds = clamp(0.02 + (job.performance - 60) / 400 + job.grade * 0.008 + prestige(state) / 4000 + reputationOf(state) / 800 - (state.economy.phase === 'recession' ? 0.04 : 0) + hiringShift(state, job.professionId) / 3, 0, 0.3);
   if (!rng.chance(odds)) return;
   const offer = makeOffer(ctx, { raise: [0.12, 0.3], headhunter: true });
   ctx.prompt({

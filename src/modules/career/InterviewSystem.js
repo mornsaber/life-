@@ -5,6 +5,7 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { hiringShift } from '../industry/Sync.js';
 import { patronageBonus } from '../politics/PoliticsOfTheDay.js';
 import { classBonus } from '../life/ClassOfTheDay.js';
 import { referenceBonus } from './WorkLife.js';
@@ -238,7 +239,7 @@ export function hireChance(state, profession, level, score, maxScore, employer =
   const base = 0.22 + (score / maxScore) * 0.45;
   const stats = (state.stats.smarts - 50) / 250 + (state.stats.looks - 50) / 500;
   const seniority = Math.max(0, level.grade - profession.levels[0].grade) * 0.04;
-  const market = (state.economy.unemployment - 0.045) * 2; // slack labor markets are brutal
+  const market = (state.economy.unemployment - 0.045) * 2 - hiringShift(state, profession.id); // slack labor markets are brutal; a growing trade hires
   // Time out of work counts against you; a good record with this employer counts for you.
   const history = -reentryPenalty(state) + (employer?.orgId ? rehireStanding(state, employer.orgId).bonus : 0) + ownerExperienceBonus(state, profession);
   return clamp(base + stats + candidateBonus(state, profession) - seniority - market + history + workRepBonus(state) + cityJobsBonus(state) + skillHireBonus(state, profession.id) + patronageBonus(state, profession) + classBonus(state, profession), 0.05, 0.95);

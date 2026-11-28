@@ -2,6 +2,7 @@
  * People you measure yourself against and what they all think of you: reputation by
  * circle (Life tab), rivals, family feuds and the dynasty (People tab).
  */
+import { townTrade } from '../../modules/industry/Sync.js';
 import { townHistory } from '../../modules/life/TownStory.js';
 import { esc, money, button, card, chip, meter, kv } from '../Components.js';
 import { CIRCLES, reputationOf, circlesNow } from '../../modules/life/Reputation.js';
@@ -64,8 +65,10 @@ export function newsThreadCard(state, { all = false } = {}) {
 
 function townBlock(state) {
   const h = townHistory(state);
-  if (!h.length) return '';
-  return `<h4 class="sub">The town's story</h4><ul class="history">${h.map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(x.text)}${x.yours ? ' <small>(in your time)</small>' : ''}</li>`).join('')}</ul>`;
+  const t = townTrade(state);
+  const trade = t ? `<p class="fine">${t.icon} A ${esc(t.town)}: ${esc(t.name.toLowerCase())} is ${t.jobs > 0.2 ? 'hiring' : t.jobs < -0.3 ? 'laying people off, and families are leaving' : t.jobs < -0.08 ? 'shedding jobs' : 'steady'}.</p>` : '';
+  if (!h.length) return trade;
+  return `${trade}<h4 class="sub">The town's story</h4><ul class="history">${h.map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(x.text)}${x.yours ? ' <small>(in your time)</small>' : ''}</li>`).join('')}</ul>`;
 }
 
 /** Where you live, and how it's changing (Move tab). */

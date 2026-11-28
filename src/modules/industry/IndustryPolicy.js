@@ -32,8 +32,8 @@ import { levelValue, enact } from '../politics/Laws.js';
 import { statuteIn, statuteOverride } from '../politics/StatuteBook.js';
 
 /** Laws the industry model reads and governments here may change, and their reactive defaults. */
-export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false };
-const FLAGS = ['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal'];
+export const POLICY_LAWS = { tariff: 'revenue', industrialPolicy: 'laissezFaire', bankRegulation: 'standard', goldStandard: false, lenderOfLastResort: false, depositInsurance: false, tradeUnionsLegal: false, workmensCompensation: false, fortyEightHourWeek: false, holidaysWithPay: false, dockDecasualisation: false };
+const FLAGS = ['goldStandard', 'lenderOfLastResort', 'depositInsurance', 'tradeUnionsLegal', 'workmensCompensation', 'fortyEightHourWeek', 'holidaysWithPay', 'dockDecasualisation'];
 export const OWN_SECTORS = Object.keys(SECTORS).filter((s) => ['coal', 'rail', 'power', 'telecom', 'airline', 'banking', 'industry'].includes(s));
 
 /* ---- Reading the law: your country's book, the world's own ---- */
@@ -159,6 +159,15 @@ function decide(sim, cc, y, rng, gov) {
   // Combinations: unions made lawful once mines and mills employ enough people and they vote.
   const organised = INDUSTRY_IDS.reduce((s, id) => s + share(c, id) * INDUSTRIES[id].union, 0);
   if (!current(sim, cc, 'tradeUnionsLegal') && organised > 0.25 && (mass ? roll(labor ? 0.3 : 0.08) : roll(0.02))) set('tradeUnionsLegal', true, 'the unions\' long campaign');
+
+  // Labour law: what organised workers win from a government that needs their votes.
+  const unions = current(sim, cc, 'tradeUnionsLegal');
+  const hazard = INDUSTRY_IDS.reduce((s, id) => s + share(c, id) * INDUSTRIES[id].hazard, 0);
+  const disaster = (c.disasters ?? []).some((d) => y - d <= 1);
+  if (!current(sim, cc, 'workmensCompensation') && mass && (disaster ? roll(0.5) : unions && hazard > 0.1 && roll(labor ? 0.15 : 0.04))) set('workmensCompensation', true, disaster ? 'the disaster' : 'the toll of accidents at work');
+  if (!current(sim, cc, 'fortyEightHourWeek') && mass && unions && income(cc, y) > 0.08 && roll(labor ? 0.1 : 0.02)) set('fortyEightHourWeek', true, 'the campaign for shorter hours');
+  if (!current(sim, cc, 'holidaysWithPay') && mass && unions && current(sim, cc, 'fortyEightHourWeek') && income(cc, y) > 0.12 && roll(labor ? 0.08 : 0.02)) set('holidaysWithPay', true, 'the unions\' demand for a week by the sea');
+  if (!current(sim, cc, 'dockDecasualisation') && mass && unions && share(c, 'shipping') > 0.008 && roll(labor ? 0.06 : 0.01)) set('dockDecasualisation', true, 'the dockers\' strikes against the call-on');
 
   // Nationalisation and privatisation.
   if (mass) for (const sector of OWN_SECTORS) {

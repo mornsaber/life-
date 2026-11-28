@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { layoffFactor, closureRisk } from '../industry/Sync.js';
 import { childWorkAge } from '../world/ChildLabour.js';
 import { licensedHere } from '../credentials/CredentialRegistry.js';
 import { PHYSICAL, physicalWorkBarred } from '../health/Routine.js';
@@ -722,6 +723,8 @@ export function layoffRisk(state, job) {
   // International organisations run on member-state budgets, not the business cycle: cuts are rare.
   if (typeof prof.layoffRate === 'function') risk = prof.layoffRate(state, job);
   else if (prof.layoffRate != null) risk = prof.layoffRate;
+  // The industry you work in (industry/Sync.js): a dying trade sheds its people, a closing one shuts.
+  if (job.sector === 'private' || job.employer?.ownership === 'state') risk = risk * layoffFactor(state, job.professionId) + closureRisk(state, job.professionId);
   // Government jobs are cut through a formal reduction in force instead (PublicRif).
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;

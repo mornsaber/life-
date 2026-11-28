@@ -13,6 +13,7 @@
  *
  * state.world.cities[regionId] = { pop, crime, jobs, prices, mood, since, trend: [{ age, jobs, crime, prices }] }
  */
+import { townTrade } from '../industry/Sync.js';
 import { Random } from '../../core/Random.js';
 import { REGIONS } from './Regions.js';
 
@@ -60,7 +61,9 @@ export function citiesTick(ctx) {
   const before = { jobs: c.jobs, crime: c.crime, prices: c.prices };
   const econ = { expansion: [2, -1, 3, 1], peak: [1, 0, 5, 2], recession: [-7, 3, -6, -6], recovery: [3, -1, 1, 2] }[phase] ?? [0, 0, 0, 0];
   const fx = yourEffect(state);
-  c.jobs = clamp(c.jobs + econ[0] + fx.jobs + rng.int(-2, 2) + (50 - c.jobs) * 0.05);
+  // The town's own trade (industry/Sync.js): a pit town's jobs follow the pits.
+  const trade = townTrade(state);
+  c.jobs = clamp(c.jobs + econ[0] + fx.jobs + rng.int(-2, 2) + (50 - c.jobs) * 0.05 + (trade ? trade.jobs * 6 : 0));
   c.crime = clamp(c.crime + econ[1] + fx.crime + rng.int(-2, 2) + (c.jobs < 35 ? 2 : 0) + (45 - c.crime) * 0.04);
   c.prices = clamp(c.prices * (1 + (econ[2] + fx.prices + (c.jobs - 50) / 15) / 100), 30, 400);
   c.mood = clamp(c.mood + econ[3] + fx.mood + (c.crime > 65 ? -2 : 0) + rng.int(-2, 2) + (55 - c.mood) * 0.05);
@@ -74,8 +77,8 @@ export function citiesTick(ctx) {
   // Big swings make the local news (News.js).
   const name = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? 'Your city';
   if (c.crime - before.crime >= 5) ctx.emit('news:story', { tier: 'local', headline: `Crime rises in ${name}`, weight: 3, icon: '🚨' });
-  if (c.jobs - before.jobs <= -6) ctx.emit('news:story', { tier: 'local', headline: `Layoffs hit ${name} as the jobs market shrinks`, weight: 3, icon: '📉' });
-  if (c.jobs - before.jobs >= 4) ctx.emit('news:story', { tier: 'local', headline: `${name} hiring boom continues`, weight: 2, icon: '📈' });
+  if (c.jobs - before.jobs <= -6) ctx.emit('news:story', { tier: 'local', headline: trade && trade.jobs < -0.15 ? `Layoffs hit ${name} as ${trade.name.toLowerCase()} shrinks` : `Layoffs hit ${name} as the jobs market shrinks`, weight: 3, icon: '📉' });
+  if (c.jobs - before.jobs >= 4 && !(trade && trade.jobs < -0.15)) ctx.emit('news:story', { tier: 'local', headline: `${name} hiring boom continues`, weight: 2, icon: '📈' });
 }
 
 export const CitiesModule = {

@@ -15,7 +15,7 @@ import { weekHours, paidHolidays, compensationHere, WorkingConditionsModule } fr
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc, year, age = 30) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(6), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: year - age, firstName: 'Ada', lastName: 'Penrose', gender: 'male' });
+  const state = engine.newLife({ countryId: cc, startYear: year - age, firstName: 'Ada', lastName: 'Penrose', gender: 'male', economy: 'historical' });
   state.character.age = age; state.prompts = []; sync(state);
   return { engine, state };
 };

@@ -130,7 +130,8 @@ function produce(sim, cc, y, ctxY) {
     }
     if (wars && I.war) d *= 1 + I.war * 0.4;
     if (id === 'oilGas') d *= 1 / Math.max(0.6, oil.price ** 0.3);
-    if (c.crisis) d *= 1 - 0.12 * Math.min(1.5, I.elastic) * (c.crisis.depth ?? 0.5);
+    // A crisis: people put off what they can (cars, holidays) more than bread; worst in its first year.
+    if (c.crisis) d *= 1 - (c.crisis.year === y ? 0.07 : 0.04) * Math.min(1.3, I.elastic) * (c.crisis.depth ?? 0.5);
     if (!techOk && I.tech.length) d = 0;
     D[i] = d;
   }
@@ -223,7 +224,11 @@ function worldYear(w, y) {
     if (w.research + (t.war ? (t.war - 1) * w.warResearch : 0) >= t.cost) { w.known[id] = y; events.push({ kind: 'tech', id, y }); }
   }
   const { HT, YK, TECH_OK } = knowledge(w.known, y);
-  const open = 0.2 + (HT.railway ? 0.2 : 0) + (HT.steel ? 0.2 : 0) + (HT.container ? 0.2 : 0) + (HT.internet ? 0.1 : 0);
+  // How far goods travel: dear before the railway and the steamship, cheap after the container.
+  // Trade takes years to reorganise round a new way of moving goods: it opens gradually.
+  const openTarget = 0.2 + (HT.railway ? 0.2 : 0) + (HT.steel ? 0.2 : 0) + (HT.container ? 0.2 : 0) + (HT.internet ? 0.1 : 0);
+  w.open = r3(w.open == null ? openTarget : w.open + (openTarget - w.open) * 0.12);
+  const open = w.open;
   const world = new Float64Array(N);
   for (const cc of ccs) for (let i = 0; i < N; i++) world[i] += w.c[cc].out[i];
   const oil = w.oil;
@@ -399,6 +404,16 @@ export function techKnown(state, id) {
   const w = WORLDS.get(state?.industry?.variant ?? 0);
   return Boolean(w && w.known[id] != null && w.known[id] <= y);
 }
+/** Stock sectors and the industries they hold. */
+const STOCK_INDUSTRIES = { tech: ['software', 'electronics', 'telecom'], finance: ['banking'], energy: ['oilGas', 'coal', 'power'], health: ['pharma'], consumer: ['retail', 'textiles', 'tourism', 'farming'] };
+/** A sector's return tilt this year from how its industries are doing at home. */
+export function sectorTilt(state, sector) {
+  if (!state?.industry?.c?.[here(state)] || !emergent(state)) return 0;
+  const ids = STOCK_INDUSTRIES[sector] ?? [];
+  if (!ids.length) return 0;
+  return clamp(ids.reduce((s, id) => s + industryHealth(state, id), 0) / ids.length * 0.15, -0.15, 0.15);
+}
+
 /** The oil price against normal (1), this year. */
 export const oilPrice = (state) => WORLDS.get(state?.industry?.variant ?? 0)?.frontier?.[state?.industry?.year]?.oil?.price ?? 1;
 /**

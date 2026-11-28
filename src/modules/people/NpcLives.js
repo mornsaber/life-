@@ -16,6 +16,7 @@
  * You can help: rent them one of your places, help with a down payment, or
  * pay a year of tuition.
  */
+import { npcLayoff } from '../industry/Sync.js';
 import { clamp, Random } from '../../core/Random.js';
 import { ageOf, living, byId, clampRel } from './People.js';
 import { priceOf, marketRent } from '../realestate/PropertyMarket.js';
@@ -216,8 +217,8 @@ function yearOf(ctx, p) {
       }
     } else if (p.job && p.career) {
       // Their year in the job: promotion, postings, awards, discipline, elite posts.
-      if (rng.chance(recession ? 0.06 : 0.02)) {
-        say(`${p.firstName} was laid off.`, '📦', 'warn');
+      if (rng.chance((recession ? 0.06 : 0.02) + npcLayoff(state, p.career.professionId))) {
+        say(`${p.firstName} was laid off${npcLayoff(state, p.career.professionId) > 0.02 ? ': their whole trade is shedding jobs' : ''}.`, '📦', 'warn');
         p.job = null;
         if (!isPartner(p)) p.income = 0;
       } else {

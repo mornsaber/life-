@@ -7,6 +7,7 @@
  *
  * state.housing.market = { [regionId]: index }
  */
+import { housingDrift } from '../industry/Sync.js';
 import { REGIONS } from '../life/Regions.js';
 import { clamp, Random } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -144,7 +145,7 @@ export function marketTick(ctx) {
   for (const regionId of [...Object.keys(REGIONS), ...(isAbroad(state) ? regionsHere(state).map((r) => r.id) : [])]) {
     const idx = marketIndex(state, regionId);
     const pull = (1 - idx) * 0.1;
-    h.market[regionId] = Math.round(clamp(idx * (1 + drift + pull + rng.float(-0.03, 0.03)), 0.4, 4) * 1000) / 1000;
+    h.market[regionId] = Math.round(clamp(idx * (1 + drift + pull + rng.float(-0.03, 0.03) + housingDrift(state, regionId)), 0.4, 4) * 1000) / 1000;
   }
   // Mortgage rates ride on the economy's interest rate.
   h.rates.base = Math.round(clamp(e.interestRate + 0.027 + rng.float(-0.003, 0.003), 0.025, 0.11) * 10000) / 10000;

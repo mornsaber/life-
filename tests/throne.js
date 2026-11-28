@@ -18,7 +18,7 @@ import { courtView } from '../src/ui/views/CrownCard.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const royal = (cc, level, gender = 'male', seed = 1, age = 0) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, royalLevel: level, gender });
+  const state = engine.newLife({ countryId: cc, royalLevel: level, gender, economy: 'historical' });
   for (let i = 0; i < age && state.character.alive; i++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
   state.prompts = [];
   return { engine, state };

@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { industryCard } from './views/IndustryView.js';
 import { counsellorSeat, excoSeat } from '../modules/world/PrivyCouncil.js';
 import { COURTS } from '../modules/legal/Judiciary.js';
 import { resumeView } from './views/ResumeView.js';
@@ -293,7 +294,7 @@ function retirementLifeCard(state) {
 
 export const VIEWS = {
   // The war comes first when there is one: what's happening, and your part in it.
-  world: (state) => warCard(state) + warRolesCard(state) + timesCard(state) + eraCard(state) + frontPageCard(state) + newsThreadCard(state),
+  world: (state) => warCard(state) + warRolesCard(state) + timesCard(state) + eraCard(state) + industryCard(state) + frontPageCard(state) + newsThreadCard(state),
   goals: (state) => sandboxCard(state) + scenarioCard(state) + littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;

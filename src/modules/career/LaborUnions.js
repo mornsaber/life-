@@ -22,6 +22,7 @@
  *           president: { name, age, years, skill, player? }, vp, secretary, stewards, shops, lastSettlement,
  *           electionIn, history: [{ age, icon, text }], onStrike }
  */
+import { unionPressure, unionsLawful } from '../industry/Sync.js';
 import { Random, clamp } from '../../core/Random.js';
 import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { PROFESSION_LIST, getProfession } from './JobTrees.js';
@@ -308,7 +309,10 @@ function npcYear(ctx, u, rng) {
   const phase = state.economy?.phase;
   const rtw = rightToWork(state, u.stateId);
   // Membership: the economy, the law, and whether the union delivers.
-  const drift = (phase === 'recession' ? -0.03 : phase === 'expansion' ? 0.01 : 0) + (rtw ? -0.012 : 0.004) + (unionPower(u) - 45) / 3000 + rng.float(-0.02, 0.02);
+  const pressure = unionPressure(state, u.professions);
+  // Without lawful unions, organising is conspiracy: the union shrinks to the brave.
+  const lawful = unionsLawful(state);
+  const drift = (phase === 'recession' ? -0.03 : phase === 'expansion' ? 0.01 : 0) + (rtw ? -0.012 : 0.004) + (unionPower(u) - 45) / 3000 + rng.float(-0.02, 0.02) + pressure.drift + (lawful ? 0 : -0.06);
   u.members = Math.max(100, Math.round(u.members * (1 + drift)));
   u.density = Math.round(clamp(u.density * (1 + drift * 0.8), 0.01, 0.97) * 1000) / 1000;
   // Dues: the local keeps about a quarter; a fifth of that goes to the strike fund.
@@ -317,7 +321,7 @@ function npcYear(ctx, u, rng) {
   u.strikeFund = Math.round(u.strikeFund * 1.02 + dues * 0.2);
   if (u.treasury < 0) { u.strikeFund += u.treasury; u.treasury = 0; }
   u.strikeFund = Math.max(0, u.strikeFund);
-  u.militancy = Math.round(clamp(u.militancy + (55 - u.militancy) * 0.1 + rng.int(-4, 4) + (state.economy?.inflation > 0.035 ? 3 : 0), 0, 100));
+  u.militancy = Math.round(clamp(u.militancy + (55 - u.militancy) * 0.1 + rng.int(-4, 4) + (state.economy?.inflation > 0.035 ? 3 : 0) + pressure.militancy, 0, 100));
   u.clout = Math.round(clamp(u.clout * 0.95 + u.density * 6 + rng.int(-1, 2), 0, 100));
   if (!u.president.player) u.president.age += 1;
   u.president.years += 1;
@@ -325,7 +329,7 @@ function npcYear(ctx, u, rng) {
   u.lastSettlement = Math.max(1, Math.round((state.economy?.inflation ?? 0.025) * 100) + powerBonus(u) + rng.int(-1, 1));
   u.onStrike = null;
   // Strikes elsewhere in the local.
-  if (u.strike && rng.chance(0.03 + u.militancy / 1500)) {
+  if (u.strike && rng.chance((0.03 + u.militancy / 1500) * (lawful ? 1 : 0.4))) {
     const weeks = rng.int(1, 9);
     const won = rng.chance(strikeWinChance(u));
     u.strikeFund = Math.max(0, u.strikeFund - Math.round(u.members * 0.1 * weeks * 350));

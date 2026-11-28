@@ -9,6 +9,7 @@
  * org.alumni = [{ id, name, gender, professionId, levelId, title, deptId, why, leftAge }] (most recent 12)
  * dept.lastYear = { hired, left }
  */
+import { deptGrowth } from '../industry/Sync.js';
 import { clamp } from '../../core/Random.js';
 import { staffingFor } from './Staffing.js';
 import { orgOf, sideRng } from './Organizations.js';
@@ -35,7 +36,7 @@ export function churnTick(ctx, job) {
   const rng = sideRng(state);
   const phase = state.economy?.phase ?? 'expansion';
   const privateSector = org.sector === 'private';
-  const growth = { expansion: 0.03, peak: 0.01, recession: privateSector ? -0.06 : -0.01, recovery: 0.015 }[phase] ?? 0;
+  const growth = ({ expansion: 0.03, peak: 0.01, recession: privateSector ? -0.06 : -0.01, recovery: 0.015 }[phase] ?? 0) + (privateSector ? deptGrowth(state, job.professionId) : 0);
   const attrition = rng.float(0.08, 0.14);
   const left = Math.round(dept.headcount * attrition);
   const hired = Math.max(0, Math.round(dept.headcount * (attrition + growth + rng.float(-0.02, 0.02))));

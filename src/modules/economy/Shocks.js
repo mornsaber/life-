@@ -12,6 +12,7 @@
  *
  * state.economy.cause = { id, since }   state.world.pandemic = { active, since, name }
  */
+import { declineShock } from '../industry/Sync.js';
 import { Random } from '../../core/Random.js';
 import { REGIONS, regionsHere } from '../life/Regions.js';
 import { yearNow } from '../world/Eras.js';
@@ -46,6 +47,7 @@ export function businessShock(state, typeId) {
 
 /** How much harder this recession hits a profession (×, 1 = the usual). */
 export function shockFactor(state, professionId) {
+  if (state.economy?.phase === 'recession' && state.economy.cause?.id === 'industrial') return declineShock(state, professionId);
   const c = state.economy?.phase === 'recession' ? CAUSES[state.economy.cause?.id] : null;
   return c?.sectors?.[professionId] ?? 1;
 }

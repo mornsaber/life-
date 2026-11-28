@@ -14,6 +14,10 @@ import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc, born, seed = 3) => {
+  for (let k = 0; k < 8; k++) { const l = lifeOnce(cc, born, seed + k); if (l.state.character.alive) return l; }
+  return lifeOnce(cc, born, seed);
+};
+const lifeOnce = (cc, born, seed) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({ countryId: cc, startYear: born });
   for (let i = 0; i < 55; i++) { engine.autoResolve(); state.prompts = []; state.stats.health = 100; state.health &&= { ...state.health, conditions: [] }; engine.ageUp(); if (!state.character.alive) break; }

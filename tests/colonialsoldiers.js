@@ -16,7 +16,7 @@ import { setEraState } from '../src/modules/world/Eras.js';
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId, year, age = 20, seed = 1) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const s = engine.newLife({ countryId, startYear: year - age, gender: 'male' });
+  const s = engine.newLife({ countryId, startYear: year - age, gender: 'male', economy: 'historical' });
   s.world.seed = seed;
   for (let i = 0; i < age; i++) { s.prompts = []; s.stats.health = 90; engine.ageUp(); }
   const state = engine.state;
